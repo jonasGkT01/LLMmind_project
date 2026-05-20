@@ -45,9 +45,9 @@ datasets:
   narratives:
     data: "resources/narratives_dataset/derivatives/"
     stimuli: "resources/narratives_dataset/stimuli/transcripts/"
-  caption_scene:
-    data: "resources/caption_scene_dataset/V1/derivatives/"
-    stimuli: "resources/caption_scene_dataset/V1/stimuli/"
+#  caption_scene:
+#    data: "resources/caption_scene_dataset/V1/derivatives/"
+#    stimuli: "resources/caption_scene_dataset/V1/stimuli/"
 
 ##### NARRATIVES DATASET #####
 # general configuration

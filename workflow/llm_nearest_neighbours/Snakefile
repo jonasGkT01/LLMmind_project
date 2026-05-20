@@ -2,14 +2,16 @@ DATASET_KEYS = list(config["datasets"].keys())
 MODEL_KEYS = list(config["models"].keys())
 EXCLUDED_SUBTASKS = list(config["schema_subtasks"])
 
-rule all:
+rule all_llm_nearest_neighbours:
     input:
         expand(
-            "results/cosine_nearest_neighbours/{model}_cosine_nearest_neighbours.parquet",
+            "results/llm/{dataset}/cosine_nearest_neighbours/{model}_cosine_nearest_neighbours.parquet",
+            dataset=DATASET_KEYS,
             model=MODEL_KEYS
         ),
         expand(
-            "results/pearson_nearest_neighbours/{model}_pearson_nearest_neighbours.parquet",
+            "results/llm/{dataset}/pearson_nearest_neighbours/{model}_pearson_nearest_neighbours.parquet",
+            dataset=DATASET_KEYS,
             model=MODEL_KEYS
         )
 
@@ -28,13 +30,13 @@ rule download_pretrained_llm:
 rule get_embeddings:
     input:
         model="resources/models/{model}",
-        stimuli="resources/stimuli"
+        stimuli=lambda wc: config["datasets"][wc.dataset]["stimuli"]
     output:
-        "results/embeddings/{model}_embeddings.parquet"
+        "results/llm/{dataset}/embeddings/{model}_embeddings.parquet"
     params:
-        quantization_arg=lambda wildcards: (
-            "" if config['models'][wildcards.model]['quantization_method'] is None
-            else f"--quantization_method {config['models'][wildcards.model]['quantization_method']}"
+        quantization_arg=lambda wc: (
+            "" if config['models'][wc.model]['quantization_method'] is None
+            else f"--quantization_method {config['models'][wc.model]['quantization_method']}"
         ),
         excluded_stimuli=EXCLUDED_SUBTASKS
     conda:
@@ -42,7 +44,7 @@ rule get_embeddings:
     shell:
         r"""
             python3 workflow/llm_embeddings/scripts/get_embeddings.py \
-                --input_dir resources/stimuli \
+                --input_dir {input.stimuli} \
                 --output {output} \
                 --model_path {input.model} \
                 {params.quantization_arg} \
@@ -51,10 +53,10 @@ rule get_embeddings:
 
 rule compute_similarity:
     input:
-        embedding_dataframe="results/embeddings/{model}_embeddings.parquet"
+        embedding_dataframe="results/llm/{dataset}/embeddings/{model}_embeddings.parquet"
     output:
-        cosine_similarity_dataframe="results/cosine_similarity/{model}_cosine_similarity.parquet",
-        pearson_similarity_dataframe="results/pearson_similarity/{model}_pearson_similarity.parquet"
+        cosine_similarity_dataframe="results/llm/{dataset}/cosine_similarity/{model}_cosine_similarity.parquet",
+        pearson_similarity_dataframe="results/llm/{dataset}/pearson_similarity/{model}_pearson_similarity.parquet"
     conda:
         "envs/compute_similarity_environment.yaml"
     shell:
@@ -67,11 +69,11 @@ rule compute_similarity:
 
 rule relabel_LLM_similarity:
     input:
-        similarity_dataframe="resources/results_LLM/{similarity_type}_similarity/{model}_{similarity_type}_similarity.parquet"
+        similarity_dataframe="results/llm/{dataset}/{similarity_type}_similarity/{model}_{similarity_type}_similarity.parquet"
     output:
-        relabelled_similarity_dataframe=temp("results/{similarity_type}_relabelled/{model}/relabel_{relabel}/similarity_dataframe.parquet")
+        relabelled_similarity_dataframe=temp("results/llm/{dataset}/{similarity_type}_relabelled/{model}/relabel_{relabel}/similarity_dataframe.parquet")
     params:
-        seed=lambda wildcards: config["random_seed"] + int(wildcards.relabel)
+        seed=lambda wc: config["random_seed"] + int(wc.relabel)
     conda:
         "envs/relabel_LLM_similarity_environment.yaml"
     shell:
@@ -84,11 +86,11 @@ rule relabel_LLM_similarity:
 
 rule compute_nearest_neighbours:
     input:
-        cosine_similarity_dataframe="results/cosine_similarity/{model}_cosine_similarity.parquet",
-        pearson_similarity_dataframe="results/pearson_similarity/{model}_pearson_similarity.parquet"
+        cosine_similarity_dataframe="results/llm/{dataset}/cosine_similarity/{model}_cosine_similarity.parquet",
+        pearson_similarity_dataframe="results/llm/{dataset}/pearson_similarity/{model}_pearson_similarity.parquet"
     output:
-        cosine_nearest_neighbours="results/cosine_nearest_neighbours/{model}_cosine_nearest_neighbours.parquet",
-        pearson_nearest_neighbours="results/pearson_nearest_neighbours/{model}_pearson_nearest_neighbours.parquet"
+        cosine_nearest_neighbours="results/llm/{dataset}/cosine_nearest_neighbours/{model}_cosine_nearest_neighbours.parquet",
+        pearson_nearest_neighbours="results/llm/{dataset}/pearson_nearest_neighbours/{model}_pearson_nearest_neighbours.parquet"
     params:
         number_of_neighbours=config["number_of_neighbours"]
     conda:
@@ -105,9 +107,9 @@ rule compute_nearest_neighbours:
 
 rule compute_relabelled_LLM_nearest_neighbours:
     input:
-        relabelled_similarity_dataframe="results/{similarity_type}_relabelled/{model}/relabel_{relabel}/similarity_dataframe.parquet"
+        relabelled_similarity_dataframe="results/llm/{dataset}/{similarity_type}_relabelled/{model}/relabel_{relabel}/similarity_dataframe.parquet"
     output:
-        relabelled_nearest_neighbours=temp("results/{similarity_type}_relabelled/{model}/relabel_{relabel}/nearest_neighbours.parquet")
+        relabelled_nearest_neighbours=temp("results/llm/{dataset}/{similarity_type}_relabelled/{model}/relabel_{relabel}/nearest_neighbours.parquet")
     params:
         number_of_neighbours=config["number_of_neighbours"]
     conda:
