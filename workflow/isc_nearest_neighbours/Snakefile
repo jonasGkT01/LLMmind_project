@@ -1,5 +1,3 @@
-configfile: "config/config.yaml"
-
 def task_is_excluded(task):
     return task in config["schema_subtasks"] or task in config["notthefall_variants"]
 
@@ -21,7 +19,7 @@ rule create_isc_dataframe:
         "envs/create_isc_dataframe_environment.yaml"
     shell:
         r"""
-            python3 workflow/scripts/create_isc_dataframe.py \
+            python3 workflow/isc_nearest_neighbours/scripts/create_isc_dataframe.py \
                 --isc_npys {input:q} \
                 --embedding_isc_dataframe {output:q}
         """
@@ -36,7 +34,7 @@ rule compute_isc_similarity:
         "envs/compute_isc_similarity_environment.yaml"
     shell:
         r"""
-            python3 workflow/scripts/compute_isc_similarity.py \
+            python3 workflow/isc_nearest_neighbours/scripts/compute_isc_similarity.py \
                 --embedding_isc_dataframe {input.embedding_isc_dataframe:q} \
                 --isc_cosine_similarity_dataframe {output.isc_cosine_similarity_dataframe:q} \
                 --isc_pearson_similarity_dataframe {output.isc_pearson_similarity_dataframe:q}
@@ -55,7 +53,7 @@ rule compute_isc_nearest_neighbours:
         "envs/compute_isc_nearest_neighbours_environment.yaml"
     shell:
         r"""
-            python3 workflow/scripts/compute_isc_nearest_neighbours.py \
+            python3 workflow/isc_nearest_neighbours/scripts/compute_isc_nearest_neighbours.py \
                 --isc_cosine_similarity_dataframe {input.isc_cosine_similarity_dataframe:q} \
                 --isc_pearson_similarity_dataframe {input.isc_pearson_similarity_dataframe:q} \
                 --isc_cosine_nearest_neighbours {output.isc_cosine_nearest_neighbours:q} \

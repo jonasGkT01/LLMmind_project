@@ -4,8 +4,6 @@ import numpy as np
 from pathlib import Path
 from itertools import product
 
-configfile: "config/config.yaml"
-
 SUBJECTS = [f"{i:03d}" for i in range(config["subjects"]["start"], config["subjects"]["end"] + 1)]
 
 def run_label(run_tag):
@@ -226,7 +224,7 @@ rule extract_parcels:
         "envs/extract_parcels_environment.yaml"
     shell:
         r"""
-            python3 scripts/extract_parcels.py
+            python3 workflow/fMRI_processing/scripts/extract_parcels.py
         """
 
 def task_parcel_inputs(wc):
@@ -250,7 +248,7 @@ rule compute_isc:
         "envs/compute_isc_environment.yaml"
     script:
         r"""
-            python3 scripts/compute_isc.py
+            python3 workflow/fMRI_processing/scripts/compute_isc.py
         """
 
 rule plot_isc:
@@ -262,5 +260,5 @@ rule plot_isc:
         "envs/plot_isc_environment.yaml"
     script:
         r"""
-            python3 scripts/plot_isc.py
+            python3 workflow/fMRI_processing/scripts/plot_isc.py
         """

@@ -1,5 +1,3 @@
-configfile: "config/config.yaml"
-
 MODEL_KEYS = [model for model in config["models"]]
 SIMILARITY_TYPES = ["cosine", "pearson"]
 N_RELABELLINGS = range(config["number_of_relabellings"])
@@ -33,7 +31,7 @@ rule all:
             relabel=N_RELABELLINGS
         )
 
-rule compute_LLM_mind_alignment_score:
+rule compute_llm_mind_alignment_score:
     input:
         isc_nearest_neighbours="resources/results_mind/{similarity_type}_nearest_neighbours/isc_{similarity_type}_nearest_neighbours.parquet",
         llm_nearest_neighnours="resources/results_LLM/{similarity_type}_nearest_neighbours/{model}_{similarity_type}_nearest_neighbours.parquet"
@@ -43,10 +41,10 @@ rule compute_LLM_mind_alignment_score:
         number_of_neighbours=config["number_of_neighbours"],
         model="{model}"
     conda:
-        "envs/compute_LLM_mind_alignment_score_environment.yaml"
+        "envs/compute_llm_mind_alignment_score_environment.yaml"
     shell:
         r"""
-            python3 workflow/scripts/compute_LLM_mind_alignment_score.py \
+            python3 workflow/llm_mind_alignment/scripts/compute_llm_mind_alignment_score.py \
                 --number_of_neighbours {params.number_of_neighbours} \
                 --model {params.model:q} \
                 --nearest_neighbours_1 {input.isc_nearest_neighbours:q} \
@@ -54,41 +52,7 @@ rule compute_LLM_mind_alignment_score:
                 --alignment_score {output.llm_brain_alignment_score:q}
         """
 
-rule relabel_LLM_similarity:
-    input:
-        similarity_dataframe="resources/results_LLM/{similarity_type}_similarity/{model}_{similarity_type}_similarity.parquet"
-    output:
-        relabelled_similarity_dataframe=temp("results/{similarity_type}_relabelled/{model}/relabel_{relabel}/similarity_dataframe.parquet")
-    params:
-        seed=lambda wildcards: config["random_seed"] + int(wildcards.relabel)
-    conda:
-        "envs/relabel_LLM_similarity_environment.yaml"
-    shell:
-        r"""
-            python3 workflow/scripts/relabel_LLM_similarity.py \
-                --input {input.similarity_dataframe:q} \
-                --output {output.relabelled_similarity_dataframe:q} \
-                --seed {params.seed}
-        """
-
-rule compute_relabelled_LLM_nearest_neighbours:
-    input:
-        relabelled_similarity_dataframe="results/{similarity_type}_relabelled/{model}/relabel_{relabel}/similarity_dataframe.parquet"
-    output:
-        relabelled_nearest_neighbours=temp("results/{similarity_type}_relabelled/{model}/relabel_{relabel}/nearest_neighbours.parquet")
-    params:
-        number_of_neighbours=config["number_of_neighbours"]
-    conda:
-        "envs/compute_nearest_neighbours_environment.yaml"
-    shell:
-        r"""
-            python3 workflow/scripts/compute_nearest_neighbours.py \
-                --number_of_neighbours {params.number_of_neighbours} \
-                --similarity_dataframe {input.relabelled_similarity_dataframe:q} \
-                --nearest_neighbours {output.relabelled_nearest_neighbours:q}
-        """
-
-rule compute_relabelled_LLM_mind_alignment_score:
+rule compute_relabelled_llm_mind_alignment_score:
     input:
         isc_nearest_neighbours="resources/results_mind/{similarity_type}_nearest_neighbours/isc_{similarity_type}_nearest_neighbours.parquet",
         relabelled_llm_nearest_neighbours="results/{similarity_type}_relabelled/{model}/relabel_{relabel}/nearest_neighbours.parquet"
@@ -98,10 +62,10 @@ rule compute_relabelled_LLM_mind_alignment_score:
         number_of_neighbours=config["number_of_neighbours"],
         model="{model}"
     conda:
-        "envs/compute_LLM_mind_alignment_score_environment.yaml"
+        "envs/compute_llm_mind_alignment_score_environment.yaml"
     shell:
         r"""
-            python3 workflow/scripts/compute_LLM_mind_alignment_score.py \
+            python3 workflow/llm_mind_alignment/scripts/compute_llm_mind_alignment_score.py \
                 --number_of_neighbours {params.number_of_neighbours} \
                 --model {params.model:q} \
                 --nearest_neighbours_1 {input.isc_nearest_neighbours:q} \
@@ -131,7 +95,7 @@ rule aggregate_all_alignment_scores:
         "envs/aggregate_all_alignment_scores_environment.yaml"
     shell:
         r"""
-            python3 workflow/scripts/aggregate_all_alignment_scores.py \
+            python3 workflow/llm_mind_alignment/scripts/aggregate_all_alignment_scores.py \
                 --observed_alignment_scores {input.observed_alignment_scores:q} \
                 --relabelled_alignment_scores {input.relabelled_alignment_scores:q} \
                 --summary {output.summary:q} \
