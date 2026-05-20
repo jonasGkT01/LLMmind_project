@@ -1,5 +1,6 @@
-configfile: "config/config.yaml"
+configfile: "../../config/config.yaml"
 
+DATASET_KEYS = list(config["datasets"].keys())
 MODEL_KEYS = list(config["models"].keys())
 EXCLUDED_SUBTASKS = list(config["schema_subtasks"])
 
@@ -23,7 +24,7 @@ rule download_pretrained_llm:
         "envs/download_pretrained_llm_environment.yaml"
     shell:
         r"""
-            python3 workflow/scripts/download_pretrained_llm.py {params.hf_name:q} {output.model_dir:q}
+            python3 scripts/download_pretrained_llm.py {params.hf_name:q} {output.model_dir:q}
         """
 
 rule get_embeddings:
@@ -42,7 +43,7 @@ rule get_embeddings:
         "envs/get_embeddings_environment.yaml"
     shell:
         r"""
-            python3 workflow/scripts/get_embeddings.py \
+            python3 scripts/get_embeddings.py \
                 --input_dir resources/stimuli \
                 --output {output} \
                 --model_path {input.model} \
@@ -60,7 +61,7 @@ rule compute_similarity:
         "envs/compute_similarity_environment.yaml"
     shell:
         r"""
-            python3 workflow/scripts/compute_similarity.py \
+            python3 scripts/compute_similarity.py \
                 --embedding_dataframe {input.embedding_dataframe:q} \
                 --cosine_similarity_dataframe {output.cosine_similarity_dataframe:q} \
                 --pearson_similarity_dataframe {output.pearson_similarity_dataframe:q}
@@ -79,7 +80,7 @@ rule compute_nearest_neighbours:
         "envs/compute_nearest_neighbours_environment.yaml"
     shell:
         r"""
-            python3 workflow/scripts/compute_nearest_neighbours.py \
+            python3 scripts/compute_nearest_neighbours.py \
                 --number_of_neighbours {params.number_of_neighbours:q} \
                 --cosine_similarity_dataframe {input.cosine_similarity_dataframe:q} \
                 --pearson_similarity_dataframe {input.pearson_similarity_dataframe:q} \

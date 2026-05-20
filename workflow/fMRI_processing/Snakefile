@@ -6,10 +6,6 @@ from itertools import product
 
 configfile: "config/config.yaml"
 
-include: "rules/extract_parcels.smk"
-include: "rules/compute_isc.smk"
-include: "rules/plot_isc.smk"
-
 SUBJECTS = [f"{i:03d}" for i in range(config["subjects"]["start"], config["subjects"]["end"] + 1)]
 
 def run_label(run_tag):
@@ -209,3 +205,62 @@ rule all:
         ISC_NPY_OUTPUTS,
         ISC_NII_OUTPUTS,
         FIG_PNG_OUTPUTS
+
+rule extract_parcels:
+    input:
+        bold=lambda wc: config["bold_glob_pattern"].format(
+            subject=wc.subject,
+            task=wc.task,
+            run_tag="" if wc.run_label == "norun" else f"_{wc.run_label}",
+            space=wc.space,
+            resolution=wc.resolution,
+            descriptor=wc.descriptor,
+        )
+    output:
+        npy=f"results/parcels/{{task}}/sub-{{subject}}_task-{{task}}_{{run_label}}_space-{{space}}_res-{{resolution}}_desc-{{descriptor}}_parcel_ts.npy"
+    params:
+        n_rois=config["atlas"]["n_rois"],
+        yeo_networks=config["atlas"]["yeo_networks"],
+        atlas_dir=config["atlas"]["atlas_dir"]
+    conda:
+        "envs/extract_parcels_environment.yaml"
+    shell:
+        r"""
+            python3 scripts/extract_parcels.py
+        """
+
+def task_parcel_inputs(wc):
+    items = TASK_GROUPS[wc.task]
+    return [
+        f"results/parcels/{c['task']}/sub-{c['subject']}_task-{c['task']}_{run_label(c['run_tag'])}_space-{c['space']}_res-{c['resolution']}_desc-{c['descriptor']}_parcel_ts.npy"
+        for c in items
+    ]
+
+rule compute_isc:
+    input:
+        task_parcel_inputs
+    output:
+        isc_npy=f"results/isc/task-{{task}}_isc_mean.npy",
+        isc_nii=f"results/isc/task-{{task}}_isc_mean.nii.gz"
+    params:
+        n_rois=config["atlas"]["n_rois"],
+        yeo_networks=config["atlas"]["yeo_networks"],
+        atlas_dir=config["atlas"]["atlas_dir"]
+    conda:
+        "envs/compute_isc_environment.yaml"
+    script:
+        r"""
+            python3 scripts/compute_isc.py
+        """
+
+rule plot_isc:
+    input:
+        isc_nii=f"results/isc/task-{{task}}_isc_mean.nii.gz"
+    output:
+        png=f"results/plots/task-{{task}}_isc_mean.png"
+    conda:
+        "envs/plot_isc_environment.yaml"
+    script:
+        r"""
+            python3 scripts/plot_isc.py
+        """

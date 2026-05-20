@@ -1,0 +1,10 @@
+configfile: "config/config.yaml"
+
+include: "fMRI_processing/Snakefile"
+include: "isc_nearest_neighbours/Snakefile"
+include: "llm_embeddings/Snakefile"
+include: "llm_mind_alignment/Snakefile"
+
+rule all:
+    input:
+        

@@ -1,0 +1,123 @@
+# models
+models:
+  bloom_560m:
+    name: "BLOOMZ-560M"
+    hf_name: "bigscience/bloomz-560m"
+    quantization_method: null
+  bloom_1b1:
+    name: "BLOOMZ-1.1B"
+    hf_name: "bigscience/bloomz-1b1"
+    quantization_method: null
+  bloom_1b7:
+    name: "BLOOMZ-1.7B"
+    hf_name: "bigscience/bloomz-1b7"
+    quantization_method: null
+  bloom_3b:
+    name: "BLOOMZ-3B"
+    hf_name: "bigscience/bloomz-3b"
+    quantization_method: null
+  bloom_7b1:
+    name: "BLOOMZ-7.1B"
+    hf_name: "bigscience/bloomz-7b1"
+    quantization_method: null
+  openllama_3b:
+    name: "OpenLLaMA-3B"
+    hf_name: "openlm-research/open_llama_3b"
+    quantization_method: null
+  openllama_7b:
+    name: "OpenLLaMA-7B"
+    hf_name: "openlm-research/open_llama_7b"
+    quantization_method: null
+  openllama_13b:
+    name: "OpenLLaMA-13B"
+    hf_name: "openlm-research/open_llama_13b"
+    quantization_method: "8bit"
+
+# number of nearest neighbours to compute for each stimulus and model
+number_of_neighbours: 5
+
+# datasets
+datasets:
+  narratives:
+    data: "resources/narratives_dataset/derivatives/"
+    stimuli: "resources/narratives_dataset/stimuli/transcripts/"
+  caption_scene:
+    data: "resources/caption_scene_dataset/V1/derivatives/"
+    stimuli: "resources/caption_scene_dataset/V1/stimuli/"
+
+##### NARRATIVES DATASET #####
+# general configuration
+fMRI_data_dir:           "resources/fMRI_data"
+bold_glob_pattern:       "resources/fMRI_data/sub-{subject}/func/sub-{subject}_task-{task}{run_tag}_space-{space}_res-{resolution}_desc-{descriptor}_bold.nii.gz"
+scans_to_be_excluded:    "resources/scan_exclude.json"
+excluded_scans_for_task: "results/excluded_scans_for_task.json"
+
+# dataset configuration
+subjects:
+  start: 1
+  end: 345
+tasks:
+  - "21styear"
+  - "bigbang"
+  - "black"
+  - "bronx"
+  - "forgot"
+  - "friends"
+  - "himym"
+  - "lucy"
+  - "merlin"
+  - "milkyway"
+  - "milkywayoriginal"
+  - "milkywaysynonyms"
+  - "milkywayvodka"
+  - "notthefallintact"
+  - "notthefalllongscram"
+  - "notthefallshortscram"
+  - "pieman"
+  - "piemanpni"
+  - "prettymouth"
+  - "santa"
+#  - "schema"
+  - "seinfeld"
+  - "shame"
+  - "shapesphysical"
+  - "shapessocial"
+  - "sherlock"
+  - "slumlordreach"
+  - "tunnel"
+  - "upintheair"
+  - "vinny"
+run_tags:
+  - ""
+  - "_run-1"
+  - "_run-2"
+spaces:
+  - "MNI152NLin2009cAsym"
+resolutions:
+  - "native"
+descriptors:
+  - "clean"
+
+# subtasks of "schema" task
+schema_subtasks:
+  - "bigbang"
+  - "friends"
+  - "himym"
+  - "santa"
+  - "seinfeld"
+  - "shame"
+  - "upintheair"
+  - "vinny"
+
+# variants of "notthefall" task
+notthefall_variants:
+  - "notthefalllongscram"
+  - "notthefallshortscram"
+
+##### CAPTION-SCENE DATASET #####
+
+# atlas configuration
+atlas:
+  atlas_dir: "resources/atlases"
+  n_rois: 200
+  yeo_networks: 7
