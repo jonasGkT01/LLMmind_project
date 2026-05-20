@@ -1,0 +1,211 @@
+import json
+import numpy as np
+
+from pathlib import Path
+from itertools import product
+
+configfile: "config/config.yaml"
+
+include: "rules/extract_parcels.smk"
+include: "rules/compute_isc.smk"
+include: "rules/plot_isc.smk"
+
+SUBJECTS = [f"{i:03d}" for i in range(config["subjects"]["start"], config["subjects"]["end"] + 1)]
+
+def run_label(run_tag):
+    return "norun" if run_tag == "" else run_tag.replace("_", "")
+
+with open(config["scans_to_be_excluded"]) as f:
+    SCAN_EXCLUDE = json.load(f)
+
+def excluded_scan_prefixes(task):
+    # load dictionary and get scan prefixes to be excluded for the given task
+    task_dict = SCAN_EXCLUDE.get(task, {})
+    return {
+        prefix
+        for scans in task_dict.values()
+        for prefix in scans
+    }
+
+def scan_prefix(subject, task, run_tag):
+    prefix = f"sub-{subject}_task-{task}"
+    if  run_tag != "":
+        prefix += run_tag
+    return prefix
+
+def is_excluded(subject, task, run_tag):
+    return scan_prefix(subject, task, run_tag) in excluded_scan_prefixes(task)
+
+def write_length_check_json(task, parcel_files, output_json):
+    parcel_files = [Path(p) for p in parcel_files]
+    output_json = Path(output_json)
+    output_json.parent.mkdir(parents=True, exist_ok=True)
+
+    lengths = {}
+    unreadable_files = {}
+    malformed_files = {}
+
+    for f in parcel_files:
+        scan_id = f.stem  # removes .npy
+
+        try:
+            arr = np.load(f, mmap_mode="r")
+        except Exception as e:
+            unreadable_files[scan_id] = str(e)
+            continue
+
+        if arr.ndim < 1:
+            malformed_files[scan_id] = f"Expected at least one dimension, got shape {arr.shape}"
+            continue
+
+        # assumes time is the first dimension
+        lengths[scan_id] = int(arr.shape[0])
+
+    unique_lengths = sorted(set(lengths.values()))
+
+    if len(parcel_files) == 0:
+        valid = False
+        reason = "No parcel files were provided."
+    elif unreadable_files:
+        valid = False
+        reason = "One or more parcel files could not be read."
+    elif malformed_files:
+        valid = False
+        reason = "One or more parcel files had an invalid shape."
+    elif len(lengths) == 0:
+        valid = False
+        reason = "No valid parcel files were available after loading."
+    elif len(unique_lengths) != 1:
+        valid = False
+        reason = "Mismatched parcel time lengths across scans."
+    else:
+        valid = True
+        reason = "All parcel timeseries have identical length."
+
+    payload = {
+        "task": task,
+        "valid": valid,
+        "reason": reason,
+        "n_input_files": len(parcel_files),
+        "n_valid_files": len(lengths),
+        "common_length": unique_lengths[0] if valid else None,
+        "unique_lengths": unique_lengths,
+        "time_lengths": lengths,
+        "unreadable_files": unreadable_files,
+        "malformed_files": malformed_files,
+    }
+
+    with open(output_json, "w") as f:
+        json.dump(payload, f, indent=2, sort_keys=True)
+
+    return valid
+
+# discover valid inputs
+BOLD_FILES = []
+for subject, task, run_tag, space, resolution, descriptor in product(
+    SUBJECTS,
+    config["tasks"],
+    config["run_tags"],
+    config["spaces"],
+    config["resolutions"],
+    config["descriptors"],
+):
+    # skip excluded scans before checking the file
+    if is_excluded(subject, task, run_tag):
+        # print(f"Excluding scan for subject {subject}, task {task}, run {run_tag}")
+        continue
+
+    bold_file = config["bold_glob_pattern"].format(
+        subject=subject,
+        task=task,
+        run_tag=run_tag,
+        space=space,
+        resolution=resolution,
+        descriptor=descriptor,
+    )
+
+    if Path(bold_file).exists():
+        BOLD_FILES.append({
+            "subject": subject,
+            "task": task,
+            "run_tag": run_tag,
+            "run_label": run_label(run_tag),
+            "space": space,
+            "resolution": resolution,
+            "descriptor": descriptor,
+            "bold_file": bold_file,
+        })
+
+def task_is_excluded(task):
+    return task in config["schema_subtasks"] or task in config["notthefall_variants"]
+
+# group by task only
+TASK_GROUPS = {}
+for c in BOLD_FILES:
+    # skip schema subtasks and notthefall variants
+    if task_is_excluded(c["task"]):
+        continue
+        
+    TASK_GROUPS.setdefault(c["task"], []).append(c)
+
+def parcel_outputs_for_task(task):
+    return [
+        f"results/parcels/{c['task']}/sub-{c['subject']}_task-{c['task']}_{c['run_label']}_space-{c['space']}_res-{c['resolution']}_desc-{c['descriptor']}_parcel_ts.npy"
+        for c in TASK_GROUPS[task]
+    ]
+
+excluded_scans_for_task = []
+for task in config["tasks"]:
+    if task_is_excluded(task):
+        print(f"Skipping length check for excluded task {task}. See {config['excluded_scans_for_task']} for details.")
+        if task in config["schema_subtasks"]:
+            for c in TASK_GROUPS.get(task, []):
+                excluded_scans_for_task.append({
+                    "task": task,
+                    "reason": "Excluded because it is a schema subtask.",
+                    "bold_file": c["bold_file"],
+                })
+        elif task in config["notthefall_variants"]:
+            for c in TASK_GROUPS.get(task, []):
+                excluded_scans_for_task.append({
+                    "task": task,
+                    "reason": "Excluded because it is a notthefall variant.",
+                    "bold_file": c["bold_file"],
+                })
+        continue
+
+        if not write_length_check_json(task, parcel_outputs_for_task(task), f"results/qc/task-{task}_length_check.json"):
+            print(f"Warning: Length check failed for task {task}. See results/qc/task-{task}_length_check.json for details.")
+
+excluded_scans_for_task_path = Path(config["excluded_scans_for_task"])
+excluded_scans_for_task_path.parent.mkdir(parents=True, exist_ok=True)
+
+with open(config["excluded_scans_for_task"], "w") as f:
+    json.dump(excluded_scans_for_task, f, indent=2, sort_keys=True)
+
+PARCEL_OUTPUTS = [
+    f"results/parcels/{c['task']}/sub-{c['subject']}_task-{c['task']}_{run_label(c['run_tag'])}_space-{c['space']}_res-{c['resolution']}_desc-{c['descriptor']}_parcel_ts.npy"
+    for c in BOLD_FILES
+]
+
+ISC_NPY_OUTPUTS = [
+    f"results/isc/task-{task}_isc_mean.npy"
+    for task in TASK_GROUPS
+]
+
+ISC_NII_OUTPUTS = [
+    f"results/isc/task-{task}_isc_mean.nii.gz"
+    for task in TASK_GROUPS
+]
+
+FIG_PNG_OUTPUTS = [
+    f"results/plots/task-{task}_isc_mean.png"
+    for task in TASK_GROUPS
+]
+
+rule all:
+    input:
+        PARCEL_OUTPUTS,
+        ISC_NPY_OUTPUTS,
+        ISC_NII_OUTPUTS,
+        FIG_PNG_OUTPUTS

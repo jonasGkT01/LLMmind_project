@@ -1,0 +1,6 @@
+.env
+.envrc
+.snakemake
+resources/
+results/
+workflow/envs/LLMmind_project/

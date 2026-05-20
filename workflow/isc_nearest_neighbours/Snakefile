@@ -1,0 +1,64 @@
+configfile: "config/config.yaml"
+
+def task_is_excluded(task):
+    return task in config["schema_subtasks"] or task in config["notthefall_variants"]
+
+ISC_NPY = [
+    f"resources/task-{task}_isc_mean.npy" for task in config["tasks"] if not task_is_excluded(task)
+]
+
+rule all:
+    input:
+        "results/cosine_nearest_neighbours/isc_cosine_nearest_neighbours.parquet",
+        "results/pearson_nearest_neighbours/isc_pearson_nearest_neighbours.parquet"
+
+rule create_isc_dataframe:
+    input:
+        ISC_NPY
+    output:
+        "results/embedding_isc_dataframe.parquet"
+    conda:
+        "envs/create_isc_dataframe_environment.yaml"
+    shell:
+        r"""
+            python3 workflow/scripts/create_isc_dataframe.py \
+                --isc_npys {input:q} \
+                --embedding_isc_dataframe {output:q}
+        """
+
+rule compute_isc_similarity:
+    input:
+        embedding_isc_dataframe="results/embedding_isc_dataframe.parquet"
+    output:
+        isc_cosine_similarity_dataframe="results/cosine_similarity/isc_cosine_similarity.parquet",
+        isc_pearson_similarity_dataframe="results/pearson_similarity/isc_pearson_similarity.parquet"
+    conda:
+        "envs/compute_isc_similarity_environment.yaml"
+    shell:
+        r"""
+            python3 workflow/scripts/compute_isc_similarity.py \
+                --embedding_isc_dataframe {input.embedding_isc_dataframe:q} \
+                --isc_cosine_similarity_dataframe {output.isc_cosine_similarity_dataframe:q} \
+                --isc_pearson_similarity_dataframe {output.isc_pearson_similarity_dataframe:q}
+        """
+
+rule compute_isc_nearest_neighbours:
+    input:
+        isc_cosine_similarity_dataframe="results/cosine_similarity/isc_cosine_similarity.parquet",
+        isc_pearson_similarity_dataframe="results/pearson_similarity/isc_pearson_similarity.parquet"
+    output:
+        isc_cosine_nearest_neighbours="results/cosine_nearest_neighbours/isc_cosine_nearest_neighbours.parquet",
+        isc_pearson_nearest_neighbours="results/pearson_nearest_neighbours/isc_pearson_nearest_neighbours.parquet"
+    params:
+        number_of_neighbours=config["number_of_neighbours"]
+    conda:
+        "envs/compute_isc_nearest_neighbours_environment.yaml"
+    shell:
+        r"""
+            python3 workflow/scripts/compute_isc_nearest_neighbours.py \
+                --isc_cosine_similarity_dataframe {input.isc_cosine_similarity_dataframe:q} \
+                --isc_pearson_similarity_dataframe {input.isc_pearson_similarity_dataframe:q} \
+                --isc_cosine_nearest_neighbours {output.isc_cosine_nearest_neighbours:q} \
+                --isc_pearson_nearest_neighbours {output.isc_pearson_nearest_neighbours:q} \
+                --number_of_neighbours {params.number_of_neighbours}
+        """

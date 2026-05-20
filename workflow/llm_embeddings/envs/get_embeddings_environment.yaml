@@ -1,0 +1,19 @@
+channels:
+  - conda-forge
+  - nodefaults
+dependencies:
+  - python=3.12
+  - pandas
+  - pyarrow
+  - pytorch
+  - torchvision
+  - torchaudio
+  - timm
+  - tqdm
+  - datasets
+  - scikit-learn
+  - transformers
+  - accelerate
+  - sentencepiece
+  - protobuf
+  - bitsandbytes

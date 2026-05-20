@@ -1,0 +1,142 @@
+configfile: "config/config.yaml"
+
+MODEL_KEYS = [model for model in config["models"]]
+SIMILARITY_TYPES = ["cosine", "pearson"]
+N_RELABELLINGS = range(config["number_of_relabellings"])
+
+MODEL_BRAIN_ALIGNMENT = [
+    f"results/{similarity_type}_alignment_scores/{model}_brain_alignment_score.parquet"
+    for similarity_type in SIMILARITY_TYPES
+    for model in MODEL_KEYS
+]
+
+MODEL_RELABELLED_ALIGNMENT = [
+    f"results/{similarity_type}_relabelled/{model}/relabel_{relabel}/brain_alignment_score.parquet"
+    for similarity_type in SIMILARITY_TYPES
+    for model in MODEL_KEYS
+    for relabel in N_RELABELLINGS
+]
+
+rule all:
+    input:
+        MODEL_BRAIN_ALIGNMENT,
+        expand(
+            "results/parquet_summary/{similarity_type}_alignment_summary_all_models.parquet",
+            similarity_type=SIMILARITY_TYPES, 
+            model=MODEL_KEYS, 
+            relabel=N_RELABELLINGS
+        ),
+        expand(
+            "results/tsv_summary/{similarity_type}_alignment_summary_all_models.tsv",
+            similarity_type=SIMILARITY_TYPES, 
+            model=MODEL_KEYS, 
+            relabel=N_RELABELLINGS
+        )
+
+rule compute_LLM_mind_alignment_score:
+    input:
+        isc_nearest_neighbours="resources/results_mind/{similarity_type}_nearest_neighbours/isc_{similarity_type}_nearest_neighbours.parquet",
+        llm_nearest_neighnours="resources/results_LLM/{similarity_type}_nearest_neighbours/{model}_{similarity_type}_nearest_neighbours.parquet"
+    output:
+        llm_brain_alignment_score="results/{similarity_type}_alignment_scores/{model}_brain_alignment_score.parquet"
+    params:
+        number_of_neighbours=config["number_of_neighbours"],
+        model="{model}"
+    conda:
+        "envs/compute_LLM_mind_alignment_score_environment.yaml"
+    shell:
+        r"""
+            python3 workflow/scripts/compute_LLM_mind_alignment_score.py \
+                --number_of_neighbours {params.number_of_neighbours} \
+                --model {params.model:q} \
+                --nearest_neighbours_1 {input.isc_nearest_neighbours:q} \
+                --nearest_neighbours_2 {input.llm_nearest_neighnours:q} \
+                --alignment_score {output.llm_brain_alignment_score:q}
+        """
+
+rule relabel_LLM_similarity:
+    input:
+        similarity_dataframe="resources/results_LLM/{similarity_type}_similarity/{model}_{similarity_type}_similarity.parquet"
+    output:
+        relabelled_similarity_dataframe=temp("results/{similarity_type}_relabelled/{model}/relabel_{relabel}/similarity_dataframe.parquet")
+    params:
+        seed=lambda wildcards: config["random_seed"] + int(wildcards.relabel)
+    conda:
+        "envs/relabel_LLM_similarity_environment.yaml"
+    shell:
+        r"""
+            python3 workflow/scripts/relabel_LLM_similarity.py \
+                --input {input.similarity_dataframe:q} \
+                --output {output.relabelled_similarity_dataframe:q} \
+                --seed {params.seed}
+        """
+
+rule compute_relabelled_LLM_nearest_neighbours:
+    input:
+        relabelled_similarity_dataframe="results/{similarity_type}_relabelled/{model}/relabel_{relabel}/similarity_dataframe.parquet"
+    output:
+        relabelled_nearest_neighbours=temp("results/{similarity_type}_relabelled/{model}/relabel_{relabel}/nearest_neighbours.parquet")
+    params:
+        number_of_neighbours=config["number_of_neighbours"]
+    conda:
+        "envs/compute_nearest_neighbours_environment.yaml"
+    shell:
+        r"""
+            python3 workflow/scripts/compute_nearest_neighbours.py \
+                --number_of_neighbours {params.number_of_neighbours} \
+                --similarity_dataframe {input.relabelled_similarity_dataframe:q} \
+                --nearest_neighbours {output.relabelled_nearest_neighbours:q}
+        """
+
+rule compute_relabelled_LLM_mind_alignment_score:
+    input:
+        isc_nearest_neighbours="resources/results_mind/{similarity_type}_nearest_neighbours/isc_{similarity_type}_nearest_neighbours.parquet",
+        relabelled_llm_nearest_neighbours="results/{similarity_type}_relabelled/{model}/relabel_{relabel}/nearest_neighbours.parquet"
+    output:
+        relabelled_llm_brain_alignment_score=temp("results/{similarity_type}_relabelled/{model}/relabel_{relabel}/brain_alignment_score.parquet")
+    params:
+        number_of_neighbours=config["number_of_neighbours"],
+        model="{model}"
+    conda:
+        "envs/compute_LLM_mind_alignment_score_environment.yaml"
+    shell:
+        r"""
+            python3 workflow/scripts/compute_LLM_mind_alignment_score.py \
+                --number_of_neighbours {params.number_of_neighbours} \
+                --model {params.model:q} \
+                --nearest_neighbours_1 {input.isc_nearest_neighbours:q} \
+                --nearest_neighbours_2 {input.relabelled_llm_nearest_neighbours:q} \
+                --alignment_score {output.relabelled_llm_brain_alignment_score:q}
+        """
+
+rule aggregate_all_alignment_scores:
+    input:
+        observed_alignment_scores=lambda wildcards: [
+            f"results/{wildcards.similarity_type}_alignment_scores/{model}_brain_alignment_score.parquet"
+            for model in MODEL_KEYS
+        ],
+        relabelled_alignment_scores=lambda wildcards: [
+            f"results/{wildcards.similarity_type}_relabelled/{model}/relabel_{relabel}/brain_alignment_score.parquet"
+            for model in MODEL_KEYS
+            for relabel in N_RELABELLINGS
+        ]
+    output:
+        summary="results/parquet_summary/{similarity_type}_alignment_summary_all_models.parquet",
+        tsv="results/tsv_summary/{similarity_type}_alignment_summary_all_models.tsv"
+    params:
+        models=MODEL_KEYS,
+        number_of_neighbours=config["number_of_neighbours"],
+        number_of_relabelings=config["number_of_relabellings"]
+    conda:
+        "envs/aggregate_all_alignment_scores_environment.yaml"
+    shell:
+        r"""
+            python3 workflow/scripts/aggregate_all_alignment_scores.py \
+                --observed_alignment_scores {input.observed_alignment_scores:q} \
+                --relabelled_alignment_scores {input.relabelled_alignment_scores:q} \
+                --summary {output.summary:q} \
+                --tsv {output.tsv:q} \
+                --models {params.models:q} \
+                --number_of_neighbours {params.number_of_neighbours} \
+                --number_of_relabelings {params.number_of_relabelings}
+        """

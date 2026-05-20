@@ -1,0 +1,17 @@
+# models name
+models:
+  - bloom_560m
+  - bloom_1b1
+  - bloom_1b7
+  - bloom_3b
+  - bloom_7b1
+  - openllama_3b
+  - openllama_7b
+  - openllama_13b
+
+# configuration for relabelled cosine similarity computation
+number_of_relabellings: 100
+random_seed: 42
+
+# number of nearest neighbours to compute for each stimulus and model
+number_of_neighbours: 5

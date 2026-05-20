@@ -1,0 +1,88 @@
+configfile: "config/config.yaml"
+
+MODEL_KEYS = list(config["models"].keys())
+EXCLUDED_SUBTASKS = list(config["schema_subtasks"])
+
+rule all:
+    input:
+        expand(
+            "results/cosine_nearest_neighbours/{model}_cosine_nearest_neighbours.parquet",
+            model=MODEL_KEYS
+        ),
+        expand(
+            "results/pearson_nearest_neighbours/{model}_pearson_nearest_neighbours.parquet",
+            model=MODEL_KEYS
+        )
+
+rule download_pretrained_llm:
+    output:
+        model_dir=directory("resources/models/{model}")
+    params:
+        hf_name=lambda wc: config["models"][wc.model]["hf_name"]
+    conda:
+        "envs/download_pretrained_llm_environment.yaml"
+    shell:
+        r"""
+            python3 workflow/scripts/download_pretrained_llm.py {params.hf_name:q} {output.model_dir:q}
+        """
+
+rule get_embeddings:
+    input:
+        model="resources/models/{model}",
+        stimuli="resources/stimuli"
+    output:
+        "results/embeddings/{model}_embeddings.parquet"
+    params:
+        quantization_arg=lambda wildcards: (
+            "" if config['models'][wildcards.model]['quantization_method'] is None
+            else f"--quantization_method {config['models'][wildcards.model]['quantization_method']}"
+        ),
+        excluded_stimuli=EXCLUDED_SUBTASKS
+    conda:
+        "envs/get_embeddings_environment.yaml"
+    shell:
+        r"""
+            python3 workflow/scripts/get_embeddings.py \
+                --input_dir resources/stimuli \
+                --output {output} \
+                --model_path {input.model} \
+                {params.quantization_arg} \
+                --excluded_stimuli {params.excluded_stimuli:q}
+        """
+
+rule compute_similarity:
+    input:
+        embedding_dataframe="results/embeddings/{model}_embeddings.parquet"
+    output:
+        cosine_similarity_dataframe="results/cosine_similarity/{model}_cosine_similarity.parquet",
+        pearson_similarity_dataframe="results/pearson_similarity/{model}_pearson_similarity.parquet"
+    conda:
+        "envs/compute_similarity_environment.yaml"
+    shell:
+        r"""
+            python3 workflow/scripts/compute_similarity.py \
+                --embedding_dataframe {input.embedding_dataframe:q} \
+                --cosine_similarity_dataframe {output.cosine_similarity_dataframe:q} \
+                --pearson_similarity_dataframe {output.pearson_similarity_dataframe:q}
+        """
+
+rule compute_nearest_neighbours:
+    input:
+        cosine_similarity_dataframe="results/cosine_similarity/{model}_cosine_similarity.parquet",
+        pearson_similarity_dataframe="results/pearson_similarity/{model}_pearson_similarity.parquet"
+    output:
+        cosine_nearest_neighbours="results/cosine_nearest_neighbours/{model}_cosine_nearest_neighbours.parquet",
+        pearson_nearest_neighbours="results/pearson_nearest_neighbours/{model}_pearson_nearest_neighbours.parquet"
+    params:
+        number_of_neighbours=config["number_of_neighbours"]
+    conda:
+        "envs/compute_nearest_neighbours_environment.yaml"
+    shell:
+        r"""
+            python3 workflow/scripts/compute_nearest_neighbours.py \
+                --number_of_neighbours {params.number_of_neighbours:q} \
+                --cosine_similarity_dataframe {input.cosine_similarity_dataframe:q} \
+                --pearson_similarity_dataframe {input.pearson_similarity_dataframe:q} \
+                --cosine_nearest_neighbours {output.cosine_nearest_neighbours:q} \
+                --pearson_nearest_neighbours {output.pearson_nearest_neighbours:q}
+        """
