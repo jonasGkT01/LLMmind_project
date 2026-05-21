@@ -1,18 +1,15 @@
 DATASET_KEYS = list(config["datasets"].keys())
 MODEL_KEYS = list(config["models"].keys())
+SIMILARITY_TYPES = list(config["similarity_metrics"])
 EXCLUDED_SUBTASKS = list(config["schema_subtasks"])
 
 rule all_llm_nearest_neighbours:
     input:
         expand(
-            "results/llm/{dataset}/cosine_nearest_neighbours/{model}_cosine_nearest_neighbours.parquet",
+            "results/llm/{dataset}/{similarity_type}_nearest_neighbours/{model}_{similarity_type}_nearest_neighbours.parquet",
             dataset=DATASET_KEYS,
-            model=MODEL_KEYS
-        ),
-        expand(
-            "results/llm/{dataset}/pearson_nearest_neighbours/{model}_pearson_nearest_neighbours.parquet",
-            dataset=DATASET_KEYS,
-            model=MODEL_KEYS
+            model=MODEL_KEYS,
+            similarity_type=SIMILARITY_TYPES
         )
 
 rule download_pretrained_llm:
@@ -24,7 +21,7 @@ rule download_pretrained_llm:
         "envs/download_pretrained_llm_environment.yaml"
     shell:
         r"""
-            python3 workflow/llm_embeddings/scripts/download_pretrained_llm.py {params.hf_name:q} {output.model_dir:q}
+            python3 workflow/llm_nearest_neighbours/scripts/download_pretrained_llm.py {params.hf_name:q} {output.model_dir:q}
         """
 
 rule get_embeddings:
@@ -43,7 +40,7 @@ rule get_embeddings:
         "envs/get_embeddings_environment.yaml"
     shell:
         r"""
-            python3 workflow/llm_embeddings/scripts/get_embeddings.py \
+            python3 workflow/llm_nearest_neighbours/scripts/get_embeddings.py \
                 --input_dir {input.stimuli} \
                 --output {output} \
                 --model_path {input.model} \
@@ -61,7 +58,7 @@ rule compute_similarity:
         "envs/compute_similarity_environment.yaml"
     shell:
         r"""
-            python3 workflow/llm_embeddings/scripts/compute_similarity.py \
+            python3 workflow/llm_nearest_neighbours/scripts/compute_similarity.py \
                 --embedding_dataframe {input.embedding_dataframe:q} \
                 --cosine_similarity_dataframe {output.cosine_similarity_dataframe:q} \
                 --pearson_similarity_dataframe {output.pearson_similarity_dataframe:q}
@@ -78,7 +75,7 @@ rule relabel_LLM_similarity:
         "envs/relabel_LLM_similarity_environment.yaml"
     shell:
         r"""
-            python3 workflow/llm_embeddings/scripts/relabel_LLM_similarity.py \
+            python3 workflow/llm_nearest_neighbours/scripts/relabel_LLM_similarity.py \
                 --input {input.similarity_dataframe:q} \
                 --output {output.relabelled_similarity_dataframe:q} \
                 --seed {params.seed}
@@ -97,7 +94,7 @@ rule compute_nearest_neighbours:
         "envs/compute_nearest_neighbours_environment.yaml"
     shell:
         r"""
-            python3 workflow/llm_embeddings/scripts/compute_nearest_neighbours.py \
+            python3 workflow/llm_nearest_neighbours/scripts/compute_nearest_neighbours.py \
                 --number_of_neighbours {params.number_of_neighbours:q} \
                 --cosine_similarity_dataframe {input.cosine_similarity_dataframe:q} \
                 --pearson_similarity_dataframe {input.pearson_similarity_dataframe:q} \
@@ -116,7 +113,7 @@ rule compute_relabelled_LLM_nearest_neighbours:
         "envs/compute_nearest_neighbours_environment.yaml"
     shell:
         r"""
-            python3 workflow/llm_embeddings/scripts/compute_nearest_neighbours.py \
+            python3 workflow/llm_nearest_neighbours/scripts/compute_nearest_neighbours.py \
                 --number_of_neighbours {params.number_of_neighbours} \
                 --similarity_dataframe {input.relabelled_similarity_dataframe:q} \
                 --nearest_neighbours {output.relabelled_nearest_neighbours:q}

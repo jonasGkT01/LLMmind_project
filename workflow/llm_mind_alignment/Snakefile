@@ -1,7 +1,7 @@
 DATASET_KEYS = list(config["datasets"].keys())
 MODEL_KEYS = list(config["models"].keys())
 SIMILARITY_TYPES = ["cosine", "pearson"]
-N_RELABELLINGS = range(config["number_of_relabellings"])
+NUMBER_OF_RELABELLINGS = range(config["number_of_relabellings"])
 
 MODEL_BRAIN_ALIGNMENT = [
     f"results/{dataset}/{similarity_type}_alignment_scores/{model}_brain_alignment_score.parquet"
@@ -15,7 +15,7 @@ MODEL_RELABELLED_ALIGNMENT = [
     for dataset in DATASET_KEYS
     for similarity_type in SIMILARITY_TYPES
     for model in MODEL_KEYS
-    for relabel in N_RELABELLINGS
+    for relabel in NUMBER_OF_RELABELLINGS
 ]
 
 rule all_llm_mind_alignment:
@@ -26,14 +26,14 @@ rule all_llm_mind_alignment:
             dataset=DATASET_KEYS,
             similarity_type=SIMILARITY_TYPES, 
             model=MODEL_KEYS, 
-            relabel=N_RELABELLINGS
+            relabel=NUMBER_OF_RELABELLINGS
         ),
         expand(
             "results/{dataset}/tsv_summary/{similarity_type}_alignment_summary_all_models.tsv",
             dataset=DATASET_KEYS,
             similarity_type=SIMILARITY_TYPES, 
             model=MODEL_KEYS, 
-            relabel=N_RELABELLINGS
+            relabel=NUMBER_OF_RELABELLINGS
         )
 
 rule compute_llm_mind_alignment_score:
@@ -87,7 +87,7 @@ rule aggregate_all_alignment_scores:
         relabelled_alignment_scores=lambda wc: [
             f"results/{wc.similarity_type}_relabelled/{model}/relabel_{relabel}/brain_alignment_score.parquet"
             for model in MODEL_KEYS
-            for relabel in N_RELABELLINGS
+            for relabel in NUMBER_OF_RELABELLINGS
         ]
     output:
         summary="results/parquet_summary/{similarity_type}_alignment_summary_all_models.parquet",

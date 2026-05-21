@@ -197,7 +197,7 @@ FIG_PNG_OUTPUTS = [
     for task in TASK_GROUPS
 ]
 
-rule all:
+rule all_fMRI_processing:
     input:
         PARCEL_OUTPUTS,
         ISC_NPY_OUTPUTS,

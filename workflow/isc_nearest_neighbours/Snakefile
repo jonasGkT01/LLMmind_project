@@ -5,7 +5,7 @@ ISC_NPY = [
     f"resources/task-{task}_isc_mean.npy" for task in config["tasks"] if not task_is_excluded(task)
 ]
 
-rule all:
+rule all_isc_nearest_neighbours:
     input:
         "results/cosine_nearest_neighbours/isc_cosine_nearest_neighbours.parquet",
         "results/pearson_nearest_neighbours/isc_pearson_nearest_neighbours.parquet"
