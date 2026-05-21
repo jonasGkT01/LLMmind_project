@@ -8,13 +8,29 @@ include: "llm_mind_alignment/Snakefile"
 DATASET_KEYS = list(config["datasets"].keys())
 MODEL_KEYS = list(config["models"].keys())
 SIMILARITY_TYPES = list(config["similarity_metrics"])
-EXCLUDED_SUBTASKS = list(config["schema_subtasks"])
+NUMBER_OF_RELABELLINGS = range(config["number_of_relabellings"])
+
+MODEL_BRAIN_ALIGNMENT = [
+    f"results/{dataset}/{similarity_type}_alignment_scores/{model}_brain_alignment_score.parquet"
+    for dataset in DATASET_KEYS
+    for similarity_type in SIMILARITY_TYPES
+    for model in MODEL_KEYS
+]
 
 rule all:
     input:
+        MODEL_BRAIN_ALIGNMENT,
         expand(
-            "results/llm/{dataset}/{similarity_type}_nearest_neighbours/{model}_{similarity_type}_nearest_neighbours.parquet",
+            "results/{dataset}/parquet_summary/{similarity_type}_alignment_summary_all_models.parquet",
             dataset=DATASET_KEYS,
-            model=MODEL_KEYS,
-            similarity_type=SIMILARITY_TYPES
+            similarity_type=SIMILARITY_TYPES, 
+            model=MODEL_KEYS, 
+            relabel=NUMBER_OF_RELABELLINGS
+        ),
+        expand(
+            "results/{dataset}/tsv_summary/{similarity_type}_alignment_summary_all_models.tsv",
+            dataset=DATASET_KEYS,
+            similarity_type=SIMILARITY_TYPES, 
+            model=MODEL_KEYS, 
+            relabel=NUMBER_OF_RELABELLINGS
         )

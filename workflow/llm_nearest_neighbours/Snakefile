@@ -1,7 +1,7 @@
 DATASET_KEYS = list(config["datasets"].keys())
 MODEL_KEYS = list(config["models"].keys())
 SIMILARITY_TYPES = list(config["similarity_metrics"])
-EXCLUDED_SUBTASKS = list(config["schema_subtasks"])
+EXCLUDED_SUBTASKS = list(config["narratives"]["schema_subtasks"])
 
 rule all_llm_nearest_neighbours:
     input:
@@ -68,7 +68,7 @@ rule relabel_LLM_similarity:
     input:
         similarity_dataframe="results/llm/{dataset}/{similarity_type}_similarity/{model}_{similarity_type}_similarity.parquet"
     output:
-        relabelled_similarity_dataframe=temp("results/llm/{dataset}/{similarity_type}_relabelled/{model}/relabel_{relabel}/similarity_dataframe.parquet")
+        relabelled_similarity_dataframe=temp("results/llm/relabel_{relabel}/{dataset}/{similarity_type}_similarity/{model}_{similarity_type}_similarity_dataframe.parquet")
     params:
         seed=lambda wc: config["random_seed"] + int(wc.relabel)
     conda:
@@ -104,9 +104,11 @@ rule compute_nearest_neighbours:
 
 rule compute_relabelled_LLM_nearest_neighbours:
     input:
-        relabelled_similarity_dataframe="results/llm/{dataset}/{similarity_type}_relabelled/{model}/relabel_{relabel}/similarity_dataframe.parquet"
+        relabelled_cosine_similarity_dataframe="results/llm/relabel_{relabel}/{dataset}/cosine_similarity/{model}_cosine_similarity.parquet",
+        relabelled_pearson_similarity_dataframe="results/llm/relabel_{relabel}/{dataset}/pearson_similarity/{model}_pearson_similarity.parquet"
     output:
-        relabelled_nearest_neighbours=temp("results/llm/{dataset}/{similarity_type}_relabelled/{model}/relabel_{relabel}/nearest_neighbours.parquet")
+        relabelled_cosine_nearest_neighbours=temp("results/llm/relabel_{relabel}/{dataset}/cosine_nearest_neighbours/{model}_cosine_nearest_neighbours.parquet"),
+        relabelled_pearson_nearest_neighbours=temp("results/llm/relabel_{relabel}/{dataset}/pearson_nearest_neighbours/{model}_pearson_nearest_neighbours.parquet")
     params:
         number_of_neighbours=config["number_of_neighbours"]
     conda:
@@ -115,6 +117,8 @@ rule compute_relabelled_LLM_nearest_neighbours:
         r"""
             python3 workflow/llm_nearest_neighbours/scripts/compute_nearest_neighbours.py \
                 --number_of_neighbours {params.number_of_neighbours} \
-                --similarity_dataframe {input.relabelled_similarity_dataframe:q} \
-                --nearest_neighbours {output.relabelled_nearest_neighbours:q}
+                --cosine_similarity_dataframe {input.relabelled_cosine_similarity_dataframe:q} \
+                --pearson_similarity_dataframe {input.relabelled_pearson_similarity_dataframe:q} \
+                --cosine_nearest_neighbours {output.relabelled_cosine_nearest_neighbours:q} \
+                --pearson_nearest_neighbours {output.relabelled_pearson_nearest_neighbours:q}
         """

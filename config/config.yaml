@@ -55,73 +55,68 @@ datasets:
 #    stimuli: "resources/caption_scene_dataset/V1/stimuli/"
 
 ##### NARRATIVES DATASET #####
-# general configuration
-fMRI_data_dir:           "resources/narratives_dataset/derivatives/afni-smooth/"
-bold_glob_pattern:       "resources/narratives_dataset/derivatives/afni-smooth/sub-{subject}/func/sub-{subject}_task-{task}{run_tag}_space-{space}_res-{resolution}_desc-{descriptor}_bold.nii.gz"
-scans_to_be_excluded:    "resources/narratives_dataset/scan_exclude.json"
-excluded_scans_for_task: "resources/narratives_dataset/excluded_scans_for_task.json"
-
 # dataset configuration
-subjects:
-  start: 1
-  end: 345
-tasks:
-  - "21styear"
-  - "bigbang"
-  - "black"
-  - "bronx"
-  - "forgot"
-  - "friends"
-  - "himym"
-  - "lucy"
-  - "merlin"
-  - "milkyway"
-  - "milkywayoriginal"
-  - "milkywaysynonyms"
-  - "milkywayvodka"
-  - "notthefallintact"
-  - "notthefalllongscram"
-  - "notthefallshortscram"
-  - "pieman"
-  - "piemanpni"
-  - "prettymouth"
-  - "santa"
-#  - "schema"
-  - "seinfeld"
-  - "shame"
-  - "shapesphysical"
-  - "shapessocial"
-  - "sherlock"
-  - "slumlordreach"
-  - "tunnel"
-  - "upintheair"
-  - "vinny"
-run_tags:
-  - ""
-  - "_run-1"
-  - "_run-2"
-spaces:
-  - "MNI152NLin2009cAsym"
-resolutions:
-  - "native"
-descriptors:
-  - "clean"
-
-# subtasks of "schema" task
-schema_subtasks:
-  - "bigbang"
-  - "friends"
-  - "himym"
-  - "santa"
-  - "seinfeld"
-  - "shame"
-  - "upintheair"
-  - "vinny"
-
-# variants of "notthefall" task
-notthefall_variants:
-  - "notthefalllongscram"
-  - "notthefallshortscram"
+narratives:
+  fMRI_data_dir: "resources/narratives_dataset/derivatives/afni-smooth/"
+  bold_glob_pattern: "resources/narratives_dataset/derivatives/afni-smooth/sub-{subject}/func/sub-{subject}_task-{task}{run_tag}_space-{space}_res-{resolution}_desc-{descriptor}_bold.nii.gz"
+  scans_to_be_excluded: "resources/narratives_dataset/scan_exclude.json"
+  excluded_scans_for_task: "resources/narratives_dataset/excluded_scans_for_task.json"
+  subjects: 345
+  tasks:
+    - "21styear"
+    - "bigbang"
+    - "black"
+    - "bronx"
+    - "forgot"
+    - "friends"
+    - "himym"
+    - "lucy"
+    - "merlin"
+    - "milkyway"
+    - "milkywayoriginal"
+    - "milkywaysynonyms"
+    - "milkywayvodka"
+    - "notthefallintact"
+    - "notthefalllongscram"
+    - "notthefallshortscram"
+    - "pieman"
+    - "piemanpni"
+    - "prettymouth"
+    - "santa"
+  #  - "schema"
+    - "seinfeld"
+    - "shame"
+    - "shapesphysical"
+    - "shapessocial"
+    - "sherlock"
+    - "slumlordreach"
+    - "tunnel"
+    - "upintheair"
+    - "vinny"
+  run_tags:
+    - ""
+    - "_run-1"
+    - "_run-2"
+  spaces:
+    - "MNI152NLin2009cAsym"
+  resolutions:
+    - "native"
+  descriptors:
+    - "clean"
+  # subtasks of "schema" task
+  schema_subtasks:
+    - "bigbang"
+    - "friends"
+    - "himym"
+    - "santa"
+    - "seinfeld"
+    - "shame"
+    - "upintheair"
+    - "vinny"
+  # variants of "notthefall" task
+  notthefall_variants:
+    - "notthefalllongscram"
+    - "notthefallshortscram"
 
 ##### CAPTION-SCENE DATASET #####
 

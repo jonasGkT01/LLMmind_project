@@ -1,20 +1,27 @@
-def task_is_excluded(task):
-    return task in config["schema_subtasks"] or task in config["notthefall_variants"]
+DATASET_KEYS = list(config["datasets"].keys())
+SIMILARITY_TYPES = list(config["similarity_metrics"])
+NUMBER_OF_NEIGHBOURS = config["number_of_neighbours"]
 
-ISC_NPY = [
-    f"resources/task-{task}_isc_mean.npy" for task in config["tasks"] if not task_is_excluded(task)
-]
+def narratives_task_is_excluded(task):
+    return task in config["narratives"]["schema_subtasks"] or task in config["narratives"]["notthefall_variants"]
+
+VALIDE_NARRATIVES_TASKS = [task for task in config["narratives"]["tasks"] if not narratives_task_is_excluded(task)]
 
 rule all_isc_nearest_neighbours:
     input:
-        "results/cosine_nearest_neighbours/isc_cosine_nearest_neighbours.parquet",
-        "results/pearson_nearest_neighbours/isc_pearson_nearest_neighbours.parquet"
+        expand(
+            "results/mind/{dataset}/{similarity_type}_nearest_neighbours/isc_{similarity_type}_nearest_neighbours.parquet",
+            dataset=DATASET_KEYS,
+            similarity_type=SIMILARITY_TYPES
+        )
 
 rule create_isc_dataframe:
     input:
-        ISC_NPY
+        isc_npys=lambda wc: [
+            f"results/mind/{wc.dataset}/isc/task-{task}_isc_mean.npy" for task in VALIDE_NARRATIVES_TASKS
+        ]
     output:
-        "results/embedding_isc_dataframe.parquet"
+        "results/mind/{dataset}/embedding_isc_dataframe.parquet"
     conda:
         "envs/create_isc_dataframe_environment.yaml"
     shell:
@@ -26,10 +33,10 @@ rule create_isc_dataframe:
 
 rule compute_isc_similarity:
     input:
-        embedding_isc_dataframe="results/embedding_isc_dataframe.parquet"
+        embedding_isc_dataframe="results/mind/{dataset}/embedding_isc_dataframe.parquet"
     output:
-        isc_cosine_similarity_dataframe="results/cosine_similarity/isc_cosine_similarity.parquet",
-        isc_pearson_similarity_dataframe="results/pearson_similarity/isc_pearson_similarity.parquet"
+        isc_cosine_similarity_dataframe="results/mind/{dataset}/cosine_similarity/isc_cosine_similarity.parquet",
+        isc_pearson_similarity_dataframe="results/mind/{dataset}/pearson_similarity/isc_pearson_similarity.parquet"
     conda:
         "envs/compute_isc_similarity_environment.yaml"
     shell:
@@ -42,13 +49,13 @@ rule compute_isc_similarity:
 
 rule compute_isc_nearest_neighbours:
     input:
-        isc_cosine_similarity_dataframe="results/cosine_similarity/isc_cosine_similarity.parquet",
-        isc_pearson_similarity_dataframe="results/pearson_similarity/isc_pearson_similarity.parquet"
+        isc_cosine_similarity_dataframe="results/mind/{dataset}/cosine_similarity/isc_cosine_similarity.parquet",
+        isc_pearson_similarity_dataframe="results/mind/{dataset}/pearson_similarity/isc_pearson_similarity.parquet"
     output:
-        isc_cosine_nearest_neighbours="results/cosine_nearest_neighbours/isc_cosine_nearest_neighbours.parquet",
-        isc_pearson_nearest_neighbours="results/pearson_nearest_neighbours/isc_pearson_nearest_neighbours.parquet"
+        isc_cosine_nearest_neighbours="results/mind/{dataset}/cosine_nearest_neighbours/isc_cosine_nearest_neighbours.parquet",
+        isc_pearson_nearest_neighbours="results/mind/{dataset}/pearson_nearest_neighbours/isc_pearson_nearest_neighbours.parquet"
     params:
-        number_of_neighbours=config["number_of_neighbours"]
+        number_of_neighbours=NUMBER_OF_NEIGHBOURS
     conda:
         "envs/compute_isc_nearest_neighbours_environment.yaml"
     shell:

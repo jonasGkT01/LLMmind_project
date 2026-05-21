@@ -1,6 +1,6 @@
 DATASET_KEYS = list(config["datasets"].keys())
 MODEL_KEYS = list(config["models"].keys())
-SIMILARITY_TYPES = ["cosine", "pearson"]
+SIMILARITY_TYPES = list(config["similarity_metrics"])
 NUMBER_OF_RELABELLINGS = range(config["number_of_relabellings"])
 
 MODEL_BRAIN_ALIGNMENT = [
@@ -60,9 +60,9 @@ rule compute_llm_mind_alignment_score:
 rule compute_relabelled_llm_mind_alignment_score:
     input:
         isc_nearest_neighbours="results/mind/{dataset}/{similarity_type}_nearest_neighbours/isc_{similarity_type}_nearest_neighbours.parquet",
-        relabelled_llm_nearest_neighbours="results/llm/{dataset}/{similarity_type}_relabelled/{model}/relabel_{relabel}/nearest_neighbours.parquet"
+        relabelled_llm_nearest_neighbours="results/llm/relabel_{relabel}/{dataset}/{similarity_type}_nearest_neighbours/{model}_{similarity_type}_nearest_neighbours.parquet"
     output:
-        relabelled_llm_brain_alignment_score=temp("results/{similarity_type}_relabelled/{model}/relabel_{relabel}/brain_alignment_score.parquet")
+        relabelled_llm_brain_alignment_score=temp("results/relabel_{relabel}/{dataset}/{similarity_type}_alignment_scores/{model}_brain_alignment_score.parquet")
     params:
         number_of_neighbours=config["number_of_neighbours"],
         model="{model}"
@@ -81,17 +81,17 @@ rule compute_relabelled_llm_mind_alignment_score:
 rule aggregate_all_alignment_scores:
     input:
         observed_alignment_scores=lambda wc: [
-            f"results/{wc.similarity_type}_alignment_scores/{model}_brain_alignment_score.parquet"
+            f"results/{wc.dataset}/{wc.similarity_type}_alignment_scores/{model}_brain_alignment_score.parquet"
             for model in MODEL_KEYS
         ],
         relabelled_alignment_scores=lambda wc: [
-            f"results/{wc.similarity_type}_relabelled/{model}/relabel_{relabel}/brain_alignment_score.parquet"
+            f"results/relabel_{relabel}/{wc.dataset}/{wc.similarity_type}_alignment_scores/{model}_brain_alignment_score.parquet"
             for model in MODEL_KEYS
             for relabel in NUMBER_OF_RELABELLINGS
         ]
     output:
-        summary="results/parquet_summary/{similarity_type}_alignment_summary_all_models.parquet",
-        tsv="results/tsv_summary/{similarity_type}_alignment_summary_all_models.tsv"
+        summary="results/{dataset}/parquet_summary/{similarity_type}_alignment_summary_all_models.parquet",
+        tsv="results/{dataset}/tsv_summary/{similarity_type}_alignment_summary_all_models.tsv"
     params:
         models=MODEL_KEYS,
         number_of_neighbours=config["number_of_neighbours"],
