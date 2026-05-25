@@ -3,15 +3,23 @@ from scipy.stats import pearsonr
 from nilearn import datasets, image
 import nibabel as nib
 
-# inpouts/outputs from Snakemake
-ts_files = list(snakemake.input)
-isc_npy = snakemake.output["isc_npy"]
-isc_nii = snakemake.output["isc_nii"]
+import argparse
 
-# parameters from Snakemake
-n_rois = snakemake.params["n_rois"]
-yeo_networks = snakemake.params["yeo_networks"]
-atlas_dir = snakemake.params["atlas_dir"]
+parser = argparse.ArgumentParser()
+parser.add_argument("--parcel_ts", nargs="+", required=True)
+parser.add_argument("--isc_npy", required=True)
+parser.add_argument("--isc_nii", required=True)
+parser.add_argument("--n_rois", type=int, required=True)
+parser.add_argument("--yeo_networks", type=int, required=True)
+parser.add_argument("--atlas_dir", type=str, required=True)
+args = parser.parse_args()
+
+parcel_ts = args.parcel_ts
+isc_npy = args.isc_npy
+isc_nii = args.isc_nii
+n_rois = args.n_rois
+yeo_networks = args.yeo_networks
+atlas_dir = args.atlas_dir
 
 # load atlas to project ISC back to brain
 atlas = datasets.fetch_atlas_schaefer_2018(
@@ -23,7 +31,7 @@ atlas_img = image.load_img(atlas.maps)
 atlas_data = atlas_img.get_fdata().astype(int)
 
 # load parcel data
-data_list = [np.load(f) for f in ts_files]
+data_list = [np.load(f) for f in parcel_ts]
 
 # check that all parcels have the same number of timepoints; if not, trim to the minimum number of timepoints across all files
 time_lengths = [x.shape[0] for x in data_list]

@@ -135,6 +135,6 @@ narratives:
 
 # atlas configuration
 atlas:
-  atlas_dir: "resources/mind/atlases"
+  atlas_dir: "resources/atlases"
   n_rois: 200
   yeo_networks: 7

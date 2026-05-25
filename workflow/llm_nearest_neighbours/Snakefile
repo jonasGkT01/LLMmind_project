@@ -64,7 +64,7 @@ rule compute_similarity:
                 --pearson_similarity_dataframe {output.pearson_similarity_dataframe:q}
         """
 
-rule relabel_LLM_similarity:
+rule relabel_llm_similarity:
     input:
         similarity_dataframe="results/llm/{dataset}/{similarity_type}_similarity/{model}_{similarity_type}_similarity.parquet"
     output:
@@ -75,7 +75,7 @@ rule relabel_LLM_similarity:
         "envs/relabel_llm_similarity_environment.yaml"
     shell:
         r"""
-            python3 workflow/llm_nearest_neighbours/scripts/relabel_LLM_similarity.py \
+            python3 workflow/llm_nearest_neighbours/scripts/relabel_llm_similarity.py \
                 --input {input.similarity_dataframe:q} \
                 --output {output.relabelled_similarity_dataframe:q} \
                 --seed {params.seed}

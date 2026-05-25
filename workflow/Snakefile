@@ -15,7 +15,7 @@ SIMILARITY_TYPES = list(config["similarity_metrics"])
 NUMBER_OF_RELABELLINGS = range(config["number_of_relabellings"])
 
 MODEL_BRAIN_ALIGNMENT = [
-    f"results/{dataset}/{similarity_type}_alignment_scores/{model}_brain_alignment_score.parquet"
+    f"results/alignment_score/{dataset}/{similarity_type}_alignment_scores/{model}_brain_alignment_score.parquet"
     for dataset in DATASET_KEYS
     for similarity_type in SIMILARITY_TYPES
     for model in MODEL_KEYS
@@ -23,18 +23,19 @@ MODEL_BRAIN_ALIGNMENT = [
 
 rule all:
     input:
-        MODEL_BRAIN_ALIGNMENT,
         expand(
-            "results/{dataset}/parquet_summary/{similarity_type}_alignment_summary_all_models.parquet",
+            "results/alignment_score/{dataset}/{similarity_type}_alignment_scores/{model}_brain_alignment_score.parquet",
             dataset=DATASET_KEYS,
-            similarity_type=SIMILARITY_TYPES, 
-            model=MODEL_KEYS, 
-            relabel=NUMBER_OF_RELABELLINGS
+            similarity_type=SIMILARITY_TYPES,
+            model=MODEL_KEYS
         ),
         expand(
-            "results/{dataset}/tsv_summary/{similarity_type}_alignment_summary_all_models.tsv",
+            "results/alignment_summary/{dataset}/parquet_summary/{similarity_type}_alignment_summary_all_models.parquet",
             dataset=DATASET_KEYS,
-            similarity_type=SIMILARITY_TYPES, 
-            model=MODEL_KEYS, 
-            relabel=NUMBER_OF_RELABELLINGS
+            similarity_type=SIMILARITY_TYPES
+        ),
+        expand(
+            "results/alignment_summary/{dataset}/tsv_summary/{similarity_type}_alignment_summary_all_models.tsv",
+            dataset=DATASET_KEYS,
+            similarity_type=SIMILARITY_TYPES
         )

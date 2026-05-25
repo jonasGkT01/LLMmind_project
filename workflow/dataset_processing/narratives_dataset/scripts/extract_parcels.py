@@ -2,14 +2,21 @@ import numpy as np
 from nilearn import datasets
 from nilearn.maskers import NiftiLabelsMasker
 
-# inputs/outputs from Snakemake
-bold_file = snakemake.input["bold"]
-npy_file = snakemake.output["npy"]
+import argparse
 
-# parameters from Snakemake
-n_rois = snakemake.params["n_rois"]
-yeo_networks = snakemake.params["yeo_networks"]
-atlas_dir = snakemake.params["atlas_dir"]
+parser = argparse.ArgumentParser()
+parser.add_argument("--bold_file", required=True)
+parser.add_argument("--parcel_ts", required=True)
+parser.add_argument("--n_rois", type=int, required=True)
+parser.add_argument("--yeo_networks", type=int, required=True)
+parser.add_argument("--atlas_dir", type=str, required=True)
+args = parser.parse_args()
+
+bold_file = args.bold_file
+parcel_ts = args.parcel_ts
+n_rois = args.n_rois
+yeo_networks = args.yeo_networks
+atlas_dir = args.atlas_dir
 
 print(f"Computing parcels from: {bold_file}")
 
@@ -31,4 +38,4 @@ masker = NiftiLabelsMasker(
 ts = masker.fit_transform(bold_file)
 
 # save parcel timeseries
-np.save(npy_file, ts)
+np.save(parcel_ts, ts)

@@ -157,7 +157,7 @@ def parcel_outputs_for_task(task):
 excluded_scans_for_task = []
 for task in config["narratives"]["tasks"]:
     if task_is_excluded(task) or task not in VALIDE_NARRATIVES_TASKS:
-        print(f"Skipping length check for excluded task {task}. See {config['narratives']['excluded_scans_for_task']} for details.")
+        #print(f"Skipping length check for excluded task {task}. See {config['narratives']['excluded_scans_for_task']} for details.")
         if task in config["narratives"]["schema_subtasks"]:
             reason = "Excluded because it is a schema subtask."
         elif task in config["narratives"]["notthefall_variants"]:
@@ -185,11 +185,6 @@ excluded_scans_for_task_path.parent.mkdir(parents=True, exist_ok=True)
 with open(config["narratives"]["excluded_scans_for_task"], "w") as f:
     json.dump(excluded_scans_for_task, f, indent=2, sort_keys=True)
 
-PARCEL_OUTPUTS = [
-    f"{PROCESSING_OUTPUT_DIR}/parcels/{c['task']}/sub-{c['subject']}_task-{c['task']}_{run_label(c['run_tag'])}_space-{c['space']}_res-{c['resolution']}_desc-{c['descriptor']}_parcel_ts.npy"
-    for c in BOLD_FILES
-]
-
 ISC_NPY_OUTPUTS = [
     f"{PROCESSING_OUTPUT_DIR}/isc/task-{task}_isc_mean.npy"
     for task in TASK_GROUPS
@@ -202,13 +197,12 @@ ISC_NII_OUTPUTS = [
 
 rule all_narratives_dataset:
     input:
-        PARCEL_OUTPUTS,
         ISC_NPY_OUTPUTS,
         ISC_NII_OUTPUTS,
 
 rule extract_parcels:
     input:
-        bold=lambda wc: config["narratives"]["bold_glob_pattern"].format(
+        bold_files=lambda wc: config["narratives"]["bold_glob_pattern"].format(
             subject=wc.subject,
             task=wc.task,
             run_tag="" if wc.run_label == "norun" else f"_{wc.run_label}",
@@ -217,7 +211,7 @@ rule extract_parcels:
             descriptor=wc.descriptor,
         )
     output:
-        npy=f"{PROCESSING_OUTPUT_DIR}/parcels/{{task}}/sub-{{subject}}_task-{{task}}_{{run_label}}_space-{{space}}_res-{{resolution}}_desc-{{descriptor}}_parcel_ts.npy"
+        parcel_ts=f"{PROCESSING_OUTPUT_DIR}/parcels/{{task}}/sub-{{subject}}_task-{{task}}_{{run_label}}_space-{{space}}_res-{{resolution}}_desc-{{descriptor}}_parcel_ts.npy"
     params:
         n_rois=config["atlas"]["n_rois"],
         yeo_networks=config["atlas"]["yeo_networks"],
@@ -226,7 +220,12 @@ rule extract_parcels:
         "envs/extract_parcels_environment.yaml"
     shell:
         r"""
-            python3 workflow/dataset_processing/narratives_dataset/scripts/extract_parcels.py
+            python3 workflow/dataset_processing/narratives_dataset/scripts/extract_parcels.py \
+                --bold_file {input.bold_files:q} \
+                --parcel_ts {output.parcel_ts:q} \
+                --n_rois {params.n_rois} \
+                --yeo_networks {params.yeo_networks} \
+                --atlas_dir {params.atlas_dir:q}
         """
 
 def task_parcel_inputs(wc):
@@ -250,5 +249,11 @@ rule compute_isc:
         "envs/compute_isc_environment.yaml"
     shell:
         r"""
-            python3 workflow/dataset_processing/narratives_dataset/scripts/compute_isc.py
+            python3 workflow/dataset_processing/narratives_dataset/scripts/compute_isc.py \
+                --parcel_ts {input:q} \
+                --isc_npy {output.isc_npy:q} \
+                --isc_nii {output.isc_nii:q} \
+                --n_rois {params.n_rois} \
+                --yeo_networks {params.yeo_networks} \
+                --atlas_dir {params.atlas_dir:q}
         """

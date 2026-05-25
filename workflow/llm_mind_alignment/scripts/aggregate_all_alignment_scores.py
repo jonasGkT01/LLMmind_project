@@ -31,48 +31,31 @@ def infer_alignment_column(df: pd.DataFrame) -> str:
 def infer_model_from_observed_path(path: str) -> str:
     """
     Expected observed path:
-    results/{model}_brain_alignment_score.parquet
+    results/alignment_score/{dataset}/{similarity_type}_alignment_scores/{model}_brain_alignment_score.parquet
     """
     name = Path(path).name
-
     suffix = "_brain_alignment_score.parquet"
 
     if not name.endswith(suffix):
         raise ValueError(f"Cannot infer model from observed path: {path}")
 
-    return name.replace(suffix, "")
+    return name.removesuffix(suffix)
 
 def infer_model_and_relabel_from_relabelled_path(path: str) -> tuple[str, int]:
-    """
-    Expected relabelled path:
-    results/{similarity_type}_relabelled/{model}/relabel_{i}/nearest_neighbours.parquet
+    name = Path(path).name
 
-    Example:
-    results/cosine_relabelled/llama/relabel_3/nearest_neighbours.parquet
-    """
-    parts = Path(path).parts
-
-    relabelled_index = None
-    for i, part in enumerate(parts):
-        if part.endswith("_relabelled"):
-            relabelled_index = i
-            break
-
-    if relabelled_index is None:
-        raise ValueError(f"Cannot infer model from relabelled path: {path}")
-
-    try:
-        model = parts[relabelled_index + 1]
-        relabel_part = parts[relabelled_index + 2]
-    except IndexError:
-        raise ValueError(f"Malformed relabelled path: {path}")
-
-    match = re.fullmatch(r"relabel_(\d+)", relabel_part)
+    match = re.fullmatch(
+        r"(.+)_([^_]+)_alignment_score_relabel_(\d+)\.parquet",
+        name,
+    )
 
     if match is None:
-        raise ValueError(f"Cannot infer relabel index from path: {path}")
+        raise ValueError(
+            f"Cannot infer model and relabel index from relabelled path: {path}"
+        )
 
-    relabel = int(match.group(1))
+    model = match.group(1)
+    relabel = int(match.group(3))
 
     return model, relabel
 
