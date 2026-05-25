@@ -4,35 +4,41 @@ import numpy as np
 from pathlib import Path
 from itertools import product
 
-DATASET_KEYS = list(config["datasets"].keys())
+configfile: "config/config.yaml"
 
-NARRATIVES_SUBJECTS = [f"{i:03d}" for i in range(1, config["narratives"]["subjects"] + 1)]
+SUBJECTS = [f"{i:03d}" for i in range(1, config["narratives"]["subjects"] + 1)]
+PROCESSING_OUTPUT_DIR = config["narratives"]["processing_output_dir"]
 
-with open(config["narratives"]["scans_to_be_excluded"]) as f:
-    NARRATIVES_SCAN_EXCLUDE = json.load(f)
+def task_is_excluded(task):
+    return task in config["narratives"]["problematic_subtasks"]
 
-def narratives_run_label(run_tag):
+VALIDE_NARRATIVES_TASKS = [task for task in config["narratives"]["tasks"] if not task_is_excluded(task)]
+
+def run_label(run_tag):
     return "norun" if run_tag == "" else run_tag.replace("_", "")
 
-def narratives_excluded_scan_prefixes(task):
+with open(config["narratives"]["scans_to_be_excluded"]) as f:
+    SCAN_EXCLUDE = json.load(f)
+
+def excluded_scan_prefixes(task):
     # load dictionary and get scan prefixes to be excluded for the given task
-    task_dict = NARRATIVES_SCAN_EXCLUDE.get(task, {})
+    task_dict = SCAN_EXCLUDE.get(task, {})
     return {
         prefix
         for scans in task_dict.values()
         for prefix in scans
     }
 
-def narratives_scan_prefix(subject, task, run_tag):
+def scan_prefix(subject, task, run_tag):
     prefix = f"sub-{subject}_task-{task}"
     if  run_tag != "":
         prefix += run_tag
     return prefix
 
-def narratives_is_excluded(subject, task, run_tag):
-    return narratives_scan_prefix(subject, task, run_tag) in narratives_excluded_scan_prefixes(task)
+def is_excluded(subject, task, run_tag):
+    return scan_prefix(subject, task, run_tag) in excluded_scan_prefixes(task)
 
-def narratives_write_length_check_json(task, parcel_files, output_json):
+def write_length_check_json(task, parcel_files, output_json):
     parcel_files = [Path(p) for p in parcel_files]
     output_json = Path(output_json)
     output_json.parent.mkdir(parents=True, exist_ok=True)
@@ -97,9 +103,9 @@ def narratives_write_length_check_json(task, parcel_files, output_json):
     return valid
 
 # discover valid inputs
-NARRATIVES_BOLD_FILES = []
+BOLD_FILES = []
 for subject, task, run_tag, space, resolution, descriptor in product(
-    NARRATIVES_SUBJECTS,
+    SUBJECTS,
     config["narratives"]["tasks"],
     config["narratives"]["run_tags"],
     config["narratives"]["spaces"],
@@ -107,7 +113,7 @@ for subject, task, run_tag, space, resolution, descriptor in product(
     config["narratives"]["descriptors"],
 ):
     # skip excluded scans before checking the file
-    if narratives_is_excluded(subject, task, run_tag):
+    if is_excluded(subject, task, run_tag):
         # print(f"Excluding scan for subject {subject}, task {task}, run {run_tag}")
         continue
 
@@ -121,40 +127,36 @@ for subject, task, run_tag, space, resolution, descriptor in product(
     )
 
     if Path(bold_file).exists():
-        NARRATIVES_BOLD_FILES.append({
+        BOLD_FILES.append({
             "subject": subject,
             "task": task,
             "run_tag": run_tag,
-            "run_label": narratives_run_label(run_tag),
+            "run_label": run_label(run_tag),
             "space": space,
             "resolution": resolution,
             "descriptor": descriptor,
             "bold_file": bold_file,
         })
 
-def narratives_task_is_excluded(task):
-    return task in config["narratives"]["schema_subtasks"] or task in config["narratives"]["notthefall_variants"]
-
 # group by task only
-NARRATIVES_TASK_GROUPS = {}
-for c in NARRATIVES_BOLD_FILES:
-    # skip schema subtasks and notthefall variants
-    if narratives_task_is_excluded(c["task"]):
+TASK_GROUPS = {}
+for c in BOLD_FILES:
+    # skip problematic subtasks
+
+    if task_is_excluded(c["task"]) or c["task"] not in VALIDE_NARRATIVES_TASKS:
         continue
         
-    NARRATIVES_TASK_GROUPS.setdefault(c["task"], []).append(c)
+    TASK_GROUPS.setdefault(c["task"], []).append(c)
 
-VALID_NARRATIVES_TASKS = list(NARRATIVES_TASK_GROUPS.keys())
-
-def narratives_parcel_outputs_for_task(task):
+def parcel_outputs_for_task(task):
     return [
-        f"results/mind/narratives/parcels/{c['task']}/sub-{c['subject']}_task-{c['task']}_{c['run_label']}_space-{c['space']}_res-{c['resolution']}_desc-{c['descriptor']}_parcel_ts.npy"
-        for c in NARRATIVES_TASK_GROUPS[task]
+        f"{PROCESSING_OUTPUT_DIR}/parcels/{c['task']}/sub-{c['subject']}_task-{c['task']}_{c['run_label']}_space-{c['space']}_res-{c['resolution']}_desc-{c['descriptor']}_parcel_ts.npy"
+        for c in TASK_GROUPS[task]
     ]
 
-narratives_excluded_scans_for_task = []
+excluded_scans_for_task = []
 for task in config["narratives"]["tasks"]:
-    if narratives_task_is_excluded(task):
+    if task_is_excluded(task) or task not in VALIDE_NARRATIVES_TASKS:
         print(f"Skipping length check for excluded task {task}. See {config['narratives']['excluded_scans_for_task']} for details.")
         if task in config["narratives"]["schema_subtasks"]:
             reason = "Excluded because it is a schema subtask."
@@ -162,45 +164,51 @@ for task in config["narratives"]["tasks"]:
             reason = "Excluded because it is a notthefall variant."
         else:
             reason = "Excluded for unspecified reason."
-        for c in NARRATIVES_BOLD_FILES:
+        for c in BOLD_FILES:
             if c["task"] == task:
-                narratives_excluded_scans_for_task.append({
+                excluded_scans_for_task.append({
                     "task": task,
                     "reason": reason,
                     "bold_file": c["bold_file"],
                 })
-    elif task not in NARRATIVES_TASK_GROUPS:
-        print(f"Warning: No valid BOLD files found for task {task}. Skipping length check.")
-    elif not narratives_write_length_check_json(task, narratives_parcel_outputs_for_task(task), f"results/mind/qc/task-{task}_length_check.json"):
-        print(f"Warning: Length check failed for task {task}. See results/mind/qc/task-{task}_length_check.json for details.")
+        continue
 
-narratives_excluded_scans_for_task_path = Path(config["narratives"]["excluded_scans_for_task"])
-narratives_excluded_scans_for_task_path.parent.mkdir(parents=True, exist_ok=True)
+    if task not in TASK_GROUPS:
+        print(f"Warning: No valid BOLD files found for task {task}. Skipping length check.")
+        continue
+    if not write_length_check_json(task, parcel_outputs_for_task(task), f"{PROCESSING_OUTPUT_DIR}/qc/task-{task}_length_check.json"):
+        print(f"Warning: Length check failed for task {task}. See {PROCESSING_OUTPUT_DIR}/qc/task-{task}_length_check.json for details.")
+
+excluded_scans_for_task_path = Path(config["narratives"]["excluded_scans_for_task"])
+excluded_scans_for_task_path.parent.mkdir(parents=True, exist_ok=True)
 
 with open(config["narratives"]["excluded_scans_for_task"], "w") as f:
-    json.dump(narratives_excluded_scans_for_task, f, indent=2, sort_keys=True)
+    json.dump(excluded_scans_for_task, f, indent=2, sort_keys=True)
 
-rule all_fMRI_processing:
+PARCEL_OUTPUTS = [
+    f"{PROCESSING_OUTPUT_DIR}/parcels/{c['task']}/sub-{c['subject']}_task-{c['task']}_{run_label(c['run_tag'])}_space-{c['space']}_res-{c['resolution']}_desc-{c['descriptor']}_parcel_ts.npy"
+    for c in BOLD_FILES
+]
+
+ISC_NPY_OUTPUTS = [
+    f"{PROCESSING_OUTPUT_DIR}/isc/task-{task}_isc_mean.npy"
+    for task in TASK_GROUPS
+]
+
+ISC_NII_OUTPUTS = [
+    f"{PROCESSING_OUTPUT_DIR}/isc/task-{task}_isc_mean.nii.gz"
+    for task in TASK_GROUPS
+]
+
+rule all_narratives_dataset:
     input:
-        expand(
-            "results/mind/{dataset}/isc/task-{task}_isc_mean.npy",
-            dataset=DATASET_KEYS,
-            task=VALID_NARRATIVES_TASKS
-        ),
-        expand(
-            "results/mind/{dataset}/isc/task-{task}_isc_mean.nii.gz",
-            dataset=DATASET_KEYS,
-            task=VALID_NARRATIVES_TASKS
-        ),
-        expand(
-            "results/mind/{dataset}/plots/task-{task}_isc_mean.png",
-            dataset=DATASET_KEYS,
-            task=VALID_NARRATIVES_TASKS
-        )
+        PARCEL_OUTPUTS,
+        ISC_NPY_OUTPUTS,
+        ISC_NII_OUTPUTS,
 
 rule extract_parcels:
     input:
-        bold=lambda wc: config[wc.dataset]["bold_glob_pattern"].format(
+        bold=lambda wc: config["narratives"]["bold_glob_pattern"].format(
             subject=wc.subject,
             task=wc.task,
             run_tag="" if wc.run_label == "norun" else f"_{wc.run_label}",
@@ -209,7 +217,7 @@ rule extract_parcels:
             descriptor=wc.descriptor,
         )
     output:
-        narratives_parcel_ts=f"results/mind/{{dataset}}/parcels/{{task}}/sub-{{subject}}_task-{{task}}_{{run_label}}_space-{{space}}_res-{{resolution}}_desc-{{descriptor}}_parcel_ts.npy"
+        npy=f"{PROCESSING_OUTPUT_DIR}/parcels/{{task}}/sub-{{subject}}_task-{{task}}_{{run_label}}_space-{{space}}_res-{{resolution}}_desc-{{descriptor}}_parcel_ts.npy"
     params:
         n_rois=config["atlas"]["n_rois"],
         yeo_networks=config["atlas"]["yeo_networks"],
@@ -218,22 +226,22 @@ rule extract_parcels:
         "envs/extract_parcels_environment.yaml"
     shell:
         r"""
-            python3 workflow/fMRI_processing/scripts/extract_parcels.py
+            python3 workflow/dataset_processing/narratives_dataset/scripts/extract_parcels.py
         """
 
-def narratives_task_parcel_inputs(wc):
-    items = NARRATIVES_TASK_GROUPS[wc.task]
+def task_parcel_inputs(wc):
+    items = TASK_GROUPS[wc.task]
     return [
-        f"results/mind/narratives/parcels/{c['task']}/sub-{c['subject']}_task-{c['task']}_{narratives_run_label(c['run_tag'])}_space-{c['space']}_res-{c['resolution']}_desc-{c['descriptor']}_parcel_ts.npy"
+        f"{PROCESSING_OUTPUT_DIR}/parcels/{c['task']}/sub-{c['subject']}_task-{c['task']}_{run_label(c['run_tag'])}_space-{c['space']}_res-{c['resolution']}_desc-{c['descriptor']}_parcel_ts.npy"
         for c in items
     ]
 
 rule compute_isc:
     input:
-        narratives_task_parcel_inputs
+        task_parcel_inputs
     output:
-        isc_npy=f"results/mind/{{dataset}}/isc/task-{{task}}_isc_mean.npy",
-        isc_nii=f"results/mind/{{dataset}}/isc/task-{{task}}_isc_mean.nii.gz"
+        isc_npy=f"{PROCESSING_OUTPUT_DIR}/isc/task-{{task}}_isc_mean.npy",
+        isc_nii=f"{PROCESSING_OUTPUT_DIR}/isc/task-{{task}}_isc_mean.nii.gz"
     params:
         n_rois=config["atlas"]["n_rois"],
         yeo_networks=config["atlas"]["yeo_networks"],
@@ -242,17 +250,5 @@ rule compute_isc:
         "envs/compute_isc_environment.yaml"
     shell:
         r"""
-            python3 workflow/fMRI_processing/scripts/compute_isc.py
-        """
-
-rule plot_isc:
-    input:
-        isc_nii=f"results/mind/{{dataset}}/isc/task-{{task}}_isc_mean.nii.gz"
-    output:
-        png=f"results/mind/{{dataset}}/plots/task-{{task}}_isc_mean.png"
-    conda:
-        "envs/plot_isc_environment.yaml"
-    shell:
-        r"""
-            python3 workflow/fMRI_processing/scripts/plot_isc.py
+            python3 workflow/dataset_processing/narratives_dataset/scripts/compute_isc.py
         """

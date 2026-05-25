@@ -68,11 +68,11 @@ rule relabel_LLM_similarity:
     input:
         similarity_dataframe="results/llm/{dataset}/{similarity_type}_similarity/{model}_{similarity_type}_similarity.parquet"
     output:
-        relabelled_similarity_dataframe=temp("results/llm/relabel_{relabel}/{dataset}/{similarity_type}_similarity/{model}_{similarity_type}_similarity_dataframe.parquet")
+        relabelled_similarity_dataframe=temp("results/llm/relabelled_similarity/{dataset}/{similarity_type}_similarity/{model}_{similarity_type}_similarity_dataframe_relabel_{relabel}.parquet")
     params:
         seed=lambda wc: config["random_seed"] + int(wc.relabel)
     conda:
-        "envs/relabel_LLM_similarity_environment.yaml"
+        "envs/relabel_llm_similarity_environment.yaml"
     shell:
         r"""
             python3 workflow/llm_nearest_neighbours/scripts/relabel_LLM_similarity.py \
@@ -104,11 +104,11 @@ rule compute_nearest_neighbours:
 
 rule compute_relabelled_LLM_nearest_neighbours:
     input:
-        relabelled_cosine_similarity_dataframe="results/llm/relabel_{relabel}/{dataset}/cosine_similarity/{model}_cosine_similarity.parquet",
-        relabelled_pearson_similarity_dataframe="results/llm/relabel_{relabel}/{dataset}/pearson_similarity/{model}_pearson_similarity.parquet"
+        relabelled_cosine_similarity_dataframe="results/llm/relabelled_similarity/{dataset}/cosine_similarity/{model}_cosine_similarity_dataframe_relabel_{relabel}.parquet",
+        relabelled_pearson_similarity_dataframe="results/llm/relabelled_similarity/{dataset}/pearson_similarity/{model}_pearson_similarity_dataframe_relabel_{relabel}.parquet"
     output:
-        relabelled_cosine_nearest_neighbours=temp("results/llm/relabel_{relabel}/{dataset}/cosine_nearest_neighbours/{model}_cosine_nearest_neighbours.parquet"),
-        relabelled_pearson_nearest_neighbours=temp("results/llm/relabel_{relabel}/{dataset}/pearson_nearest_neighbours/{model}_pearson_nearest_neighbours.parquet")
+        relabelled_cosine_nearest_neighbours=temp("results/llm/relabelled_similarity/{dataset}/cosine_nearest_neighbours/{model}_cosine_nearest_neighbours_relabel_{relabel}.parquet"),
+        relabelled_pearson_nearest_neighbours=temp("results/llm/relabelled_similarity/{dataset}/pearson_nearest_neighbours/{model}_pearson_nearest_neighbours_relabel_{relabel}.parquet")
     params:
         number_of_neighbours=config["number_of_neighbours"]
     conda:

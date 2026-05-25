@@ -2,11 +2,6 @@ DATASET_KEYS = list(config["datasets"].keys())
 SIMILARITY_TYPES = list(config["similarity_metrics"])
 NUMBER_OF_NEIGHBOURS = config["number_of_neighbours"]
 
-def narratives_task_is_excluded(task):
-    return task in config["narratives"]["schema_subtasks"] or task in config["narratives"]["notthefall_variants"]
-
-VALIDE_NARRATIVES_TASKS = [task for task in config["narratives"]["tasks"] if not narratives_task_is_excluded(task)]
-
 rule all_isc_nearest_neighbours:
     input:
         expand(
@@ -18,7 +13,8 @@ rule all_isc_nearest_neighbours:
 rule create_isc_dataframe:
     input:
         isc_npys=lambda wc: [
-            f"results/mind/{wc.dataset}/isc/task-{task}_isc_mean.npy" for task in VALIDE_NARRATIVES_TASKS
+            f"results/mind/{wc.dataset}/isc/task-{task}_isc_mean.npy"
+            for task in config[wc.dataset]["tasks"] if task not in config[wc.dataset]["problematic_subtasks"]
         ]
     output:
         "results/mind/{dataset}/embedding_isc_dataframe.parquet"
