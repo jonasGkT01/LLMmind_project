@@ -12,19 +12,11 @@ include: "llm_mind_alignment/Snakefile"
 DATASET_KEYS = list(config["datasets"].keys())
 MODEL_KEYS = list(config["models"].keys())
 SIMILARITY_TYPES = list(config["similarity_metrics"])
-NUMBER_OF_RELABELLINGS = range(config["number_of_relabellings"])
-
-MODEL_BRAIN_ALIGNMENT = [
-    f"results/alignment_score/{dataset}/{similarity_type}_alignment_scores/{model}_brain_alignment_score.parquet"
-    for dataset in DATASET_KEYS
-    for similarity_type in SIMILARITY_TYPES
-    for model in MODEL_KEYS
-]
 
 rule all:
     input:
         expand(
-            "results/alignment_score/{dataset}/{similarity_type}_alignment_scores/{model}_brain_alignment_score.parquet",
+            "results/alignment_score/{dataset}/{similarity_type}_alignment_scores/{model}_{similarity_type}_brain_alignment_score.parquet",
             dataset=DATASET_KEYS,
             similarity_type=SIMILARITY_TYPES,
             model=MODEL_KEYS

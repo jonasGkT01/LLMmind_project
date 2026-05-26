@@ -41,7 +41,7 @@ rule compute_llm_mind_alignment_score:
         isc_nearest_neighbours="results/mind/{dataset}/{similarity_type}_nearest_neighbours/isc_{similarity_type}_nearest_neighbours.parquet",
         llm_nearest_neighnours="results/llm/{dataset}/{similarity_type}_nearest_neighbours/{model}_{similarity_type}_nearest_neighbours.parquet"
     output:
-        llm_brain_alignment_score="results/alignment_score/{dataset}/{similarity_type}_alignment_scores/{model}_brain_alignment_score.parquet"
+        llm_brain_alignment_score="results/alignment_score/{dataset}/{similarity_type}_alignment_scores/{model}_{similarity_type}_brain_alignment_score.parquet"
     params:
         number_of_neighbours=config["number_of_neighbours"],
         model="{model}"
@@ -81,11 +81,11 @@ rule compute_relabelled_llm_mind_alignment_score:
 rule aggregate_all_alignment_scores:
     input:
         observed_alignment_scores=lambda wc: [
-            f"results/alignment_score/{{dataset}}/{{similarity_type}}_alignment_scores/{model}_brain_alignment_score.parquet"
+            f"results/alignment_score/{wc.dataset}/{wc.similarity_type}_alignment_scores/{model}_{wc.similarity_type}_brain_alignment_score.parquet"
             for model in MODEL_KEYS
         ],
         relabelled_alignment_scores=lambda wc: [
-            f"results/alignment_score/{{dataset}}/{{similarity_type}}_alignment_scores/{model}_{wc.similarity_type}_alignment_score_relabel_{relabel}.parquet"
+            f"results/alignment_score/{wc.dataset}/{wc.similarity_type}_alignment_scores/{model}_{wc.similarity_type}_alignment_score_relabel_{relabel}.parquet"
             for model in MODEL_KEYS
             for relabel in NUMBER_OF_RELABELLINGS
         ]

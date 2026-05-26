@@ -30,22 +30,31 @@ def infer_alignment_column(df: pd.DataFrame) -> str:
 
 def infer_model_from_observed_path(path: str) -> str:
     """
-    Expected observed path:
-    results/alignment_score/{dataset}/{similarity_type}_alignment_scores/{model}_brain_alignment_score.parquet
+        Expected observed path:
+        results/alignment_score/{dataset}/{similarity_type}_alignment_scores/{model}_{similarity_type}_brain_alignment_score.parquet
     """
-    name = Path(path).name
-    suffix = "_brain_alignment_score.parquet"
-
-    if not name.endswith(suffix):
-        raise ValueError(f"Cannot infer model from observed path: {path}")
-
-    return name.removesuffix(suffix)
-
-def infer_model_and_relabel_from_relabelled_path(path: str) -> tuple[str, int]:
     name = Path(path).name
 
     match = re.fullmatch(
-        r"(.+)_([^_]+)_alignment_score_relabel_(\d+)\.parquet",
+        r"(.+)_[^_]+_brain_alignment_score\.parquet",
+        name,
+    )
+
+    if match is None:
+        raise ValueError(f"Cannot infer model from observed path: {path}")
+
+    return match.group(1)
+
+
+def infer_model_and_relabel_from_relabelled_path(path: str) -> tuple[str, int]:
+    """
+        Expected relabelled path:
+        results/alignment_score/{dataset}/{similarity_type}_alignment_scores/{model}_{similarity_type}_alignment_score_relabel_{relabel}.parquet
+    """
+    name = Path(path).name
+
+    match = re.fullmatch(
+        r"(.+)_[^_]+_alignment_score_relabel_(\d+)\.parquet",
         name,
     )
 
@@ -55,7 +64,7 @@ def infer_model_and_relabel_from_relabelled_path(path: str) -> tuple[str, int]:
         )
 
     model = match.group(1)
-    relabel = int(match.group(3))
+    relabel = int(match.group(2))
 
     return model, relabel
 
@@ -73,15 +82,14 @@ def compute_hypergeometric_statistics(
     number_of_neighbours: int,
 ) -> dict:
     """
-    Computes the exact hypergeometric expected overlap and concept-wise p-values.
+        Computes the exact hypergeometric expected overlap and concept-wise p-values.
 
-    If alignment_score = common_neighbours / k,
-    then common_neighbours = alignment_score * k.
+        If alignment_score = common_neighbours / k, then common_neighbours = alignment_score * k.
 
-    The population excludes the labelled concept itself, so:
-    M = N - 1
+        The population excludes the labelled concept itself, so:
+        M = N - 1
 
-    X ~ Hypergeom(M=N-1, n=k, N=k)
+        X ~ Hypergeom(M=N-1, n=k, N=k)
     """
 
     k = number_of_neighbours
@@ -188,6 +196,11 @@ def main() -> None:
             / hypergeom_stats["hypergeom_expected_alignment_score"]
         )
 
+        hypergeom_null_enrichment = (
+            empirical_null_mean
+            / hypergeom_stats["hypergeom_expected_alignment_score"]
+        )
+
         z_score_empirical = (
             (observed_average_alignment - empirical_null_mean)
             / empirical_null_std
@@ -206,8 +219,9 @@ def main() -> None:
             "empirical_enrichment_observed_over_null": empirical_enrichment,
             "empirical_z_score": z_score_empirical,
             "empirical_upper_tail_p_value": empirical_p_value_upper,
-            "hypergeom_enrichment_observed_over_expected": hypergeom_enrichment,
             "number_of_relabelings": len(null_alignment_scores),
+            "hypergeom_enrichment_observed_over_expected": hypergeom_enrichment,
+            "hypergeom_enrichment_null_over_expected": hypergeom_null_enrichment,
         }
 
         row.update(hypergeom_stats)

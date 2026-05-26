@@ -142,8 +142,7 @@ for subject, task, run_tag, space, resolution, descriptor in product(
 TASK_GROUPS = {}
 for c in BOLD_FILES:
     # skip problematic subtasks
-
-    if task_is_excluded(c["task"]) or c["task"] not in VALIDE_NARRATIVES_TASKS:
+    if c["task"] not in VALIDE_NARRATIVES_TASKS:
         continue
         
     TASK_GROUPS.setdefault(c["task"], []).append(c)
@@ -156,8 +155,8 @@ def parcel_outputs_for_task(task):
 
 excluded_scans_for_task = []
 for task in config["narratives"]["tasks"]:
-    if task_is_excluded(task) or task not in VALIDE_NARRATIVES_TASKS:
-        #print(f"Skipping length check for excluded task {task}. See {config['narratives']['excluded_scans_for_task']} for details.")
+    if task not in VALIDE_NARRATIVES_TASKS:
+        print(f"Skipping length check for excluded task {task}. See {config['narratives']['excluded_scans_for_task']} for details.")
         if task in config["narratives"]["schema_subtasks"]:
             reason = "Excluded because it is a schema subtask."
         elif task in config["narratives"]["notthefall_variants"]:
@@ -173,9 +172,10 @@ for task in config["narratives"]["tasks"]:
                 })
         continue
 
-    if task not in TASK_GROUPS:
-        print(f"Warning: No valid BOLD files found for task {task}. Skipping length check.")
-        continue
+    #if task not in TASK_GROUPS:
+    #    print(f"Warning: No valid BOLD files found for task {task}. Skipping length check.")
+    #    continue
+
     if not write_length_check_json(task, parcel_outputs_for_task(task), f"{PROCESSING_OUTPUT_DIR}/qc/task-{task}_length_check.json"):
         print(f"Warning: Length check failed for task {task}. See {PROCESSING_OUTPUT_DIR}/qc/task-{task}_length_check.json for details.")
 
