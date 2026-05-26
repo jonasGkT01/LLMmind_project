@@ -2,48 +2,47 @@ DATASET_KEYS = list(config["datasets"].keys())
 MODEL_KEYS = list(config["models"].keys())
 SIMILARITY_TYPES = list(config["similarity_metrics"])
 NUMBER_OF_RELABELLINGS = range(config["number_of_relabellings"])
-
-MODEL_BRAIN_ALIGNMENT = [
-    f"results/{dataset}/{similarity_type}_alignment_scores/{model}_brain_alignment_score.parquet"
-    for dataset in DATASET_KEYS
-    for similarity_type in SIMILARITY_TYPES
-    for model in MODEL_KEYS
-]
+NUMBER_OF_NEIGHBOURS = list(config["number_of_neighbours"])
 
 MODEL_RELABELLED_ALIGNMENT = [
-    f"results/llm/{dataset}/{similarity_type}_relabelled/{model}/relabel_{relabel}/brain_alignment_score.parquet"
+    f"results/llm/{dataset}/{similarity_type}_relabelled/{model}/relabel_{relabel}/brain_alignment_score_{number_of_neighbours}NN.parquet"
     for dataset in DATASET_KEYS
     for similarity_type in SIMILARITY_TYPES
     for model in MODEL_KEYS
     for relabel in NUMBER_OF_RELABELLINGS
+    for number_of_neighbours in NUMBER_OF_NEIGHBOURS
 ]
 
 rule all_llm_mind_alignment:
     input:
-        MODEL_BRAIN_ALIGNMENT,
         expand(
-            "results/alignment_summary/{dataset}/parquet_summary/{similarity_type}_alignment_summary_all_models.parquet",
+            "results/alignment_score/{dataset}/{similarity_type}_alignment_scores/{model}_{similarity_type}_brain_alignment_score_{number_of_neighbours}NN.parquet",
             dataset=DATASET_KEYS,
-            similarity_type=SIMILARITY_TYPES, 
-            model=MODEL_KEYS, 
-            relabel=NUMBER_OF_RELABELLINGS
+            similarity_type=SIMILARITY_TYPES,
+            model=MODEL_KEYS,
+            number_of_neighbours=NUMBER_OF_NEIGHBOURS
         ),
         expand(
-            "results/alignment_summary/{dataset}/tsv_summary/{similarity_type}_alignment_summary_all_models.tsv",
+            "results/alignment_summary/{dataset}/parquet_summary/{similarity_type}_alignment_summary_{number_of_neighbours}NN_all_models.parquet",
             dataset=DATASET_KEYS,
             similarity_type=SIMILARITY_TYPES, 
-            model=MODEL_KEYS, 
-            relabel=NUMBER_OF_RELABELLINGS
+            number_of_neighbours=NUMBER_OF_NEIGHBOURS
+        ),
+        expand(
+            "results/alignment_summary/{dataset}/tsv_summary/{similarity_type}_alignment_summary_{number_of_neighbours}NN_all_models.tsv",
+            dataset=DATASET_KEYS,
+            similarity_type=SIMILARITY_TYPES, 
+            number_of_neighbours=NUMBER_OF_NEIGHBOURS
         )
 
 rule compute_llm_mind_alignment_score:
     input:
-        isc_nearest_neighbours="results/mind/{dataset}/{similarity_type}_nearest_neighbours/isc_{similarity_type}_nearest_neighbours.parquet",
-        llm_nearest_neighnours="results/llm/{dataset}/{similarity_type}_nearest_neighbours/{model}_{similarity_type}_nearest_neighbours.parquet"
+        isc_nearest_neighbours="results/mind/{dataset}/{similarity_type}_nearest_neighbours/isc_{similarity_type}_nearest_neighbours_{number_of_neighbours}NN.parquet",
+        llm_nearest_neighnours="results/llm/{dataset}/{similarity_type}_nearest_neighbours/{model}_{similarity_type}_nearest_neighbours_{number_of_neighbours}NN.parquet"
     output:
-        llm_brain_alignment_score="results/alignment_score/{dataset}/{similarity_type}_alignment_scores/{model}_{similarity_type}_brain_alignment_score.parquet"
+        llm_brain_alignment_score="results/alignment_score/{dataset}/{similarity_type}_alignment_scores/{model}_{similarity_type}_brain_alignment_score_{number_of_neighbours}NN.parquet"
     params:
-        number_of_neighbours=config["number_of_neighbours"],
+        number_of_neighbours=lambda wc: wc.number_of_neighbours,
         model="{model}"
     conda:
         "envs/compute_llm_mind_alignment_score_environment.yaml"
@@ -59,12 +58,12 @@ rule compute_llm_mind_alignment_score:
 
 rule compute_relabelled_llm_mind_alignment_score:
     input:
-        isc_nearest_neighbours="results/mind/{dataset}/{similarity_type}_nearest_neighbours/isc_{similarity_type}_nearest_neighbours.parquet",
-        relabelled_llm_nearest_neighbours="results/llm/relabelled_similarity/{dataset}/{similarity_type}_nearest_neighbours/{model}_{similarity_type}_nearest_neighbours_relabel_{relabel}.parquet"
+        isc_nearest_neighbours="results/mind/{dataset}/{similarity_type}_nearest_neighbours/isc_{similarity_type}_nearest_neighbours_{number_of_neighbours}NN.parquet",
+        relabelled_llm_nearest_neighbours="results/llm/relabelled_similarity/{dataset}/{similarity_type}_nearest_neighbours/{model}_{similarity_type}_nearest_neighbours_{number_of_neighbours}NN_relabel_{relabel}.parquet"
     output:
-        relabelled_llm_brain_alignment_score=temp("results/alignment_score/{dataset}/{similarity_type}_alignment_scores/{model}_{similarity_type}_alignment_score_relabel_{relabel}.parquet")
+        relabelled_llm_brain_alignment_score=temp("results/alignment_score/{dataset}/{similarity_type}_alignment_scores/{model}_{similarity_type}_alignment_score_{number_of_neighbours}NN_relabel_{relabel}.parquet")
     params:
-        number_of_neighbours=config["number_of_neighbours"],
+        number_of_neighbours=lambda wc: wc.number_of_neighbours,
         model="{model}"
     conda:
         "envs/compute_llm_mind_alignment_score_environment.yaml"
@@ -81,20 +80,20 @@ rule compute_relabelled_llm_mind_alignment_score:
 rule aggregate_all_alignment_scores:
     input:
         observed_alignment_scores=lambda wc: [
-            f"results/alignment_score/{wc.dataset}/{wc.similarity_type}_alignment_scores/{model}_{wc.similarity_type}_brain_alignment_score.parquet"
+            f"results/alignment_score/{wc.dataset}/{wc.similarity_type}_alignment_scores/{model}_{wc.similarity_type}_brain_alignment_score_{wc.number_of_neighbours}NN.parquet"
             for model in MODEL_KEYS
         ],
         relabelled_alignment_scores=lambda wc: [
-            f"results/alignment_score/{wc.dataset}/{wc.similarity_type}_alignment_scores/{model}_{wc.similarity_type}_alignment_score_relabel_{relabel}.parquet"
+            f"results/alignment_score/{wc.dataset}/{wc.similarity_type}_alignment_scores/{model}_{wc.similarity_type}_alignment_score_{wc.number_of_neighbours}NN_relabel_{relabel}.parquet"
             for model in MODEL_KEYS
             for relabel in NUMBER_OF_RELABELLINGS
         ]
     output:
-        summary="results/alignment_summary/{dataset}/parquet_summary/{similarity_type}_alignment_summary_all_models.parquet",
-        tsv="results/alignment_summary/{dataset}/tsv_summary/{similarity_type}_alignment_summary_all_models.tsv"
+        summary="results/alignment_summary/{dataset}/parquet_summary/{similarity_type}_alignment_summary_{number_of_neighbours}NN_all_models.parquet",
+        tsv="results/alignment_summary/{dataset}/tsv_summary/{similarity_type}_alignment_summary_{number_of_neighbours}NN_all_models.tsv"
     params:
         models=MODEL_KEYS,
-        number_of_neighbours=config["number_of_neighbours"],
+        number_of_neighbours=lambda wc: wc.number_of_neighbours,
         number_of_relabelings=config["number_of_relabellings"]
     conda:
         "envs/aggregate_all_alignment_scores_environment.yaml"

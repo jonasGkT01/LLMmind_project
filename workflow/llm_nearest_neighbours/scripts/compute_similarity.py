@@ -80,7 +80,7 @@ def main():
     cosine_similarity = X @ X.T
 
     # remove self-similarities
-    np.fill_diagonal(cosine_similarity, np.nan)
+    np.fill_diagonal(cosine_similarity, -np.inf)
 
     cosine_similarity_df = pd.DataFrame(
         cosine_similarity, 
@@ -103,7 +103,7 @@ def main():
     pearson_similarity = X @ X.T
 
     # remove self-similarities
-    np.fill_diagonal(pearson_similarity, np.nan)
+    np.fill_diagonal(pearson_similarity, -np.inf)
 
     pearson_similarity_df = pd.DataFrame(
         pearson_similarity, 

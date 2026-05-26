@@ -2,14 +2,16 @@ DATASET_KEYS = list(config["datasets"].keys())
 MODEL_KEYS = list(config["models"].keys())
 SIMILARITY_TYPES = list(config["similarity_metrics"])
 EXCLUDED_SUBTASKS = list(config["narratives"]["schema_subtasks"])
+NUMBER_OF_NEIGHBOURS = list(config["number_of_neighbours"])
 
 rule all_llm_nearest_neighbours:
     input:
         expand(
-            "results/llm/{dataset}/{similarity_type}_nearest_neighbours/{model}_{similarity_type}_nearest_neighbours.parquet",
+            "results/llm/{dataset}/{similarity_type}_nearest_neighbours/{model}_{similarity_type}_nearest_neighbours_{number_of_neighbours}NN.parquet",
             dataset=DATASET_KEYS,
             model=MODEL_KEYS,
-            similarity_type=SIMILARITY_TYPES
+            similarity_type=SIMILARITY_TYPES,
+            number_of_neighbours=NUMBER_OF_NEIGHBOURS
         )
 
 rule download_pretrained_llm:
@@ -86,10 +88,10 @@ rule compute_nearest_neighbours:
         cosine_similarity_dataframe="results/llm/{dataset}/cosine_similarity/{model}_cosine_similarity.parquet",
         pearson_similarity_dataframe="results/llm/{dataset}/pearson_similarity/{model}_pearson_similarity.parquet"
     output:
-        cosine_nearest_neighbours="results/llm/{dataset}/cosine_nearest_neighbours/{model}_cosine_nearest_neighbours.parquet",
-        pearson_nearest_neighbours="results/llm/{dataset}/pearson_nearest_neighbours/{model}_pearson_nearest_neighbours.parquet"
+        cosine_nearest_neighbours="results/llm/{dataset}/cosine_nearest_neighbours/{model}_cosine_nearest_neighbours_{number_of_neighbours}NN.parquet",
+        pearson_nearest_neighbours="results/llm/{dataset}/pearson_nearest_neighbours/{model}_pearson_nearest_neighbours_{number_of_neighbours}NN.parquet"
     params:
-        number_of_neighbours=config["number_of_neighbours"]
+        number_of_neighbours=lambda wc: wc.number_of_neighbours
     conda:
         "envs/compute_nearest_neighbours_environment.yaml"
     shell:
@@ -107,10 +109,10 @@ rule compute_relabelled_LLM_nearest_neighbours:
         relabelled_cosine_similarity_dataframe="results/llm/relabelled_similarity/{dataset}/cosine_similarity/{model}_cosine_similarity_dataframe_relabel_{relabel}.parquet",
         relabelled_pearson_similarity_dataframe="results/llm/relabelled_similarity/{dataset}/pearson_similarity/{model}_pearson_similarity_dataframe_relabel_{relabel}.parquet"
     output:
-        relabelled_cosine_nearest_neighbours=temp("results/llm/relabelled_similarity/{dataset}/cosine_nearest_neighbours/{model}_cosine_nearest_neighbours_relabel_{relabel}.parquet"),
-        relabelled_pearson_nearest_neighbours=temp("results/llm/relabelled_similarity/{dataset}/pearson_nearest_neighbours/{model}_pearson_nearest_neighbours_relabel_{relabel}.parquet")
+        relabelled_cosine_nearest_neighbours=temp("results/llm/relabelled_similarity/{dataset}/cosine_nearest_neighbours/{model}_cosine_nearest_neighbours_{number_of_neighbours}NN_relabel_{relabel}.parquet"),
+        relabelled_pearson_nearest_neighbours=temp("results/llm/relabelled_similarity/{dataset}/pearson_nearest_neighbours/{model}_pearson_nearest_neighbours_{number_of_neighbours}NN_relabel_{relabel}.parquet")
     params:
-        number_of_neighbours=config["number_of_neighbours"]
+        number_of_neighbours=lambda wc: wc.number_of_neighbours
     conda:
         "envs/compute_nearest_neighbours_environment.yaml"
     shell:

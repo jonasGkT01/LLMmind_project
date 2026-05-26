@@ -24,8 +24,7 @@ def infer_alignment_column(df: pd.DataFrame) -> str:
         return numeric_columns[0]
 
     raise ValueError(
-        "Could not infer alignment-score column. "
-        f"Available columns are: {list(df.columns)}"
+        f"Could not infer alignment-score column. Available columns are: {list(df.columns)}"
     )
 
 def infer_model_from_observed_path(path: str) -> str:

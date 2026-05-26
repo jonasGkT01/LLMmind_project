@@ -1,13 +1,14 @@
 DATASET_KEYS = list(config["datasets"].keys())
 SIMILARITY_TYPES = list(config["similarity_metrics"])
-NUMBER_OF_NEIGHBOURS = config["number_of_neighbours"]
+NUMBER_OF_NEIGHBOURS = list(config["number_of_neighbours"])
 
 rule all_isc_nearest_neighbours:
     input:
         expand(
-            "results/mind/{dataset}/{similarity_type}_nearest_neighbours/isc_{similarity_type}_nearest_neighbours.parquet",
+            "results/mind/{dataset}/{similarity_type}_nearest_neighbours/isc_{similarity_type}_nearest_neighbours_{number_of_neighbours}NN.parquet",
             dataset=DATASET_KEYS,
-            similarity_type=SIMILARITY_TYPES
+            similarity_type=SIMILARITY_TYPES,
+            number_of_neighbours=NUMBER_OF_NEIGHBOURS
         )
 
 rule create_isc_dataframe:
@@ -48,10 +49,10 @@ rule compute_isc_nearest_neighbours:
         isc_cosine_similarity_dataframe="results/mind/{dataset}/cosine_similarity/isc_cosine_similarity.parquet",
         isc_pearson_similarity_dataframe="results/mind/{dataset}/pearson_similarity/isc_pearson_similarity.parquet"
     output:
-        isc_cosine_nearest_neighbours="results/mind/{dataset}/cosine_nearest_neighbours/isc_cosine_nearest_neighbours.parquet",
-        isc_pearson_nearest_neighbours="results/mind/{dataset}/pearson_nearest_neighbours/isc_pearson_nearest_neighbours.parquet"
+        isc_cosine_nearest_neighbours="results/mind/{dataset}/cosine_nearest_neighbours/isc_cosine_nearest_neighbours_{number_of_neighbours}NN.parquet",
+        isc_pearson_nearest_neighbours="results/mind/{dataset}/pearson_nearest_neighbours/isc_pearson_nearest_neighbours_{number_of_neighbours}NN.parquet"
     params:
-        number_of_neighbours=NUMBER_OF_NEIGHBOURS
+        number_of_neighbours=lambda wc: wc.number_of_neighbours
     conda:
         "envs/compute_isc_nearest_neighbours_environment.yaml"
     shell:

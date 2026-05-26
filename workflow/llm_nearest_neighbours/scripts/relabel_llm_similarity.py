@@ -9,18 +9,18 @@ def relevel_wide_similarity(
     seed: int,
 ) -> pd.DataFrame:
     """
-    Relevel a wide similarity matrix.
+        Relevel a wide similarity matrix.
 
-    Rows are labelled concepts.
-    Columns are candidate concepts.
+        Rows are labelled concepts.
+        Columns are candidate concepts.
 
-    For each row/concept:
-    - keep the row identity fixed
-    - keep the self-comparison fixed
-    - randomly permute the similarities to all other concepts
+        For each row/concept:
+        - keep the row identity fixed
+        - keep the self-comparison fixed
+        - randomly permute the similarities to all other concepts
 
-    This destroys the neighbour structure while preserving, for each concept,
-    the distribution of similarities to other concepts.
+        This destroys the neighbour structure while preserving, for each concept,
+        the distribution of similarities to other concepts.
     """
 
     rng = np.random.default_rng(seed)

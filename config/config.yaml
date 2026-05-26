@@ -1,40 +1,40 @@
 # number of nearest neighbours to compute for each stimulus and model
-number_of_neighbours: 5
+number_of_neighbours: [3, 5]
 
 # configuration for relabelled similarity computation
 number_of_relabellings: 100
-random_seed: 42
+random_seed: 37
 
 # models
 models:
-  bloom_560m:
-    name: "BLOOMZ-560M"
-    hf_name: "bigscience/bloomz-560m"
-    quantization_method: null
-  bloom_1b1:
-    name: "BLOOMZ-1.1B"
-    hf_name: "bigscience/bloomz-1b1"
-    quantization_method: null
-  bloom_1b7:
-    name: "BLOOMZ-1.7B"
-    hf_name: "bigscience/bloomz-1b7"
-    quantization_method: null
-  bloom_3b:
-    name: "BLOOMZ-3B"
-    hf_name: "bigscience/bloomz-3b"
-    quantization_method: null
-  bloom_7b1:
-    name: "BLOOMZ-7.1B"
-    hf_name: "bigscience/bloomz-7b1"
-    quantization_method: null
-  openllama_3b:
-    name: "OpenLLaMA-3B"
-    hf_name: "openlm-research/open_llama_3b"
-    quantization_method: null
-  openllama_7b:
-    name: "OpenLLaMA-7B"
-    hf_name: "openlm-research/open_llama_7b"
-    quantization_method: null
+#  bloom_560m:
+#    name: "BLOOMZ-560M"
+#    hf_name: "bigscience/bloomz-560m"
+#    quantization_method: null
+#  bloom_1b1:
+#    name: "BLOOMZ-1.1B"
+#    hf_name: "bigscience/bloomz-1b1"
+#    quantization_method: null
+#  bloom_1b7:
+#    name: "BLOOMZ-1.7B"
+#    hf_name: "bigscience/bloomz-1b7"
+#    quantization_method: null
+#  bloom_3b:
+#    name: "BLOOMZ-3B"
+#    hf_name: "bigscience/bloomz-3b"
+#    quantization_method: null
+#  bloom_7b1:
+#    name: "BLOOMZ-7.1B"
+#    hf_name: "bigscience/bloomz-7b1"
+#    quantization_method: null
+#  openllama_3b:
+#    name: "OpenLLaMA-3B"
+#    hf_name: "openlm-research/open_llama_3b"
+#    quantization_method: null
+#  openllama_7b:
+#    name: "OpenLLaMA-7B"
+#    hf_name: "openlm-research/open_llama_7b"
+#    quantization_method: null
   openllama_13b:
     name: "OpenLLaMA-13B"
     hf_name: "openlm-research/open_llama_13b"
