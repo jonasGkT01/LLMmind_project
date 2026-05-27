@@ -18,19 +18,19 @@ rule create_isc_dataframe:
             for task in config[wc.dataset]["tasks"] if task not in config[wc.dataset]["problematic_subtasks"]
         ]
     output:
-        "results/mind/{dataset}/embedding_isc_dataframe.parquet"
+        isc_dataframe="results/mind/{dataset}/isc_dataframe.parquet"
     conda:
         "envs/create_isc_dataframe_environment.yaml"
     shell:
         r"""
             python3 workflow/isc_nearest_neighbours/scripts/create_isc_dataframe.py \
                 --isc_npys {input:q} \
-                --embedding_isc_dataframe {output:q}
+                --isc_dataframe {output.isc_dataframe:q}
         """
 
 rule compute_isc_similarity:
     input:
-        embedding_isc_dataframe="results/mind/{dataset}/embedding_isc_dataframe.parquet"
+        isc_dataframe="results/mind/{dataset}/isc_dataframe.parquet"
     output:
         isc_cosine_similarity_dataframe="results/mind/{dataset}/cosine_similarity/isc_cosine_similarity.parquet",
         isc_pearson_similarity_dataframe="results/mind/{dataset}/pearson_similarity/isc_pearson_similarity.parquet"
@@ -39,7 +39,7 @@ rule compute_isc_similarity:
     shell:
         r"""
             python3 workflow/isc_nearest_neighbours/scripts/compute_isc_similarity.py \
-                --embedding_isc_dataframe {input.embedding_isc_dataframe:q} \
+                --isc_dataframe {input.isc_dataframe:q} \
                 --isc_cosine_similarity_dataframe {output.isc_cosine_similarity_dataframe:q} \
                 --isc_pearson_similarity_dataframe {output.isc_pearson_similarity_dataframe:q}
         """

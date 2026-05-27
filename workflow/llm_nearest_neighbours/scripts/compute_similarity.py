@@ -18,10 +18,10 @@ def normalize_l2(x):
 
 def pearson_normalize(x):
     """
-    Row-wise Pearson normalization.
-
-    Pearson correlation between two vectors is equivalent to cosine similarity
-    after subtracting each vector's mean.
+        Row-wise Pearson normalization.
+    
+        Pearson correlation between two vectors is equivalent to cosine similarity
+        after subtracting each vector's mean.
     """
     x = np.asarray(x, dtype=np.float64)
 
@@ -87,7 +87,7 @@ def main():
         index = embedding_df.index, 
         columns = embedding_df.index
     )
-    cosine_similarity_df = cosine_similarity_df.sort_index()
+#    cosine_similarity_df = cosine_similarity_df.sort_index()
 
     # save the pandas dataframe as a parquet file
     cosine_similarity_df.to_parquet(cosine_similarity_dataframe, engine="pyarrow", index=True)
@@ -110,7 +110,7 @@ def main():
         index = embedding_df.index, 
         columns = embedding_df.index
     )
-    pearson_similarity_df = pearson_similarity_df.sort_index()
+#    pearson_similarity_df = pearson_similarity_df.sort_index()
 
     # save the pandas dataframe as a parquet file
     pearson_similarity_df.to_parquet(pearson_similarity_dataframe, engine="pyarrow", index=True)

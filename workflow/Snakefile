@@ -17,7 +17,7 @@ NUMBER_OF_NEIGHBOURS = list(config["number_of_neighbours"])
 rule all:
     input:
         expand(
-            "results/alignment_score/{dataset}/{similarity_type}_alignment_scores/{model}_{similarity_type}_brain_alignment_score_{number_of_neighbours}NN.parquet",
+            "results/alignment_score/{dataset}/{similarity_type}_alignment_scores/{model}_brain_{similarity_type}_alignment_score_{number_of_neighbours}NN.parquet",
             dataset=DATASETS,
             similarity_type=SIMILARITY_TYPES,
             model=MODEL_KEYS,

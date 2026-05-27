@@ -16,8 +16,7 @@ def dataframe_to_embedding_matrix(df: pd.DataFrame) -> np.ndarray:
                     expected_dim = arr.shape[0]
                 elif arr.shape[0] != expected_dim:
                     raise ValueError(
-                        f"Inconsistent embedding length for '{idx}': "
-                        f"expected {expected_dim}, got {arr.shape[0]}"
+                        f"Inconsistent embedding length for '{idx}': expected {expected_dim}, got {arr.shape[0]}"
                     )
                 rows.append(arr)
             return np.vstack(rows)
@@ -26,8 +25,7 @@ def dataframe_to_embedding_matrix(df: pd.DataFrame) -> np.ndarray:
         return df.to_numpy(dtype=np.float64, copy=False)
     except (TypeError, ValueError) as exc:
         raise TypeError(
-            "Embedding dataframe could not be converted to a numeric matrix. "
-            "Ensure all embedding values are numeric."
+            "Embedding dataframe could not be converted to a numeric matrix. Ensure all embedding values are numeric."
         ) from exc
 
 
@@ -49,10 +47,10 @@ def normalize_l2(x):
 
 def pearson_normalize(x):
     """
-    Row-wise Pearson normalization.
+        Row-wise Pearson normalization.
 
-    Pearson similarity between two vectors is cosine similarity after
-    subtracting each vector's mean.
+        Pearson similarity between two vectors is cosine similarity after
+        subtracting each vector's mean.
     """
     x = np.asarray(x, dtype=np.float64)
 
@@ -68,9 +66,9 @@ def pearson_normalize(x):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--embedding_isc_dataframe",
+    parser.add_argument("--isc_dataframe",
                         type=str,
-                        help="Path to dataframe of embeddings")
+                        help="Path to dataframe of ISC's")
     parser.add_argument("--isc_cosine_similarity_dataframe",
                         type=str,
                         help="Path to dataframe of computed cosine similarities")
@@ -79,12 +77,12 @@ def main():
                         help="Path to dataframe of computed Pearson similarities")
     args = parser.parse_args()
 
-    embedding_isc_dataframe = args.embedding_isc_dataframe
+    isc_dataframe = args.isc_dataframe
     isc_cosine_similarity_dataframe = args.isc_cosine_similarity_dataframe
     isc_pearson_similarity_dataframe = args.isc_pearson_similarity_dataframe
 
     # load the dataframe
-    embedding_df = pd.read_parquet(embedding_isc_dataframe, engine="pyarrow")
+    embedding_df = pd.read_parquet(isc_dataframe, engine="pyarrow")
 
     embedding_matrix = dataframe_to_embedding_matrix(embedding_df)
 
@@ -94,14 +92,14 @@ def main():
     cosine_result = X @ X.T
 
     # remove cosine self-similarities
-    np.fill_diagonal(cosine_result, np.nan)
+    np.fill_diagonal(cosine_result, -np.inf)
 
     cosine_result_df = pd.DataFrame(
         cosine_result,
         index=embedding_df.index,
         columns=embedding_df.index
     )
-    cosine_result_df = cosine_result_df.sort_index()
+#    cosine_result_df = cosine_result_df.sort_index()
 
     # save the pandas dataframe as a parquet file
     cosine_result_df.to_parquet(isc_cosine_similarity_dataframe, engine="pyarrow", index=True)
@@ -116,14 +114,14 @@ def main():
     pearson_result = X @ X.T
 
     # remove Pearson self-similarities
-    np.fill_diagonal(pearson_result, np.nan)
+    np.fill_diagonal(pearson_result, -np.inf)
 
     pearson_result_df = pd.DataFrame(
         pearson_result,
         index=embedding_df.index,
         columns=embedding_df.index
     )
-    pearson_result_df = pearson_result_df.sort_index()
+#    pearson_result_df = pearson_result_df.sort_index()
 
     # save the pandas dataframe as a parquet file
     pearson_result_df.to_parquet(isc_pearson_similarity_dataframe, engine="pyarrow", index=True)

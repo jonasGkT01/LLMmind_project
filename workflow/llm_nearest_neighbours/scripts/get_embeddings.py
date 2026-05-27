@@ -17,11 +17,11 @@ def mean_pool_last_hidden(
 
 def get_safe_max_length(tokenizer, model, user_max_length: int | None = None) -> int:
     """
-    Determine a safe context length for the model.
+        Determine a safe context length for the model.
 
-    For OpenLLaMA/BLOOM-like models, 2048 is a safe default.
-    Some tokenizers expose huge placeholder values, so we avoid blindly trusting
-    tokenizer.model_max_length.
+        For OpenLLaMA/BLOOM-like models, 2048 is a safe default.
+        Some tokenizers expose huge placeholder values, so we avoid blindly trusting
+        tokenizer.model_max_length.
     """
     if user_max_length is not None:
         return int(user_max_length)
@@ -50,12 +50,12 @@ def embed_long_text(
     overlap: int = 256,
 ) -> tuple[torch.Tensor, int, int]:
     """
-    Embed a potentially long transcript by splitting it into overlapping token chunks.
+        Embed a potentially long transcript by splitting it into overlapping token chunks.
 
-    Returns:
-        final_embedding: tensor of shape [hidden_dim]
-        n_tokens: number of original tokens before adding special tokens
-        n_chunks: number of chunks used
+        Returns:
+            final_embedding: tensor of shape [hidden_dim]
+            n_tokens: number of original tokens before adding special tokens
+            n_chunks: number of chunks used
     """
     if overlap < 0:
         raise ValueError("overlap must be >= 0")
@@ -91,8 +91,7 @@ def embed_long_text(
 
     if step <= 0:
         raise ValueError(
-            "overlap is too large after accounting for special tokens. "
-            f"chunk_token_length={chunk_token_length}, overlap={overlap}"
+            f"overlap is too large after accounting for special tokens. chunk_token_length={chunk_token_length}, overlap={overlap}"
         )
 
     chunk_embeddings = []
@@ -226,8 +225,7 @@ def main():
 
     if args.chunk_overlap >= max_length:
         raise ValueError(
-            f"--chunk_overlap must be smaller than chunk max length. "
-            f"Got overlap={args.chunk_overlap}, max_length={max_length}."
+            f"--chunk_overlap must be smaller than chunk max length. Got overlap={args.chunk_overlap}, max_length={max_length}."
         )
 
     print(
@@ -263,8 +261,7 @@ def main():
 
     if not items:
         raise ValueError(
-            f"No input files found in {args.input_dir}. "
-            "Expected files matching '*_transcript.txt'."
+            f"No input files found in {args.input_dir}. Expected files matching '*_transcript.txt'."
         )
 
     records = []

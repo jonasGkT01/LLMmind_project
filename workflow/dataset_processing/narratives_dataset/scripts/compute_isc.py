@@ -76,4 +76,4 @@ for parcel_idx in range(n_parcels):
 out_img = nib.Nifti1Image(out_data, affine=atlas_img.affine, header=atlas_img.header)
 nib.save(out_img, isc_nii)
 
-print(f"Saved ISC to {isc_npy} and {isc_nii}")
+#print(f"Saved ISC to {isc_npy} and {isc_nii}")

@@ -18,7 +18,7 @@ n_rois = args.n_rois
 yeo_networks = args.yeo_networks
 atlas_dir = args.atlas_dir
 
-print(f"Computing parcels from: {bold_file}")
+#print(f"Computing parcels from: {bold_file}")
 
 # load atlas to mask data
 atlas = datasets.fetch_atlas_schaefer_2018(

@@ -55,7 +55,7 @@ def main():
         "neighbour": neighbours[idx_topk.reshape(-1)], 
         "cosine_similarity": scores_topk.reshape(-1)
     })
-    cosine_nearest_neighbours_df = cosine_nearest_neighbours_df.sort_index()
+#    cosine_nearest_neighbours_df = cosine_nearest_neighbours_df.sort_index()
     
     # save the nearest neighbours to primary concept as a parquet file
     cosine_nearest_neighbours_df.to_parquet(isc_cosine_nearest_neighbours, engine = "pyarrow", index = True)
@@ -91,7 +91,7 @@ def main():
         "neighbour": neighbours[idx_topk.reshape(-1)], 
         "pearson_similarity": scores_topk.reshape(-1)
     })
-    pearson_nearest_neighbours_df = pearson_nearest_neighbours_df.sort_index()
+#    pearson_nearest_neighbours_df = pearson_nearest_neighbours_df.sort_index()
     
     # save the nearest neighbours to primary concept as a parquet file
     pearson_nearest_neighbours_df.to_parquet(isc_pearson_nearest_neighbours, engine = "pyarrow", index = True)

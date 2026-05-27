@@ -62,20 +62,12 @@ def main():
             "common_neighbours": common_neighbours, 
             "alignment_score": common_neighbours/number_of_neighbours, 
             "alignment_score_percentage": common_neighbours/number_of_neighbours*100
-        })
-    
-#    number_of_concepts = len(concepts)
-#    average_alignment_score = np.nanmean([row["alignment_score"] for row in rows])
-#    expected_alignment_score = number_of_neighbours/(number_of_concepts - 1)
-#    print(f"Average alignment score with model {model} across all concepts: {average_alignment_score}")
-#    print(f"Expected alignment score with model {model} across all concepts: {expected_alignment_score}")
-#    print(f"Enrichment of the alignment score with model {model} across all concepts: {average_alignment_score/expected_alignment_score}\n")
-    
+        })    
 
     # create a pandas datafranme to store alignment scores results
     alignment_score_df = pd.DataFrame(rows).set_index("concept")
     alignment_score_df.index.name = "concept"
-    alignment_score_df = alignment_score_df.sort_index()
+#    alignment_score_df = alignment_score_df.sort_index()
 
     # save the nearest neighbours to every concept as a parquet file
     alignment_score_df.to_parquet(alignment_score, engine = "pyarrow", index = True)

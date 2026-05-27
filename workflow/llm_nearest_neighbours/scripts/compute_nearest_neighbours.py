@@ -53,11 +53,11 @@ def main():
 
     # create a pandas dataframe to store the nearest neighbours of each concept
     cosine_nearest_neighbours_df = pd.DataFrame({
-    "concept": np.repeat(concepts, k_eff), 
-    "neighbour": neighbours[idx_topk.reshape(-1)], 
+        "concept": np.repeat(concepts, k_eff), 
+        "neighbour": neighbours[idx_topk.reshape(-1)], 
         "cosine_similarity": scores_topk.reshape(-1)
     })
-    cosine_nearest_neighbours_df = cosine_nearest_neighbours_df.sort_index()
+#    cosine_nearest_neighbours_df = cosine_nearest_neighbours_df.sort_index()
 
     # save the nearest neighbours to primary concept as a parquet file
     cosine_nearest_neighbours_df.to_parquet(cosine_nearest_neighbours, engine="pyarrow", index=True)
@@ -91,7 +91,7 @@ def main():
         "neighbour": neighbours[idx_topk.reshape(-1)], 
         "pearson_similarity": scores_topk.reshape(-1)
     })
-    pearson_nearest_neighbours_df = pearson_nearest_neighbours_df.sort_index()
+#    pearson_nearest_neighbours_df = pearson_nearest_neighbours_df.sort_index()
 
     # save the nearest neighbours to primary concept as a parquet file
     pearson_nearest_neighbours_df.to_parquet(pearson_nearest_neighbours, engine="pyarrow", index=True)

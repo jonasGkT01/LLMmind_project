@@ -11,8 +11,7 @@ def extract_task_from_filename(path: Path) -> str:
     match = TASK_PATTERN.search(path.name)
     if not match:
         raise ValueError(
-            f"Could not extract task name from filename: {path.name}. "
-            "Expected pattern like 'task-<task>_isc_mean.npy'."
+            f"Could not extract task name from filename: {path.name}. Expected pattern like 'task-<task>_isc_mean.npy'."
         )
     return match.group(1)
 
@@ -46,7 +45,7 @@ def main() -> None:
                         nargs="+",
                         required=True,
                         help="List of ISC numpy files, one per task",)
-    parser.add_argument("--embedding_isc_dataframe",
+    parser.add_argument("--isc_dataframe",
                         type=str,
                         required=True,
                         help="Path to output parquet dataframe",)
@@ -54,7 +53,7 @@ def main() -> None:
 
     df = isc_npys_to_dataframe(args.isc_npys)
 
-    output_path = Path(args.embedding_isc_dataframe)
+    output_path = Path(args.isc_dataframe)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     df.to_parquet(output_path, engine="pyarrow", index=True)
 
