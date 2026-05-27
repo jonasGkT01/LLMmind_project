@@ -9,7 +9,7 @@ include: "isc_nearest_neighbours/Snakefile"
 include: "llm_nearest_neighbours/Snakefile"
 include: "llm_mind_alignment/Snakefile"
 
-DATASET_KEYS = list(config["datasets"].keys())
+DATASETS = list(config["datasets"])
 MODEL_KEYS = list(config["models"].keys())
 SIMILARITY_TYPES = list(config["similarity_metrics"])
 NUMBER_OF_NEIGHBOURS = list(config["number_of_neighbours"])
@@ -18,20 +18,20 @@ rule all:
     input:
         expand(
             "results/alignment_score/{dataset}/{similarity_type}_alignment_scores/{model}_{similarity_type}_brain_alignment_score_{number_of_neighbours}NN.parquet",
-            dataset=DATASET_KEYS,
+            dataset=DATASETS,
             similarity_type=SIMILARITY_TYPES,
             model=MODEL_KEYS,
             number_of_neighbours=NUMBER_OF_NEIGHBOURS
         ),
         expand(
             "results/alignment_summary/{dataset}/parquet_summary/{similarity_type}_alignment_summary_{number_of_neighbours}NN_all_models.parquet",
-            dataset=DATASET_KEYS,
+            dataset=DATASETS,
             similarity_type=SIMILARITY_TYPES,
             number_of_neighbours=NUMBER_OF_NEIGHBOURS
         ),
         expand(
             "results/alignment_summary/{dataset}/tsv_summary/{similarity_type}_alignment_summary_{number_of_neighbours}NN_all_models.tsv",
-            dataset=DATASET_KEYS,
+            dataset=DATASETS,
             similarity_type=SIMILARITY_TYPES,
             number_of_neighbours=NUMBER_OF_NEIGHBOURS
         )

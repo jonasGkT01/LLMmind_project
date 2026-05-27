@@ -3,38 +3,38 @@ number_of_neighbours: [3, 5]
 
 # configuration for relabelled similarity computation
 number_of_relabellings: 100
-random_seed: 37
+random_seed: 42 #37
 
 # models
 models:
-#  bloom_560m:
-#    name: "BLOOMZ-560M"
-#    hf_name: "bigscience/bloomz-560m"
-#    quantization_method: null
-#  bloom_1b1:
-#    name: "BLOOMZ-1.1B"
-#    hf_name: "bigscience/bloomz-1b1"
-#    quantization_method: null
-#  bloom_1b7:
-#    name: "BLOOMZ-1.7B"
-#    hf_name: "bigscience/bloomz-1b7"
-#    quantization_method: null
-#  bloom_3b:
-#    name: "BLOOMZ-3B"
-#    hf_name: "bigscience/bloomz-3b"
-#    quantization_method: null
-#  bloom_7b1:
-#    name: "BLOOMZ-7.1B"
-#    hf_name: "bigscience/bloomz-7b1"
-#    quantization_method: null
-#  openllama_3b:
-#    name: "OpenLLaMA-3B"
-#    hf_name: "openlm-research/open_llama_3b"
-#    quantization_method: null
-#  openllama_7b:
-#    name: "OpenLLaMA-7B"
-#    hf_name: "openlm-research/open_llama_7b"
-#    quantization_method: null
+  bloom_560m:
+    name: "BLOOMZ-560M"
+    hf_name: "bigscience/bloomz-560m"
+    quantization_method: null
+  bloom_1b1:
+    name: "BLOOMZ-1.1B"
+    hf_name: "bigscience/bloomz-1b1"
+    quantization_method: null
+  bloom_1b7:
+    name: "BLOOMZ-1.7B"
+    hf_name: "bigscience/bloomz-1b7"
+    quantization_method: null
+  bloom_3b:
+    name: "BLOOMZ-3B"
+    hf_name: "bigscience/bloomz-3b"
+    quantization_method: null
+  bloom_7b1:
+    name: "BLOOMZ-7.1B"
+    hf_name: "bigscience/bloomz-7b1"
+    quantization_method: null
+  openllama_3b:
+    name: "OpenLLaMA-3B"
+    hf_name: "openlm-research/open_llama_3b"
+    quantization_method: null
+  openllama_7b:
+    name: "OpenLLaMA-7B"
+    hf_name: "openlm-research/open_llama_7b"
+    quantization_method: null
   openllama_13b:
     name: "OpenLLaMA-13B"
     hf_name: "openlm-research/open_llama_13b"
@@ -47,21 +47,18 @@ similarity_metrics:
 
 # datasets
 datasets:
-  narratives:
-    isc_data: "results/mind/narratives/isc/"
-    stimuli: "resources/datasets/narratives_dataset/stimuli/transcripts/"
-#  caption_scene:
-#    isc_data: "results/mind/caption_scene/isc/"
-#    stimuli: "resources/datasets/caption_scene_dataset/V1/stimuli/"
+  - "narratives"
+  - "caption_scene"
 
 ##### NARRATIVES DATASET #####
 # dataset configuration
 narratives:
-  fMRI_data_dir: "resources/datasets/narratives_dataset/derivatives/afni-smooth"
   bold_glob_pattern: "resources/datasets/narratives_dataset/derivatives/afni-smooth/sub-{subject}/func/sub-{subject}_task-{task}{run_tag}_space-{space}_res-{resolution}_desc-{descriptor}_bold.nii.gz"
   scans_to_be_excluded: "resources/datasets/narratives_dataset/scan_exclude.json"
   excluded_scans_for_task: "resources/datasets/narratives_dataset/excluded_scans_for_task.json"
   processing_output_dir: "results/mind/narratives"
+  isc_data: "results/mind/narratives/isc/"
+  stimuli: "resources/datasets/narratives_dataset/stimuli/transcripts/"
   subjects: 345
   tasks:
     - "21styear"
@@ -132,6 +129,12 @@ narratives:
     - "notthefallshortscram"
 
 ##### CAPTION-SCENE DATASET #####
+caption_scene:
+  fMRI_data_dir: "resources/datasets/caption_scene_dataset/derivatives/afni-smooth"
+  bold_glob_pattern: "resources/datasets/caption_scene_dataset/derivatives/afni-smooth/sub-{subject}/func/sub-{subject}_task-caption_scene_space-MNI152NLin2009cAsym_res-native_desc-clean_bold.nii.gz"
+  scans_to_be_excluded: "resources/datasets/caption_scene_dataset/scan_exclude.json"
+  processing_output_dir: "results/mind/caption_scene"
+  subjects: 19
 
 # atlas configuration
 atlas:

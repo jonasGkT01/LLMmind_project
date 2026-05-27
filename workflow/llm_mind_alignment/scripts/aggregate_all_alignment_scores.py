@@ -30,12 +30,12 @@ def infer_alignment_column(df: pd.DataFrame) -> str:
 def infer_model_from_observed_path(path: str) -> str:
     """
         Expected observed path:
-        results/alignment_score/{dataset}/{similarity_type}_alignment_scores/{model}_{similarity_type}_brain_alignment_score.parquet
+        results/alignment_score/{dataset}/{similarity_type}_alignment_scores/{model}_brain_{similarity_type}_alignment_score_{number_of_neighbours}NN.parquet
     """
     name = Path(path).name
 
     match = re.fullmatch(
-        r"(.+)_[^_]+_brain_alignment_score\.parquet",
+        r"(.+)_brain_(.+)_alignment_score_(\d+)NN\.parquet",
         name,
     )
 
@@ -48,12 +48,12 @@ def infer_model_from_observed_path(path: str) -> str:
 def infer_model_and_relabel_from_relabelled_path(path: str) -> tuple[str, int]:
     """
         Expected relabelled path:
-        results/alignment_score/{dataset}/{similarity_type}_alignment_scores/{model}_{similarity_type}_alignment_score_relabel_{relabel}.parquet
+        results/alignment_score/{dataset}/{similarity_type}_alignment_scores/{model}_brain_{similarity_type}_alignment_score_relabel_{relabel}_{number_of_neighbours}NN.parquet
     """
     name = Path(path).name
 
     match = re.fullmatch(
-        r"(.+)_[^_]+_alignment_score_relabel_(\d+)\.parquet",
+        r"(.+)_brain_(.+)_alignment_score_(\d+)NN_relabel_(\d+)\.parquet",
         name,
     )
 
@@ -63,7 +63,7 @@ def infer_model_and_relabel_from_relabelled_path(path: str) -> tuple[str, int]:
         )
 
     model = match.group(1)
-    relabel = int(match.group(2))
+    relabel = int(match.group(4))
 
     return model, relabel
 

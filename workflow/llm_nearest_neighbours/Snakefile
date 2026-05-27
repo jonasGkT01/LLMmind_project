@@ -1,4 +1,4 @@
-DATASET_KEYS = list(config["datasets"].keys())
+DATASETS = list(config["datasets"])
 MODEL_KEYS = list(config["models"].keys())
 SIMILARITY_TYPES = list(config["similarity_metrics"])
 EXCLUDED_SUBTASKS = list(config["narratives"]["schema_subtasks"])
@@ -8,7 +8,7 @@ rule all_llm_nearest_neighbours:
     input:
         expand(
             "results/llm/{dataset}/{similarity_type}_nearest_neighbours/{model}_{similarity_type}_nearest_neighbours_{number_of_neighbours}NN.parquet",
-            dataset=DATASET_KEYS,
+            dataset=DATASETS,
             model=MODEL_KEYS,
             similarity_type=SIMILARITY_TYPES,
             number_of_neighbours=NUMBER_OF_NEIGHBOURS
@@ -29,7 +29,7 @@ rule download_pretrained_llm:
 rule get_embeddings:
     input:
         model="resources/models/{model}",
-        stimuli=lambda wc: config["datasets"][wc.dataset]["stimuli"]
+        stimuli=lambda wc: config[wc.dataset]["stimuli"]
     output:
         "results/llm/{dataset}/embeddings/{model}_embeddings.parquet"
     params:

@@ -1,4 +1,4 @@
-DATASET_KEYS = list(config["datasets"].keys())
+DATASETS = list(config["datasets"])
 SIMILARITY_TYPES = list(config["similarity_metrics"])
 NUMBER_OF_NEIGHBOURS = list(config["number_of_neighbours"])
 
@@ -6,7 +6,7 @@ rule all_isc_nearest_neighbours:
     input:
         expand(
             "results/mind/{dataset}/{similarity_type}_nearest_neighbours/isc_{similarity_type}_nearest_neighbours_{number_of_neighbours}NN.parquet",
-            dataset=DATASET_KEYS,
+            dataset=DATASETS,
             similarity_type=SIMILARITY_TYPES,
             number_of_neighbours=NUMBER_OF_NEIGHBOURS
         )
