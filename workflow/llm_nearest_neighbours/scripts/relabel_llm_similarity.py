@@ -9,8 +9,9 @@ def relabel_wide_similarity(
     seed: int,
 ) -> pd.DataFrame:
     """
-        relabel a wide similarity matrix.
-
+        Row-wise random permutation of off-diagonal similarities.
+        One independent permutaion for each row.
+        
         Rows are labelled concepts.
         Columns are candidate concepts.
 
