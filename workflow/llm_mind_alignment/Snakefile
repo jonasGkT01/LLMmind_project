@@ -59,9 +59,9 @@ rule compute_llm_mind_alignment_score:
 rule compute_relabelled_llm_mind_alignment_score:
     input:
         isc_nearest_neighbours="results/mind/{dataset}/{similarity_type}_nearest_neighbours/isc_{similarity_type}_nearest_neighbours_{number_of_neighbours}NN.parquet",
-        relabelled_llm_nearest_neighbours="results/llm/relabelled_similarity/{dataset}/{similarity_type}_nearest_neighbours/{model}_{similarity_type}_nearest_neighbours_{number_of_neighbours}NN_relabel_{relabel}.parquet"
+        relabelled_llm_nearest_neighbours="results/temp/relabelled_similarity/{dataset}/{similarity_type}_nearest_neighbours/{model}_{similarity_type}_nearest_neighbours_{number_of_neighbours}NN_relabel_{relabel}.parquet"
     output:
-        relabelled_llm_brain_alignment_score=temp("results/alignment_score/{dataset}/{similarity_type}_alignment_scores/{model}_brain_{similarity_type}_alignment_score_{number_of_neighbours}NN_relabel_{relabel}.parquet")
+        relabelled_llm_brain_alignment_score=temp("results/temp/alignment_score/{dataset}/{similarity_type}_alignment_scores/{model}_brain_{similarity_type}_alignment_score_{number_of_neighbours}NN_relabel_{relabel}.parquet")
     params:
         number_of_neighbours=lambda wc: wc.number_of_neighbours,
         model="{model}"
@@ -84,7 +84,7 @@ rule aggregate_all_alignment_scores:
             for model in MODEL_KEYS
         ],
         relabelled_alignment_scores=lambda wc: [
-            f"results/alignment_score/{wc.dataset}/{wc.similarity_type}_alignment_scores/{model}_brain_{wc.similarity_type}_alignment_score_{wc.number_of_neighbours}NN_relabel_{relabel}.parquet"
+            f"results/temp/alignment_score/{wc.dataset}/{wc.similarity_type}_alignment_scores/{model}_brain_{wc.similarity_type}_alignment_score_{wc.number_of_neighbours}NN_relabel_{relabel}.parquet"
             for model in MODEL_KEYS
             for relabel in NUMBER_OF_RELABELLINGS
         ]
