@@ -32,7 +32,9 @@ def relabel_wide_similarity(
     # If the dataframe index is not already the same as the columns,
     # assume rows are in the same order as columns.
     if list(df.index) != concepts:
-        relabelled.index = concepts
+        raise ValueError(
+            f"Expected the dataframe index to match the columns, but got index {list(df.index)} and columns {concepts}."
+        )
 
     for concept in concepts:
         other_concepts = [c for c in concepts if c != concept]

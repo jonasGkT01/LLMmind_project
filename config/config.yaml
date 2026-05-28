@@ -2,8 +2,8 @@
 number_of_neighbours: [3, 5]
 
 # configuration for relabelled similarity computation
-number_of_relabellings: 100
-random_seed: 42 #37
+number_of_relabellings: 10000
+random_seed: 37
 
 # models
 models:

@@ -35,12 +35,16 @@ def main():
     ##### COSINE SIMILARITY #####
     # process cosine similarities
     X_cosine = cosine_similarity_df.values
+    if X_cosine.shape[1] < number_of_neighbours + 1:
+        raise ValueError(
+            f"Requested number of neighbours {number_of_neighbours} is too large for the number of concepts {X_cosine.shape[1]}."
+        )
+    
     concepts = cosine_similarity_df.index.to_numpy()
     neighbours = cosine_similarity_df.columns.to_numpy()
-    k_eff = min(number_of_neighbours, X_cosine.shape[1] - 1)
 
     # row by row, partition it storing the indices of largest values in the last positions, then keep only those
-    idx_part = np.argpartition(X_cosine, -k_eff, axis=1)[:, -k_eff:]
+    idx_part = np.argpartition(X_cosine, -number_of_neighbours, axis=1)[:, -number_of_neighbours:]
     # row by row, take the values corresponding to the indices selected above
     scores_part = np.take_along_axis(X_cosine, idx_part, axis=1)
 
@@ -53,7 +57,7 @@ def main():
 
     # create a pandas dataframe to store the nearest neighbours of each concept
     cosine_nearest_neighbours_df = pd.DataFrame({
-        "concept": np.repeat(concepts, k_eff), 
+        "concept": np.repeat(concepts, number_of_neighbours), 
         "neighbour": neighbours[idx_topk.reshape(-1)], 
         "cosine_similarity": scores_topk.reshape(-1)
     })
@@ -69,12 +73,16 @@ def main():
     ##### PEARSON SIMILARITY #####
     # process Pearson similarities
     X_pearson = pearson_similarity_df.values
+    if X_pearson.shape[1] < number_of_neighbours + 1:
+        raise ValueError(
+            f"Requested number of neighbours {number_of_neighbours} is too large for the number of concepts {X_pearson.shape[1]}."
+        )
+    
     concepts = pearson_similarity_df.index.to_numpy()
     neighbours = pearson_similarity_df.columns.to_numpy()
-    k_eff = min(number_of_neighbours, X_pearson.shape[1] - 1)
 
     # row by row, partition it storing the indices of largest values in the last positions, then keep only those
-    idx_part = np.argpartition(X_pearson, -k_eff, axis=1)[:, -k_eff:]
+    idx_part = np.argpartition(X_pearson, -number_of_neighbours, axis=1)[:, -number_of_neighbours:]
     # row by row, take the values corresponding to the indices selected above
     scores_part = np.take_along_axis(X_pearson, idx_part, axis=1)
 
@@ -87,7 +95,7 @@ def main():
 
     # create a pandas dataframe to store the nearest neighbours of each concept
     pearson_nearest_neighbours_df = pd.DataFrame({
-        "concept": np.repeat(concepts, k_eff), 
+        "concept": np.repeat(concepts, number_of_neighbours), 
         "neighbour": neighbours[idx_topk.reshape(-1)], 
         "pearson_similarity": scores_topk.reshape(-1)
     })
