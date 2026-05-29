@@ -184,7 +184,7 @@ def main() -> None:
         null_alignment_scores = np.array(null_alignment_scores)
 
         empirical_null_mean = float(null_alignment_scores.mean())
-        empirical_null_std = float(null_alignment_scores.std(ddof=1))
+#        empirical_null_std = float(null_alignment_scores.std(ddof=1))
 
         empirical_enrichment = (
             observed_average_alignment / empirical_null_mean
@@ -200,10 +200,10 @@ def main() -> None:
             / hypergeom_stats["hypergeom_expected_alignment_score"]
         )
 
-        z_score_empirical = (
-            (observed_average_alignment - empirical_null_mean)
-            / empirical_null_std
-        )
+#        z_score_empirical = (
+#            (observed_average_alignment - empirical_null_mean)
+#            / empirical_null_std
+#        )
 
         empirical_p_value_upper = (
             (np.sum(null_alignment_scores >= observed_average_alignment) + 1)
@@ -214,9 +214,9 @@ def main() -> None:
             "model": model,
             "observed_average_alignment_score": observed_average_alignment,
             "empirical_null_mean_alignment_score": empirical_null_mean,
-            "empirical_null_std_alignment_score": empirical_null_std,
+#            "empirical_null_std_alignment_score": empirical_null_std,
             "empirical_enrichment_observed_over_null": empirical_enrichment,
-            "empirical_z_score": z_score_empirical,
+#            "empirical_z_score": z_score_empirical,
             "empirical_upper_tail_p_value": empirical_p_value_upper,
             "number_of_relabelings": len(null_alignment_scores),
             "hypergeom_enrichment_observed_over_expected": hypergeom_enrichment,
