@@ -15,12 +15,11 @@ rule all_llm_nearest_neighbours:
             number_of_neighbours=NUMBER_OF_NEIGHBOURS
         ),
         expand(
-            "results/temp/relabelled_similarity/{dataset}/{similarity_type}_nearest_neighbours/{model}_{similarity_type}_nearest_neighbours_{number_of_neighbours}NN_relabel_{relabel}.parquet",
+            "results/llm/{dataset}/relabelled_similarity/relabelled_{model}_{similarity_type}_nearest_neighbours_{number_of_neighbours}NN.parquet",
             dataset=DATASETS,
             model=MODEL_KEYS,
             similarity_type=SIMILARITY_TYPES,
-            number_of_neighbours=NUMBER_OF_NEIGHBOURS,
-            relabel=range(NUMBER_OF_RELABELLINGS)
+            number_of_neighbours=NUMBER_OF_NEIGHBOURS
         )
 
 rule download_pretrained_llm:
@@ -66,7 +65,7 @@ rule compute_llm_similarity:
         cosine_similarity_dataframe="results/llm/{dataset}/cosine_similarity/{model}_cosine_similarity.parquet",
         pearson_similarity_dataframe="results/llm/{dataset}/pearson_similarity/{model}_pearson_similarity.parquet"
     conda:
-        "envs/compute_similarity_environment.yaml"
+        "envs/compute_llm_similarity_environment.yaml"
     shell:
         r"""
             python3 workflow/llm_nearest_neighbours/scripts/compute_llm_similarity.py \
@@ -77,11 +76,9 @@ rule compute_llm_similarity:
 
 rule compute_llm_nearest_neighbours:
     input:
-        cosine_similarity_dataframe="results/llm/{dataset}/cosine_similarity/{model}_cosine_similarity.parquet",
-        pearson_similarity_dataframe="results/llm/{dataset}/pearson_similarity/{model}_pearson_similarity.parquet"
+        similarity_dataframe="results/llm/{dataset}/{similarity_type}_similarity/{model}_{similarity_type}_similarity.parquet"
     output:
-        cosine_nearest_neighbours="results/llm/{dataset}/cosine_nearest_neighbours/{model}_cosine_nearest_neighbours_{number_of_neighbours}NN.parquet",
-        pearson_nearest_neighbours="results/llm/{dataset}/pearson_nearest_neighbours/{model}_pearson_nearest_neighbours_{number_of_neighbours}NN.parquet"
+        nearest_neighbours="results/llm/{dataset}/{similarity_type}_nearest_neighbours/{model}_{similarity_type}_nearest_neighbours_{number_of_neighbours}NN.parquet"
     params:
         number_of_neighbours=lambda wc: wc.number_of_neighbours
     conda:
@@ -90,29 +87,27 @@ rule compute_llm_nearest_neighbours:
         r"""
             python3 workflow/llm_nearest_neighbours/scripts/compute_llm_nearest_neighbours.py \
                 --number_of_neighbours {params.number_of_neighbours:q} \
-                --cosine_similarity_dataframe {input.cosine_similarity_dataframe:q} \
-                --pearson_similarity_dataframe {input.pearson_similarity_dataframe:q} \
-                --cosine_nearest_neighbours {output.cosine_nearest_neighbours:q} \
-                --pearson_nearest_neighbours {output.pearson_nearest_neighbours:q}
+                --similarity_dataframe {input.similarity_dataframe:q} \
+                --nearest_neighbours {output.nearest_neighbours:q}
         """
 
 rule relabel_llm_similarity_and_compute_relabelled_llm_nearest_neighbours:
     input:
         similarity_dataframe="results/llm/{dataset}/{similarity_type}_similarity/{model}_{similarity_type}_similarity.parquet"
     output:
-        relabelled_nearest_neighbours=lambda wc: expand(
-            temp("results/temp/relabelled_similarity/{wc.dataset}/{wc.similarity_type}_nearest_neighbours/{wc.model}_{wc.similarity_type}_nearest_neighbours_{wc.number_of_neighbours}NN_relabel_{relabel}.parquet"),
-            relabel=range(NUMBER_OF_RELABELLINGS)
-        )
+        relabelled_nearest_neighbours="results/llm/{dataset}/relabelled_nearest_neighbours/relabelled_{model}_{similarity_type}_nearest_neighbours_{number_of_neighbours}NN.parquet"
     params:
         number_of_neighbours=lambda wc: wc.number_of_neighbours,
-        number_of_relabellings=NUMBER_OF_RELABELLINGS
+        number_of_relabellings=NUMBER_OF_RELABELLINGS,
+        random_seed=config["random_seed"]
     conda:
         "envs/relabel_llm_similarity_and_compute_relabelled_llm_nearest_neighbours_environment.yaml"
     shell:
         r"""
             python3 workflow/llm_nearest_neighbours/scripts/relabel_llm_similarity_and_compute_relabelled_llm_nearest_neighbours.py \
-                --number_of_neighbours {params.number_of_neighbours} \
                 --similarity_dataframe {input.similarity_dataframe:q} \
-                --relabelled_nearest_neighbours {output.relabelled_nearest_neighbours:q}
+                --relabelled_nearest_neighbours {output.relabelled_nearest_neighbours:q} \
+                --number_of_neighbours {params.number_of_neighbours} \
+                --number_of_relabellings {params.number_of_relabellings} \
+                --random_seed {params.random_seed} \
         """

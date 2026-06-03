@@ -30,7 +30,7 @@ def infer_alignment_column(df: pd.DataFrame) -> str:
 def infer_model_from_observed_path(path: str) -> str:
     """
         Expected observed path:
-        results/alignment_score/{dataset}/{similarity_type}_alignment_scores/{model}_brain_{similarity_type}_alignment_score_{number_of_neighbours}NN.parquet
+        {model}_brain_{similarity_type}_alignment_score_{number_of_neighbours}NN.parquet
     """
     name = Path(path).name
 
@@ -44,28 +44,26 @@ def infer_model_from_observed_path(path: str) -> str:
 
     return match.group(1)
 
-
-def infer_model_and_relabel_from_relabelled_path(path: str) -> tuple[str, int]:
+def infer_model_from_relabelled_big_path(path: str) -> str:
     """
-        Expected relabelled path:
-        results/alignment_score/{dataset}/{similarity_type}_alignment_scores/{model}_brain_{similarity_type}_alignment_score_relabel_{relabel}_{number_of_neighbours}NN.parquet
+        Expected relabelled big path:
+        {model}_brain_relabelled_{similarity_type}_alignment_score_{number_of_neighbours}NN.parquet
+
+    Adjust the regex if your filename is different.
     """
     name = Path(path).name
 
     match = re.fullmatch(
-        r"(.+)_brain_(.+)_alignment_score_(\d+)NN_relabel_(\d+)\.parquet",
+        r"(.+)_brain_relabelled_(.+)_alignment_score_(\d+)NN\.parquet",
         name,
     )
 
     if match is None:
         raise ValueError(
-            f"Cannot infer model and relabel index from relabelled path: {path}"
+            f"Cannot infer model from relabelled big alignment path: {path}"
         )
 
-    model = match.group(1)
-    relabel = int(match.group(4))
-
-    return model, relabel
+    return match.group(1)
 
 def read_alignment_dataframe(path: str) -> pd.DataFrame:
     df = pd.read_parquet(path)
@@ -80,17 +78,6 @@ def compute_hypergeometric_statistics(
     observed_df: pd.DataFrame,
     number_of_neighbours: int,
 ) -> dict:
-    """
-        Computes the exact hypergeometric expected overlap and concept-wise p-values.
-
-        If alignment_score = common_neighbours / k, then common_neighbours = alignment_score * k.
-
-        The population excludes the labelled concept itself, so:
-        M = N - 1
-
-        X ~ Hypergeom(M=N-1, n=k, N=k)
-    """
-
     k = number_of_neighbours
     number_of_concepts = len(observed_df)
     population_size = number_of_concepts - 1
@@ -99,14 +86,8 @@ def compute_hypergeometric_statistics(
     expected_alignment_score = k / population_size
 
     observed_common_neighbours = observed_df["alignment_score"] * k
+    observed_common_neighbours = observed_common_neighbours.round().astype(int)
 
-    # Numerical protection: alignment scores may be floats like 0.30000000004.
-    observed_common_neighbours = (
-        observed_common_neighbours.round().astype(int)
-    )
-
-    # Upper-tail p-value: P(X >= x).
-    # scipy survival function gives P(X > x - 1), i.e. P(X >= x).
     p_values = hypergeom.sf(
         observed_common_neighbours - 1,
         population_size,
@@ -126,6 +107,35 @@ def compute_hypergeometric_statistics(
         "min_hypergeom_p_value_across_concepts": float(np.min(p_values)),
     }
 
+def extract_null_alignment_scores(
+    relabelled_big_df: pd.DataFrame,
+) -> np.ndarray:
+    """
+        Input dataframe is expected to have a MultiIndex:
+
+            shuffle_id, concept
+
+        and a column:
+
+            alignment_score
+
+        This returns one mean alignment score per shuffle.
+    """
+
+    if "shuffle_id" not in relabelled_big_df.index.names:
+        raise ValueError(
+            "Expected relabelled alignment dataframe to have "
+            "'shuffle_id' as an index level. "
+            f"Index levels are: {relabelled_big_df.index.names}"
+        )
+
+    null_alignment_scores = []
+
+    for shuffle_id, shuffle_df in relabelled_big_df.groupby(level="shuffle_id"):
+        null_alignment_scores.append(shuffle_df["alignment_score"].mean())
+
+    return np.array(null_alignment_scores)
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--observed_alignment_scores", nargs="+", required=True)
@@ -135,6 +145,7 @@ def main() -> None:
     parser.add_argument("--models", nargs="+", required=True)
     parser.add_argument("--number_of_neighbours", type=int, required=True)
     parser.add_argument("--number_of_relabelings", type=int, required=True)
+
     args = parser.parse_args()
 
     observed_paths_by_model = {}
@@ -143,11 +154,11 @@ def main() -> None:
         model = infer_model_from_observed_path(path)
         observed_paths_by_model[model] = path
 
-    relabelled_paths_by_model = {model: [] for model in args.models}
+    relabelled_paths_by_model = {}
 
     for path in args.relabelled_alignment_scores:
-        model, relabel = infer_model_and_relabel_from_relabelled_path(path)
-        relabelled_paths_by_model.setdefault(model, []).append((relabel, path))
+        model = infer_model_from_relabelled_big_path(path)
+        relabelled_paths_by_model[model] = path
 
     summary_rows = []
 
@@ -155,8 +166,14 @@ def main() -> None:
         if model not in observed_paths_by_model:
             raise ValueError(f"Missing observed alignment score for model {model}")
 
+        if model not in relabelled_paths_by_model:
+            raise ValueError(f"Missing relabelled alignment score for model {model}")
+
         observed_path = observed_paths_by_model[model]
+        relabelled_path = relabelled_paths_by_model[model]
+
         observed_df = read_alignment_dataframe(observed_path)
+        relabelled_big_df = read_alignment_dataframe(relabelled_path)
 
         observed_average_alignment = observed_df["alignment_score"].mean()
 
@@ -165,26 +182,17 @@ def main() -> None:
             number_of_neighbours=args.number_of_neighbours,
         )
 
-        relabelled_items = sorted(relabelled_paths_by_model.get(model, []))
+        null_alignment_scores = extract_null_alignment_scores(
+            relabelled_big_df=relabelled_big_df
+        )
 
-        if len(relabelled_items) != args.number_of_relabelings:
+        if len(null_alignment_scores) != args.number_of_relabelings:
             raise ValueError(
-                f"Model {model} has {len(relabelled_items)} relabelled files, "
-                f"but expected {args.number_of_relabelings}."
+                f"Model {model} has {len(null_alignment_scores)} relabellings "
+                f"in the big dataframe, but expected {args.number_of_relabelings}."
             )
-
-        null_alignment_scores = []
-
-        for relabel, path in relabelled_items:
-            relabelled_df = read_alignment_dataframe(path)
-            null_alignment_scores.append(
-                relabelled_df["alignment_score"].mean()
-            )
-
-        null_alignment_scores = np.array(null_alignment_scores)
 
         empirical_null_mean = float(null_alignment_scores.mean())
-#        empirical_null_std = float(null_alignment_scores.std(ddof=1))
 
         empirical_enrichment = (
             observed_average_alignment / empirical_null_mean
@@ -200,11 +208,6 @@ def main() -> None:
             / hypergeom_stats["hypergeom_expected_alignment_score"]
         )
 
-#        z_score_empirical = (
-#            (observed_average_alignment - empirical_null_mean)
-#            / empirical_null_std
-#        )
-
         empirical_p_value_upper = (
             (np.sum(null_alignment_scores >= observed_average_alignment) + 1)
             / (len(null_alignment_scores) + 1)
@@ -214,9 +217,7 @@ def main() -> None:
             "model": model,
             "observed_average_alignment_score": observed_average_alignment,
             "empirical_null_mean_alignment_score": empirical_null_mean,
-#            "empirical_null_std_alignment_score": empirical_null_std,
             "empirical_enrichment_observed_over_null": empirical_enrichment,
-#            "empirical_z_score": z_score_empirical,
             "empirical_upper_tail_p_value": empirical_p_value_upper,
             "number_of_relabelings": len(null_alignment_scores),
             "hypergeom_enrichment_observed_over_expected": hypergeom_enrichment,
@@ -235,21 +236,12 @@ def main() -> None:
     tsv_path = Path(args.tsv)
     tsv_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # Long/table format: one row per model.
     summary_df.to_parquet(summary_path, engine="pyarrow", index=False)
 
-    # Wide CSV format: models as columns, metrics as rows.
-    summary_wide_df = (
-        summary_df
-        .set_index("model")
-        .transpose()
-    )
-
+    summary_wide_df = summary_df.set_index("model").transpose()
     summary_wide_df.index.name = None
 
     summary_wide_df.to_csv(tsv_path, sep="\t")
-
-#    print(summary_wide_df.to_string())
 
 if __name__ == "__main__":
     main()
