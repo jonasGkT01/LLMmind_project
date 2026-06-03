@@ -109,5 +109,5 @@ rule relabel_llm_similarity_and_compute_relabelled_llm_nearest_neighbours:
                 --relabelled_nearest_neighbours {output.relabelled_nearest_neighbours:q} \
                 --number_of_neighbours {params.number_of_neighbours} \
                 --number_of_relabellings {params.number_of_relabellings} \
-                --random_seed {params.random_seed} \
+                --random_seed {params.random_seed}
         """

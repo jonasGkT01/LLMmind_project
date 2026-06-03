@@ -4,3 +4,4 @@
 resources/
 results/
 workflow/envs/LLMmind_project/
+workflow/llm_nearest_neighbours/scripts/__pycache__/
