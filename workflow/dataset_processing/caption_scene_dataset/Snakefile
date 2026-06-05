@@ -4,7 +4,7 @@ from glob import glob
 
 import pandas as pd
 
-INTERMEDIATE_DIR = "results/temp/caption_scene"
+INTERMEDIATE_DIR = "results/mind/caption_scene/intermediate_files"
 PROCESSING_OUTPUT_DIR = config["caption_scene"]["processing_output_dir"]
 ISC_DIR = f"{config['caption_scene']['processing_output_dir']}/isc"
 

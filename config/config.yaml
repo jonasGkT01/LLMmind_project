@@ -47,8 +47,8 @@ similarity_metrics:
 
 # datasets
 datasets:
-  - "caption_scene"
   - "narratives"
+#  - "caption_scene"
 
 ##### NARRATIVES DATASET #####
 # dataset configuration
