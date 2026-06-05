@@ -1,3 +1,5 @@
+from pathlib import Path
+
 DATASETS = list(config["datasets"])
 MODEL_KEYS = list(config["models"].keys())
 SIMILARITY_TYPES = list(config["similarity_metrics"])
@@ -36,13 +38,13 @@ rule download_pretrained_llm:
 
 rule get_embeddings:
     input:
-        model="resources/models/{model}",
-        stimuli=lambda wc: config[wc.dataset]["stimuli"]
+        stimuli_table=lambda wc: config[wc.dataset]["stimuli"],
+        model="resources/models/{model}"
     output:
         "results/llm/{dataset}/embeddings/{model}_embeddings.parquet"
     params:
         quantization_arg=lambda wc: (
-            "" if config['models'][wc.model]['quantization_method'] is None
+            "" if config["models"][wc.model]["quantization_method"] is None
             else f"--quantization_method {config['models'][wc.model]['quantization_method']}"
         ),
         excluded_stimuli=EXCLUDED_SUBTASKS
@@ -51,9 +53,9 @@ rule get_embeddings:
     shell:
         r"""
             python3 workflow/llm_nearest_neighbours/scripts/get_embeddings.py \
-                --input_dir {input.stimuli} \
-                --output {output} \
-                --model_path {input.model} \
+                --stimuli_table {input.stimuli_table:q} \
+                --output {output:q} \
+                --model_path {input.model:q} \
                 {params.quantization_arg} \
                 --excluded_stimuli {params.excluded_stimuli:q}
         """

@@ -16,6 +16,7 @@ def main():
     parser.add_argument("--session", required=True)
     parser.add_argument("--run", required=True)
     parser.add_argument("--stimulus_id", required=True)
+    parser.add_argument("--event_index", required=True)
     parser.add_argument("--output_bold", required=True)
     args = parser.parse_args()
 
@@ -26,6 +27,7 @@ def main():
     required_columns = {
         "run_key",
         "stimulus_id",
+        "event_index",
         "start_vol",
         "n_vols",
         "output_bold",
@@ -40,20 +42,25 @@ def main():
 
     rows = manifest[
         (manifest["run_key"].astype(str) == run_key)
-        & (manifest["stimulus_id"].astype(str) == args.stimulus_id)
-        & (manifest["output_bold"].astype(str) == args.output_bold)
+        & (manifest["stimulus_id"].astype(str) == str(args.stimulus_id))
+        & (manifest["event_index"].astype(str) == str(args.event_index))
+        & (manifest["output_bold"].astype(str) == str(args.output_bold))
     ]
 
     if len(rows) == 0:
         raise ValueError(
             f"No manifest row found for run_key={run_key}, "
-            f"stimulus_id={args.stimulus_id}, output_bold={args.output_bold}"
+            f"stimulus_id={args.stimulus_id}, "
+            f"event_index={args.event_index}, "
+            f"output_bold={args.output_bold}"
         )
 
     if len(rows) > 1:
         raise ValueError(
             f"Multiple manifest rows found for run_key={run_key}, "
-            f"stimulus_id={args.stimulus_id}, output_bold={args.output_bold}"
+            f"stimulus_id={args.stimulus_id}, "
+            f"event_index={args.event_index}, "
+            f"output_bold={args.output_bold}"
         )
 
     row = rows.iloc[0]

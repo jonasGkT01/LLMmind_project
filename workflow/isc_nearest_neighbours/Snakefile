@@ -1,4 +1,5 @@
 import pandas as pd
+from pathlib import Path
 
 DATASETS = list(config["datasets"])
 SIMILARITY_TYPES = list(config["similarity_metrics"])
@@ -10,44 +11,54 @@ rule all_isc_nearest_neighbours:
             "results/mind/{dataset}/{similarity_type}_nearest_neighbours/isc_{similarity_type}_nearest_neighbours_{number_of_neighbours}NN.parquet",
             dataset=DATASETS,
             similarity_type=SIMILARITY_TYPES,
-            number_of_neighbours=NUMBER_OF_NEIGHBOURS
+            number_of_neighbours=NUMBER_OF_NEIGHBOURS,
         )
 
-checkpoint create_isc_manifest:
+def isc_done_for_dataset(wc):
+    return config[wc.dataset]["processing_output_dir"] + "/manifests/isc.done"
+
+def isc_dir_for_dataset(wc):
+    return config[wc.dataset]["processing_output_dir"] + "/isc"
+
+rule create_isc_manifest:
+    input:
+        isc_done=isc_done_for_dataset
     output:
-        manifest="results/mind/{dataset}/manifests/isc_inputs.tsv"
+        output_manifest="results/mind/{dataset}/manifests/isc_inputs.tsv"
+    params:
+        isc_dir=isc_dir_for_dataset
     conda:
         "envs/create_isc_manifest_environment.yaml"
     shell:
         r"""
             python3 workflow/isc_nearest_neighbours/scripts/create_isc_manifest.py \
                 --dataset {wildcards.dataset:q} \
-                --output_manifest {output.manifest:q}
+                --isc_dir {params.isc_dir:q} \
+                --output_manifest {output.output_manifest:q}
         """
 
-def isc_manifest_path(wildcards):
-    return f"results/mind/{wildcards.dataset}/manifests/isc_inputs.tsv"
-
 def isc_npys_from_manifest(wildcards):
-    manifest = isc_manifest_path(wildcards)
-    df = pd.read_csv(manifest, sep="\t")
+    checkpoint_output = checkpoints.create_isc_manifest.get(
+        dataset=wildcards.dataset
+    ).output.manifest
+
+    df = pd.read_csv(checkpoint_output, sep="\t")
 
     if "isc_npy" not in df.columns:
         raise ValueError(
-            f"Manifest {manifest} must contain a column named 'isc_npy'. "
+            f"Manifest {checkpoint_output} must contain a column named 'isc_npy'. "
             f"Available columns: {list(df.columns)}"
         )
 
     files = df["isc_npy"].dropna().tolist()
 
     if not files:
-        raise ValueError(f"No ISC files listed in manifest {manifest}")
+        raise ValueError(f"No ISC files listed in manifest {checkpoint_output}")
 
     return files
 
 rule create_isc_dataframe:
     input:
-        manifest=isc_manifest_path,
         isc_npys=isc_npys_from_manifest
     output:
         isc_dataframe="results/mind/{dataset}/isc_dataframe.parquet"

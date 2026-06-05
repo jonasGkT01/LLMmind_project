@@ -1,5 +1,3 @@
-import os
-import re
 import argparse
 
 import pandas as pd
@@ -50,7 +48,7 @@ def embed_long_text(
     overlap: int = 256,
 ) -> tuple[torch.Tensor, int, int]:
     """
-        Embed a potentially long transcript by splitting it into overlapping token chunks.
+        Embed a potentially long stimulus by splitting it into overlapping token chunks.
 
         Returns:
             final_embedding: tensor of shape [hidden_dim]
@@ -63,8 +61,6 @@ def embed_long_text(
     if overlap >= max_length:
         raise ValueError("overlap must be smaller than max_length")
 
-    # Tokenize without special tokens. This may print a length warning in some
-    # tokenizer versions, but these IDs are NOT passed to the model all at once.
     input_ids = tokenizer.encode(
         text,
         add_special_tokens=False,
@@ -73,10 +69,8 @@ def embed_long_text(
     n_tokens = len(input_ids)
 
     if n_tokens == 0:
-        raise ValueError("Empty transcript after tokenization.")
+        raise ValueError("Empty stimulus after tokenization.")
 
-    # Manually add only BOS when available. This avoids tokenizer helper methods
-    # that are absent in your LlamaTokenizer wrapper.
     bos_token_id = getattr(tokenizer, "bos_token_id", None)
 
     n_manual_special = 1 if bos_token_id is not None else 0
@@ -91,7 +85,8 @@ def embed_long_text(
 
     if step <= 0:
         raise ValueError(
-            f"overlap is too large after accounting for special tokens. chunk_token_length={chunk_token_length}, overlap={overlap}"
+            f"overlap is too large after accounting for special tokens. "
+            f"chunk_token_length={chunk_token_length}, overlap={overlap}"
         )
 
     chunk_embeddings = []
@@ -135,7 +130,6 @@ def embed_long_text(
             attention_mask,
         )
 
-        # Weight by original transcript tokens, excluding the manually added BOS.
         chunk_embeddings.append(pooled.squeeze(0).detach().cpu())
         chunk_lengths.append(len(chunk_ids))
 
@@ -145,7 +139,7 @@ def embed_long_text(
             torch.cuda.empty_cache()
 
     if not chunk_embeddings:
-        raise ValueError("No chunks were produced for transcript.")
+        raise ValueError("No chunks were produced for stimulus.")
 
     chunks = torch.stack(chunk_embeddings, dim=0).float()
     weights = torch.tensor(chunk_lengths, dtype=torch.float32).unsqueeze(1)
@@ -155,39 +149,46 @@ def embed_long_text(
     return final_embedding, n_tokens, len(chunk_embeddings)
 
 def main():
-    parser = argparse.ArgumentParser(description="Embed transcripts with chunking")
+    parser = argparse.ArgumentParser(description="Embed stimuli with chunking")
     parser.add_argument(
-        "--input_dir",
+        "--stimuli_table",
         required=True,
-        help="Path to the input directory containing txt files to embed")
+        help="TSV file containing columns: task and stimulus"
+    )
     parser.add_argument(
         "--output",
         required=True,
-        help="Path to the output file where embeddings will be saved")
+        help="Path to the output file where embeddings will be saved"
+    )
     parser.add_argument(
         "--model_path",
         required=True,
-        help="Path to the language model")
+        help="Path to the language model"
+    )
     parser.add_argument(
         "--quantization_method",
         choices=["4bit", "8bit"],
         default=None,
-        help="Quantization method")
+        help="Quantization method"
+    )
     parser.add_argument(
         "--excluded_stimuli",
         nargs="*",
         default=[],
-        help="List of stimuli to exclude from embedding")
+        help="List of stimuli to exclude from embedding"
+    )
     parser.add_argument(
         "--chunk_max_length",
         type=int,
         default=None,
-        help="Maximum model input length per chunk. Default: inferred, usually 2048.")
+        help="Maximum model input length per chunk. Default: inferred, usually 2048."
+    )
     parser.add_argument(
         "--chunk_overlap",
         type=int,
         default=256,
-        help="Number of overlapping transcript tokens between adjacent chunks.")
+        help="Number of overlapping stimulus tokens between adjacent chunks."
+    )
     args = parser.parse_args()
 
     tokenizer = AutoTokenizer.from_pretrained(args.model_path)
@@ -196,6 +197,7 @@ def main():
         tokenizer.pad_token = tokenizer.eos_token
 
     quantization_config = None
+
     if args.quantization_method == "4bit":
         quantization_config = BitsAndBytesConfig(load_in_4bit=True)
     elif args.quantization_method == "8bit":
@@ -225,7 +227,8 @@ def main():
 
     if args.chunk_overlap >= max_length:
         raise ValueError(
-            f"--chunk_overlap must be smaller than chunk max length. Got overlap={args.chunk_overlap}, max_length={max_length}."
+            f"--chunk_overlap must be smaller than chunk max length. "
+            f"Got overlap={args.chunk_overlap}, max_length={max_length}."
         )
 
     print(
@@ -233,36 +236,34 @@ def main():
         flush=True,
     )
 
-    # Load txt files and keep both task name and stimulus text.
-    items = []
-    pattern = re.compile(r"^(.+)_transcript\.txt$")
+    stimuli_table = pd.read_csv(args.stimuli_table, sep="\t")
 
-    for filename in sorted(os.listdir(args.input_dir)):
-        match = pattern.match(filename)
-        if not match:
-            continue
+    required_columns = {"task", "stimulus"}
+    missing_columns = required_columns - set(stimuli_table.columns)
 
-        task = match.group(1)
-
-        if task in args.excluded_stimuli:
-            continue
-
-        filepath = os.path.join(args.input_dir, filename)
-
-        with open(filepath, "r", encoding="utf-8") as f:
-            stimulus = f.read()
-
-        items.append(
-            {
-                "task": task,
-                "stimulus": stimulus,
-            }
-        )
-
-    if not items:
+    if missing_columns:
         raise ValueError(
-            f"No input files found in {args.input_dir}. Expected files matching '*_transcript.txt'."
+            f"Stimuli table {args.stimuli_table} is missing columns "
+            f"{sorted(missing_columns)}. "
+            f"Available columns: {list(stimuli_table.columns)}"
         )
+
+    stimuli_table["task"] = stimuli_table["task"].astype(str)
+    stimuli_table["stimulus"] = stimuli_table["stimulus"].astype(str)
+
+    if args.excluded_stimuli:
+        stimuli_table = stimuli_table[
+            ~stimuli_table["task"].isin(args.excluded_stimuli)
+        ]
+
+    if stimuli_table.empty:
+        raise ValueError(
+            f"No stimuli remaining after exclusions in {args.stimuli_table}"
+        )
+
+    items = stimuli_table[
+        ["task", "stimulus"]
+    ].to_dict(orient="records")
 
     records = []
 
@@ -305,7 +306,6 @@ def main():
 
     df = pd.DataFrame(records)
 
-    # Use task name as the dataframe index.
     df = df.set_index("task")
     df.index.name = "task"
 
@@ -316,7 +316,6 @@ def main():
         "chunk_overlap",
     ]
 
-    # Your embedding columns are integer-labelled dimensions: 0, 1, 2, ..., hidden_size-1.
     embedding_cols = [
         c for c in df.columns
         if isinstance(c, int)
@@ -328,15 +327,13 @@ def main():
     ]
 
     if unexpected_cols:
-        raise ValueError(f"Unexpected non-embedding columns found: {unexpected_cols}")
+        raise ValueError(
+            f"Unexpected non-embedding columns found: {unexpected_cols}"
+        )
 
     df = df[metadata_cols + embedding_cols]
 
     df.to_parquet(args.output, engine="pyarrow", index=True)
-    
-#    # print the alignment score dataframe
-#    with pd.option_context("display.max_rows", None, "display.max_columns", None):
-#        print(df)
 
 if __name__ == "__main__":
     main()

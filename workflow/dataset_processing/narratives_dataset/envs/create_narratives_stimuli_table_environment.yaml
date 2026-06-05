@@ -3,6 +3,4 @@ channels:
   - nodefaults
 dependencies:
   - python
-  - numpy
   - pandas
-  - nibabel

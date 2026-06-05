@@ -7,10 +7,12 @@ from itertools import product
 SUBJECTS = [f"{i:03d}" for i in range(1, config["narratives"]["subjects"] + 1)]
 PROCESSING_OUTPUT_DIR = config["narratives"]["processing_output_dir"]
 
+NARRATIVES_STIMULI_TABLE = config["narratives"]["stimuli"]
+
 def task_is_excluded(task):
     return task in config["narratives"]["problematic_subtasks"]
 
-VALIDE_NARRATIVES_TASKS = [task for task in config["narratives"]["tasks"] if not task_is_excluded(task)]
+VALID_NARRATIVES_TASKS = [task for task in config["narratives"]["tasks"] if not task_is_excluded(task)]
 
 def run_label(run_tag):
     return "norun" if run_tag == "" else run_tag.replace("_", "")
@@ -19,7 +21,6 @@ with open(config["narratives"]["scans_to_be_excluded"]) as f:
     SCAN_EXCLUDE = json.load(f)
 
 def excluded_scan_prefixes(task):
-    # load dictionary and get scan prefixes to be excluded for the given task
     task_dict = SCAN_EXCLUDE.get(task, {})
     return {
         prefix
@@ -29,7 +30,7 @@ def excluded_scan_prefixes(task):
 
 def scan_prefix(subject, task, run_tag):
     prefix = f"sub-{subject}_task-{task}"
-    if  run_tag != "":
+    if run_tag != "":
         prefix += run_tag
     return prefix
 
@@ -46,7 +47,7 @@ def write_length_check_json(task, parcel_files, output_json):
     malformed_files = {}
 
     for f in parcel_files:
-        scan_id = f.stem  # removes .npy
+        scan_id = f.stem
 
         try:
             arr = np.load(f, mmap_mode="r")
@@ -58,7 +59,6 @@ def write_length_check_json(task, parcel_files, output_json):
             malformed_files[scan_id] = f"Expected at least one dimension, got shape {arr.shape}"
             continue
 
-        # assumes time is the first dimension
         lengths[scan_id] = int(arr.shape[0])
 
     unique_lengths = sorted(set(lengths.values()))
@@ -100,7 +100,6 @@ def write_length_check_json(task, parcel_files, output_json):
 
     return valid
 
-# discover valid inputs
 BOLD_FILES = []
 for subject, task, run_tag, space, resolution, descriptor in product(
     SUBJECTS,
@@ -110,9 +109,7 @@ for subject, task, run_tag, space, resolution, descriptor in product(
     config["narratives"]["resolutions"],
     config["narratives"]["descriptors"],
 ):
-    # skip excluded scans before checking the file
     if is_excluded(subject, task, run_tag):
-        # print(f"Excluding scan for subject {subject}, task {task}, run {run_tag}")
         continue
 
     bold_file = config["narratives"]["bold_pattern"].format(
@@ -136,13 +133,11 @@ for subject, task, run_tag, space, resolution, descriptor in product(
             "bold_file": bold_file,
         })
 
-# group by task only
 TASK_GROUPS = {}
 for c in BOLD_FILES:
-    # skip problematic subtasks
-    if c["task"] not in VALIDE_NARRATIVES_TASKS:
+    if c["task"] not in VALID_NARRATIVES_TASKS:
         continue
-        
+
     TASK_GROUPS.setdefault(c["task"], []).append(c)
 
 def parcel_outputs_for_task(task):
@@ -153,7 +148,7 @@ def parcel_outputs_for_task(task):
 
 excluded_scans_for_task = []
 for task in config["narratives"]["tasks"]:
-    if task not in VALIDE_NARRATIVES_TASKS:
+    if task not in VALID_NARRATIVES_TASKS:
         print(f"Skipping length check for excluded task {task}. See {config['narratives']['excluded_scans_for_task']} for details.")
         if task in config["narratives"]["schema_subtasks"]:
             reason = "Excluded because it is a schema subtask."
@@ -161,6 +156,7 @@ for task in config["narratives"]["tasks"]:
             reason = "Excluded because it is a notthefall variant."
         else:
             reason = "Excluded for unspecified reason."
+
         for c in BOLD_FILES:
             if c["task"] == task:
                 excluded_scans_for_task.append({
@@ -169,10 +165,6 @@ for task in config["narratives"]["tasks"]:
                     "bold_file": c["bold_file"],
                 })
         continue
-
-    #if task not in TASK_GROUPS:
-    #    print(f"Warning: No valid BOLD files found for task {task}. Skipping length check.")
-    #    continue
 
     if not write_length_check_json(task, parcel_outputs_for_task(task), f"{PROCESSING_OUTPUT_DIR}/qc/task-{task}_length_check.json"):
         print(f"Warning: Length check failed for task {task}. See {PROCESSING_OUTPUT_DIR}/qc/task-{task}_length_check.json for details.")
@@ -193,10 +185,20 @@ ISC_NII_OUTPUTS = [
     for task in TASK_GROUPS
 ]
 
+NARRATIVES_ISC_DONE = f"{PROCESSING_OUTPUT_DIR}/manifests/isc.done"
+
 rule all_narratives_dataset:
     input:
         ISC_NPY_OUTPUTS,
         ISC_NII_OUTPUTS,
+        NARRATIVES_STIMULI_TABLE,
+        NARRATIVES_ISC_DONE
+
+rule mark_narratives_isc_done:
+    input:
+        ISC_NII_OUTPUTS
+    output:
+        touch(NARRATIVES_ISC_DONE)
 
 rule extract_narratives_parcels:
     input:
@@ -254,4 +256,18 @@ rule compute_narratives_isc:
                 --n_rois {params.n_rois} \
                 --yeo_networks {params.yeo_networks} \
                 --atlas_dir {params.atlas_dir:q}
+        """
+
+rule create_narratives_stimuli_table:
+    input:
+        stimuli_dir="resources/datasets/narratives_dataset/stimuli/transcripts/"
+    output:
+        stimuli_table=NARRATIVES_STIMULI_TABLE
+    conda:
+        "envs/create_narratives_stimuli_table_environment.yaml"
+    shell:
+        r"""
+            python3 workflow/dataset_processing/narratives_dataset/scripts/create_narratives_stimuli_table.py \
+                --stimuli_dir {input.stimuli_dir:q} \
+                --output {output.stimuli_table:q}
         """
