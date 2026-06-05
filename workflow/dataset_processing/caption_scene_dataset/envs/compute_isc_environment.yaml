@@ -1,0 +1,9 @@
+channels:
+  - conda-forge
+  - nodefaults
+dependencies:
+  - python
+  - numpy
+  - scipy
+  - nilearn
+  - nibabel

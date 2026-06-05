@@ -2,7 +2,7 @@ configfile: "config/config.yaml"
 
 # include dataset processing files
 include: "dataset_processing/narratives_dataset/Snakefile"
-#include: "dataset_processing/caption_scene_dataset/Snakefile"
+include: "dataset_processing/caption_scene_dataset/Snakefile"
 
 # include analysis files
 include: "isc_nearest_neighbours/Snakefile"

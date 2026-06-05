@@ -48,12 +48,12 @@ similarity_metrics:
 # datasets
 datasets:
   - "narratives"
-#  - "caption_scene"
+  - "caption_scene"
 
 ##### NARRATIVES DATASET #####
 # dataset configuration
 narratives:
-  bold_glob_pattern: "resources/datasets/narratives_dataset/derivatives/afni-smooth/sub-{subject}/func/sub-{subject}_task-{task}{run_tag}_space-{space}_res-{resolution}_desc-{descriptor}_bold.nii.gz"
+  bold_pattern: "resources/datasets/narratives_dataset/derivatives/afni-smooth/sub-{subject}/func/sub-{subject}_task-{task}{run_tag}_space-{space}_res-{resolution}_desc-{descriptor}_bold.nii.gz"
   scans_to_be_excluded: "resources/datasets/narratives_dataset/scan_exclude.json"
   excluded_scans_for_task: "resources/datasets/narratives_dataset/excluded_scans_for_task.json"
   processing_output_dir: "results/mind/narratives"
@@ -129,13 +129,16 @@ narratives:
 
 ##### CAPTION-SCENE DATASET #####
 caption_scene:
-  bold_glob_pattern: "resources/datasets/caption_scene_dataset/V1/derivatives/pp_data/sub-{subject}/func/sub-{subject}_ses-{session}_task-{task}_run-{run}.nii.gz"
+  bold_glob: "resources/datasets/caption_scene_dataset/V1/derivatives/pp_data/sub-*/func/sub-*_ses-*_task-CSD_run-*.nii.gz"
   scans_to_be_excluded: "resources/datasets/caption_scene_dataset/scan_exclude.json"
   excluded_scans_for_task: "resources/datasets/caption_scene_dataset/excluded_scans_for_task.json"
   processing_output_dir: "results/mind/caption_scene"
-  stimuli: "resources/datasets/caption_scene_dataset/V1/stimuli/COCO_CN/All_images_480"
+  stimuli: "resources/datasets/caption_scene_dataset/V1/stimuli/transcripts/"
   subjects: 8
-  number_of_runs: 200
+  tr: 2.0
+  event_duration_s: 12.0
+  onset_shift_s: 0.0
+  run_table_encoding: "gbk"
 
 # atlas configuration
 atlas:

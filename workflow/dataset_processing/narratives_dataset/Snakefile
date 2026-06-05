@@ -115,7 +115,7 @@ for subject, task, run_tag, space, resolution, descriptor in product(
         # print(f"Excluding scan for subject {subject}, task {task}, run {run_tag}")
         continue
 
-    bold_file = config["narratives"]["bold_glob_pattern"].format(
+    bold_file = config["narratives"]["bold_pattern"].format(
         subject=subject,
         task=task,
         run_tag=run_tag,
@@ -198,9 +198,9 @@ rule all_narratives_dataset:
         ISC_NPY_OUTPUTS,
         ISC_NII_OUTPUTS,
 
-rule extract_parcels:
+rule extract_narratives_parcels:
     input:
-        bold_files=lambda wc: config["narratives"]["bold_glob_pattern"].format(
+        bold_files=lambda wc: config["narratives"]["bold_pattern"].format(
             subject=wc.subject,
             task=wc.task,
             run_tag="" if wc.run_label == "norun" else f"_{wc.run_label}",
@@ -233,7 +233,7 @@ def task_parcel_inputs(wc):
         for c in items
     ]
 
-rule compute_isc:
+rule compute_narratives_isc:
     input:
         task_parcel_inputs
     output:

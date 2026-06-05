@@ -1,3 +1,5 @@
+import pandas as pd
+
 DATASETS = list(config["datasets"])
 SIMILARITY_TYPES = list(config["similarity_metrics"])
 NUMBER_OF_NEIGHBOURS = list(config["number_of_neighbours"])
@@ -11,12 +13,42 @@ rule all_isc_nearest_neighbours:
             number_of_neighbours=NUMBER_OF_NEIGHBOURS
         )
 
+checkpoint create_isc_manifest:
+    output:
+        manifest="results/mind/{dataset}/manifests/isc_inputs.tsv"
+    conda:
+        "envs/create_isc_manifest_environment.yaml"
+    shell:
+        r"""
+            python3 workflow/isc_nearest_neighbours/scripts/create_isc_manifest.py \
+                --dataset {wildcards.dataset:q} \
+                --output_manifest {output.manifest:q}
+        """
+
+def isc_manifest_path(wildcards):
+    return f"results/mind/{wildcards.dataset}/manifests/isc_inputs.tsv"
+
+def isc_npys_from_manifest(wildcards):
+    manifest = isc_manifest_path(wildcards)
+    df = pd.read_csv(manifest, sep="\t")
+
+    if "isc_npy" not in df.columns:
+        raise ValueError(
+            f"Manifest {manifest} must contain a column named 'isc_npy'. "
+            f"Available columns: {list(df.columns)}"
+        )
+
+    files = df["isc_npy"].dropna().tolist()
+
+    if not files:
+        raise ValueError(f"No ISC files listed in manifest {manifest}")
+
+    return files
+
 rule create_isc_dataframe:
     input:
-        isc_npys=lambda wc: [
-            f"results/mind/{wc.dataset}/isc/task-{task}_isc_mean.npy"
-            for task in config[wc.dataset]["tasks"] if task not in config[wc.dataset]["problematic_subtasks"]
-        ]
+        manifest=isc_manifest_path,
+        isc_npys=isc_npys_from_manifest
     output:
         isc_dataframe="results/mind/{dataset}/isc_dataframe.parquet"
     conda:
@@ -24,7 +56,7 @@ rule create_isc_dataframe:
     shell:
         r"""
             python3 workflow/isc_nearest_neighbours/scripts/create_isc_dataframe.py \
-                --isc_npys {input:q} \
+                --isc_npys {input.isc_npys:q} \
                 --isc_dataframe {output.isc_dataframe:q}
         """
 

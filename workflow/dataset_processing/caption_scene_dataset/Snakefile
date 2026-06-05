@@ -1,0 +1,268 @@
+import re
+from pathlib import Path
+from glob import glob
+
+import pandas as pd
+
+PROCESSING_OUTPUT_DIR = config["caption_scene"]["processing_output_dir"]
+BOLD_GLOB = config["caption_scene"]["bold_glob"]
+
+GLOBAL_MANIFEST = f"{PROCESSING_OUTPUT_DIR}/manifest/csd_events_manifest.tsv"
+CAPTION_TXT_FILES_DONE = f"{PROCESSING_OUTPUT_DIR}/caption_txt_files.done"
+
+def parse_bold_path(path):
+    name = Path(path).name
+
+    pattern = (
+        r"sub-(?P<subject>[^_]+)"
+        r"_ses-(?P<session>[^_]+)"
+        r"_task-CSD"
+        r"_run-(?P<run>[^.]+)"
+        r"\.nii\.gz$"
+    )
+
+    match = re.match(pattern, name)
+
+    if match is None:
+        raise ValueError(f"Could not parse subject/session/run from BOLD file: {path}")
+
+    return match.groupdict()
+
+def sample_key(subject, session, run):
+    return f"sub-{subject}_ses-{session}_run-{run}"
+
+def normalize_int_string(value):
+    return str(int(value))
+
+def run_table_path(subject, run):
+    subject_int = normalize_int_string(subject)
+    run_int = normalize_int_string(run)
+
+    return str(
+        Path("resources/datasets/caption_scene_dataset/V1/stimuli/CSD")
+        / f"sub-{subject}"
+        / f"subject{subject_int}_run{run_int}.txt"
+    )
+
+BOLD_FILES = sorted(glob(BOLD_GLOB))
+
+if len(BOLD_FILES) == 0:
+    raise ValueError(f"No BOLD files found with glob: {BOLD_GLOB}")
+
+RUNS = []
+BOLD_BY_KEY = {}
+RUN_TABLE_BY_KEY = {}
+
+for bold_file in BOLD_FILES:
+    fields = parse_bold_path(bold_file)
+
+    subject = fields["subject"]
+    session = fields["session"]
+    run = fields["run"]
+
+    key = sample_key(subject, session, run)
+
+    if key in BOLD_BY_KEY:
+        raise ValueError(f"Duplicate BOLD key found: {key}")
+
+    run_table = run_table_path(subject, run)
+
+    if not Path(run_table).exists():
+        raise FileNotFoundError(f"Missing run table for {key}: {run_table}")
+
+    BOLD_BY_KEY[key] = bold_file
+    RUN_TABLE_BY_KEY[key] = run_table
+
+    RUNS.append(
+        {
+            "key": key,
+            "subject": subject,
+            "session": session,
+            "run": run,
+            "bold": bold_file,
+            "run_table": run_table,
+        }
+    )
+
+RUN_KEYS = [x["key"] for x in RUNS]
+RUN_TABLES = [x["run_table"] for x in RUNS]
+
+def bold_input(wildcards):
+    return BOLD_BY_KEY[wildcards.run_key]
+
+CSD_EVENTS = pd.read_csv(GLOBAL_MANIFEST, sep="\t")
+
+CSD_EVENTS["subject"] = CSD_EVENTS["subject"].astype(str)
+CSD_EVENTS["session"] = CSD_EVENTS["session"].astype(str)
+CSD_EVENTS["run"] = CSD_EVENTS["run"].astype(str)
+CSD_EVENTS["stimulus_id"] = CSD_EVENTS["stimulus_id"].astype(str)
+CSD_EVENTS["output_bold"] = CSD_EVENTS["output_bold"].astype(str)
+
+STIMULI = sorted(CSD_EVENTS["stimulus_id"].dropna().unique().tolist())
+
+PARCEL_FILES = [
+    f"{PROCESSING_OUTPUT_DIR}/parcels/task-{row.stimulus_id}/sub-{row.subject}_ses-{row.session}_run-{row.run}_task-{row.stimulus_id}_parcel_ts.npy"
+    for row in CSD_EVENTS.itertuples(index=False)
+]
+
+ISC_NII_FILES = [
+    f"{PROCESSING_OUTPUT_DIR}/isc/task-{stimulus_id}_isc_mean.nii.gz"
+    for stimulus_id in STIMULI
+]
+
+rule all_caption_scene_dataset:
+    input:
+        expand(
+            f"{PROCESSING_OUTPUT_DIR}/split_done/{{run_key}}.done",
+            run_key=RUN_KEYS,
+        ),
+        CAPTION_TXT_FILES_DONE,
+        ISC_NII_FILES,
+
+rule make_manifest:
+    input:
+        bold_files=BOLD_FILES,
+        run_tables=RUN_TABLES,
+    output:
+        manifest=GLOBAL_MANIFEST,
+    params:
+        output_root=PROCESSING_OUTPUT_DIR,
+        tr=config["caption_scene"]["tr"],
+        event_duration_s=config["caption_scene"]["event_duration_s"],
+        onset_shift_s=config["caption_scene"]["onset_shift_s"],
+        run_table_encoding=config["caption_scene"].get("run_table_encoding", "gbk")
+    conda:
+        "envs/make_manifest_environment.yaml"
+    shell:
+        r"""
+            mkdir -p $(dirname {output.manifest})
+
+            python workflow/dataset_processing/caption_scene_dataset/scripts/make_manifest.py \
+                --bold_files {input.bold_files} \
+                --run_tables {input.run_tables} \
+                --output_manifest {output.manifest} \
+                --output_root {params.output_root} \
+                --tr {params.tr} \
+                --event_duration_s {params.event_duration_s} \
+                --onset_shift_s {params.onset_shift_s} \
+                --run_table_encoding {params.run_table_encoding}
+        """
+
+rule write_caption_txt_files:
+    input:
+        manifest=GLOBAL_MANIFEST,
+    output:
+        caption_txt_files_done=CAPTION_TXT_FILES_DONE,
+    conda:
+        "envs/write_caption_txt_files_environment.yaml"
+    params:
+        overwrite=False
+    shell:
+        r"""
+            python workflow/dataset_processing/caption_scene_dataset/scripts/write_caption_txt_files.py \
+                --manifest {input.manifest} \
+                --done {output.caption_txt_files_done} \
+                --overwrite {params.overwrite}
+        """
+
+rule split_bold_by_run_manifest:
+    input:
+        manifest=GLOBAL_MANIFEST,
+        bold=bold_input,
+    output:
+        done=f"{PROCESSING_OUTPUT_DIR}/split_done/{{run_key}}.done",
+    conda:
+        "envs/split_bold_by_run_manifest_environment.yaml"
+    shell:
+        r"""
+            mkdir -p $(dirname {output.done})
+
+            python workflow/dataset_processing/caption_scene_dataset/scripts/split_bold_by_run_manifest.py \
+                --bold {input.bold} \
+                --manifest {input.manifest} \
+                --run_key {wildcards.run_key}
+
+            touch {output.done}
+        """
+
+def cropped_bold_input(wildcards):
+    rows = CSD_EVENTS[
+        (CSD_EVENTS["subject"] == wildcards.subject)
+        & (CSD_EVENTS["session"] == wildcards.session)
+        & (CSD_EVENTS["run"] == wildcards.run)
+        & (CSD_EVENTS["stimulus_id"] == wildcards.task)
+    ]
+
+    if len(rows) == 0:
+        raise ValueError(
+            f"No cropped BOLD file found in manifest for "
+            f"subject={wildcards.subject}, session={wildcards.session}, "
+            f"run={wildcards.run}, task={wildcards.task}"
+        )
+
+    if len(rows) > 1:
+        raise ValueError(
+            f"Multiple cropped BOLD files found in manifest for "
+            f"subject={wildcards.subject}, session={wildcards.session}, "
+            f"run={wildcards.run}, task={wildcards.task}"
+        )
+
+    return rows.iloc[0]["output_bold"]
+
+def split_done_input(wildcards):
+    key = sample_key(wildcards.subject, wildcards.session, wildcards.run)
+
+    return f"{PROCESSING_OUTPUT_DIR}/split_done/{key}.done"
+
+def task_parcel_inputs(wildcards):
+    rows = CSD_EVENTS[CSD_EVENTS["stimulus_id"] == wildcards.task]
+
+    return [
+        f"{PROCESSING_OUTPUT_DIR}/parcels/task-{row.stimulus_id}/sub-{row.subject}_ses-{row.session}_run-{row.run}_task-{row.stimulus_id}_parcel_ts.npy"
+        for row in rows.itertuples(index=False)
+    ]
+
+rule extract_caption_scene_parcels:
+    input:
+        bold_file=cropped_bold_input,
+        split_done=split_done_input
+    output:
+        parcel_ts=f"{PROCESSING_OUTPUT_DIR}/parcels/task-{{task}}/sub-{{subject}}_ses-{{session}}_run-{{run}}_task-{{task}}_parcel_ts.npy"
+    params:
+        n_rois=config["atlas"]["n_rois"],
+        yeo_networks=config["atlas"]["yeo_networks"],
+        atlas_dir=config["atlas"]["atlas_dir"]
+    conda:
+        "envs/extract_parcels_environment.yaml"
+    shell:
+        r"""
+            python3 workflow/dataset_processing/caption_scene_dataset/scripts/extract_parcels.py \
+                --bold_file {input.bold_file:q} \
+                --parcel_ts {output.parcel_ts:q} \
+                --n_rois {params.n_rois} \
+                --yeo_networks {params.yeo_networks} \
+                --atlas_dir {params.atlas_dir:q}
+        """
+
+rule compute_caption_scene_isc:
+    input:
+        task_parcel_inputs
+    output:
+        isc_npy=f"{PROCESSING_OUTPUT_DIR}/isc/task-{{task}}_isc_mean.npy",
+        isc_nii=f"{PROCESSING_OUTPUT_DIR}/isc/task-{{task}}_isc_mean.nii.gz"
+    params:
+        n_rois=config["atlas"]["n_rois"],
+        yeo_networks=config["atlas"]["yeo_networks"],
+        atlas_dir=config["atlas"]["atlas_dir"]
+    conda:
+        "envs/compute_isc_environment.yaml"
+    shell:
+        r"""
+            python3 workflow/dataset_processing/caption_scene_dataset/scripts/compute_isc.py \
+                --parcel_ts {input:q} \
+                --isc_npy {output.isc_npy:q} \
+                --isc_nii {output.isc_nii:q} \
+                --n_rois {params.n_rois} \
+                --yeo_networks {params.yeo_networks} \
+                --atlas_dir {params.atlas_dir:q}
+        """
