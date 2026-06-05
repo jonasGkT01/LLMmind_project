@@ -149,7 +149,7 @@ def parcel_outputs_for_task(task):
 excluded_scans_for_task = []
 for task in config["narratives"]["tasks"]:
     if task not in VALID_NARRATIVES_TASKS:
-        print(f"Skipping length check for excluded task {task}. See {config['narratives']['excluded_scans_for_task']} for details.")
+#        print(f"Skipping length check for excluded task {task}. See {config['narratives']['excluded_scans_for_task']} for details.")
         if task in config["narratives"]["schema_subtasks"]:
             reason = "Excluded because it is a schema subtask."
         elif task in config["narratives"]["notthefall_variants"]:
@@ -166,8 +166,9 @@ for task in config["narratives"]["tasks"]:
                 })
         continue
 
-    if not write_length_check_json(task, parcel_outputs_for_task(task), f"{PROCESSING_OUTPUT_DIR}/qc/task-{task}_length_check.json"):
-        print(f"Warning: Length check failed for task {task}. See {PROCESSING_OUTPUT_DIR}/qc/task-{task}_length_check.json for details.")
+    write_length_check_json(task, parcel_outputs_for_task(task), f"{PROCESSING_OUTPUT_DIR}/qc/task-{task}_length_check.json")
+#    if not write_length_check_json(task, parcel_outputs_for_task(task), f"{PROCESSING_OUTPUT_DIR}/qc/task-{task}_length_check.json"):
+#        print(f"Warning: Length check failed for task {task}. See {PROCESSING_OUTPUT_DIR}/qc/task-{task}_length_check.json for details.")
 
 excluded_scans_for_task_path = Path(config["narratives"]["excluded_scans_for_task"])
 excluded_scans_for_task_path.parent.mkdir(parents=True, exist_ok=True)

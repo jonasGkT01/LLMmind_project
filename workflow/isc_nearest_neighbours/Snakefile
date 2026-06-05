@@ -20,7 +20,7 @@ def isc_done_for_dataset(wc):
 def isc_dir_for_dataset(wc):
     return config[wc.dataset]["processing_output_dir"] + "/isc"
 
-rule create_isc_manifest:
+checkpoint create_isc_manifest:
     input:
         isc_done=isc_done_for_dataset
     output:
@@ -37,37 +37,24 @@ rule create_isc_manifest:
                 --output_manifest {output.output_manifest:q}
         """
 
-def isc_npys_from_manifest(wildcards):
-    checkpoint_output = checkpoints.create_isc_manifest.get(
-        dataset=wildcards.dataset
-    ).output.manifest
+def isc_npys_from_manifest(wc):
+    manifest = checkpoints.create_isc_manifest.get(
+        dataset=wc.dataset
+    ).output.output_manifest
 
-    df = pd.read_csv(checkpoint_output, sep="\t")
+    df = pd.read_csv(manifest, sep="\t")
 
-    if "isc_npy" not in df.columns:
-        raise ValueError(
-            f"Manifest {checkpoint_output} must contain a column named 'isc_npy'. "
-            f"Available columns: {list(df.columns)}"
-        )
-
-    files = df["isc_npy"].dropna().tolist()
-
-    if not files:
-        raise ValueError(f"No ISC files listed in manifest {checkpoint_output}")
-
-    return files
+    return df["isc_file"].tolist()
 
 rule create_isc_dataframe:
     input:
-        isc_npys=isc_npys_from_manifest
+        isc_npys_from_manifest
     output:
         isc_dataframe="results/mind/{dataset}/isc_dataframe.parquet"
-    conda:
-        "envs/create_isc_dataframe_environment.yaml"
     shell:
         r"""
             python3 workflow/isc_nearest_neighbours/scripts/create_isc_dataframe.py \
-                --isc_npys {input.isc_npys:q} \
+                --isc_npys {input:q} \
                 --isc_dataframe {output.isc_dataframe:q}
         """
 

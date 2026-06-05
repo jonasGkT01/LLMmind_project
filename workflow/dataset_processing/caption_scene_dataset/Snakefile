@@ -135,7 +135,7 @@ def task_parcel_inputs(wildcards):
 
     return [
         (
-            f"{INTERMEDIATE_DIR}/parcels/task-{row.stimulus_id}/"
+            f"{PROCESSING_OUTPUT_DIR}/parcels/task-{row.stimulus_id}/"
             f"sub-{row.subject}_ses-{row.session}_run-{row.run}"
             f"_task-{row.stimulus_id}_event-{row.event_index}_parcel_ts.npy"
         )

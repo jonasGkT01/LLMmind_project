@@ -9,13 +9,10 @@ def infer_task_from_isc_path(path):
     if not name.startswith("task-"):
         raise ValueError(f"ISC file does not start with task-: {path}")
 
-    if name.endswith("_isc_mean.nii.gz"):
-        return name.removeprefix("task-").removesuffix("_isc_mean.nii.gz")
+    if not name.endswith("_isc_mean.npy"):
+        raise ValueError(f"Could not infer task from ISC filename: {path}")
 
-    if name.endswith("_isc_mean.npy"):
-        return name.removeprefix("task-").removesuffix("_isc_mean.npy")
-
-    raise ValueError(f"Could not infer task from ISC filename: {path}")
+    return name.removeprefix("task-").removesuffix("_isc_mean.npy")
 
 def main():
     parser = argparse.ArgumentParser()
@@ -26,10 +23,10 @@ def main():
 
     isc_dir = Path(args.isc_dir)
 
-    isc_files = sorted(isc_dir.glob("task-*_isc_mean.nii.gz"))
+    isc_files = sorted(isc_dir.glob("task-*_isc_mean.npy"))
 
     if len(isc_files) == 0:
-        raise ValueError(f"No ISC NIfTI files found in: {isc_dir}")
+        raise ValueError(f"No ISC NPY files found in: {isc_dir}")
 
     rows = []
     for path in isc_files:

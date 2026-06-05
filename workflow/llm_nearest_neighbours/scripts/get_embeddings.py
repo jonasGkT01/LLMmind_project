@@ -278,10 +278,10 @@ def main():
                 overlap=args.chunk_overlap,
             )
 
-            print(
-                f"{item['task']}: n_tokens={n_tokens}, n_chunks={n_chunks}",
-                flush=True,
-            )
+#            print(
+#                f"{item['task']}: n_tokens={n_tokens}, n_chunks={n_chunks}",
+#                flush=True,
+#            )
 
             records.append(
                 {
