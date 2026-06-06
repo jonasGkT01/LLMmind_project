@@ -4,40 +4,40 @@ import numpy as np
 from pathlib import Path
 from itertools import product
 
-SUBJECTS = [f"{i:03d}" for i in range(1, config["narratives"]["subjects"] + 1)]
-PROCESSING_OUTPUT_DIR = config["narratives"]["processing_output_dir"]
+NARRATIVES_SUBJECTS = [f"{i:03d}" for i in range(1, config["narratives"]["subjects"] + 1)]
+NARRATIVES_PROCESSING_OUTPUT_DIR = config["narratives"]["processing_output_dir"]
 
 NARRATIVES_STIMULI_TABLE = config["narratives"]["stimuli"]
 
-def task_is_excluded(task):
+def narratives_task_is_excluded(task):
     return task in config["narratives"]["problematic_subtasks"]
 
-VALID_NARRATIVES_TASKS = [task for task in config["narratives"]["tasks"] if not task_is_excluded(task)]
+VALID_NARRATIVES_TASKS = [task for task in config["narratives"]["tasks"] if not narratives_task_is_excluded(task)]
 
-def run_label(run_tag):
+def narratives_run_label(run_tag):
     return "norun" if run_tag == "" else run_tag.replace("_", "")
 
 with open(config["narratives"]["scans_to_be_excluded"]) as f:
-    SCAN_EXCLUDE = json.load(f)
+    NARRATIVES_SCAN_EXCLUDE = json.load(f)
 
-def excluded_scan_prefixes(task):
-    task_dict = SCAN_EXCLUDE.get(task, {})
+def narratives_excluded_scan_prefixes(task):
+    task_dict = NARRATIVES_SCAN_EXCLUDE.get(task, {})
     return {
         prefix
         for scans in task_dict.values()
         for prefix in scans
     }
 
-def scan_prefix(subject, task, run_tag):
+def narratives_scan_prefix(subject, task, run_tag):
     prefix = f"sub-{subject}_task-{task}"
     if run_tag != "":
         prefix += run_tag
     return prefix
 
-def is_excluded(subject, task, run_tag):
-    return scan_prefix(subject, task, run_tag) in excluded_scan_prefixes(task)
+def narratives_excluded(subject, task, run_tag):
+    return narratives_scan_prefix(subject, task, run_tag) in narratives_excluded_scan_prefixes(task)
 
-def write_length_check_json(task, parcel_files, output_json):
+def narratives_write_length_check_json(task, parcel_files, output_json):
     parcel_files = [Path(p) for p in parcel_files]
     output_json = Path(output_json)
     output_json.parent.mkdir(parents=True, exist_ok=True)
@@ -100,16 +100,16 @@ def write_length_check_json(task, parcel_files, output_json):
 
     return valid
 
-BOLD_FILES = []
+NARRATIVES_BOLD_FILES = []
 for subject, task, run_tag, space, resolution, descriptor in product(
-    SUBJECTS,
+    NARRATIVES_SUBJECTS,
     config["narratives"]["tasks"],
     config["narratives"]["run_tags"],
     config["narratives"]["spaces"],
     config["narratives"]["resolutions"],
     config["narratives"]["descriptors"],
 ):
-    if is_excluded(subject, task, run_tag):
+    if narratives_excluded(subject, task, run_tag):
         continue
 
     bold_file = config["narratives"]["bold_pattern"].format(
@@ -122,28 +122,28 @@ for subject, task, run_tag, space, resolution, descriptor in product(
     )
 
     if Path(bold_file).exists():
-        BOLD_FILES.append({
+        NARRATIVES_BOLD_FILES.append({
             "subject": subject,
             "task": task,
             "run_tag": run_tag,
-            "run_label": run_label(run_tag),
+            "run_label": narratives_run_label(run_tag),
             "space": space,
             "resolution": resolution,
             "descriptor": descriptor,
             "bold_file": bold_file,
         })
 
-TASK_GROUPS = {}
-for c in BOLD_FILES:
+NARRATIVES_TASK_GROUPS = {}
+for c in NARRATIVES_BOLD_FILES:
     if c["task"] not in VALID_NARRATIVES_TASKS:
         continue
 
-    TASK_GROUPS.setdefault(c["task"], []).append(c)
+    NARRATIVES_TASK_GROUPS.setdefault(c["task"], []).append(c)
 
 def parcel_outputs_for_task(task):
     return [
-        f"{PROCESSING_OUTPUT_DIR}/parcels/{c['task']}/sub-{c['subject']}_task-{c['task']}_{c['run_label']}_space-{c['space']}_res-{c['resolution']}_desc-{c['descriptor']}_parcel_ts.npy"
-        for c in TASK_GROUPS[task]
+        f"{NARRATIVES_PROCESSING_OUTPUT_DIR}/parcels/{c['task']}/sub-{c['subject']}_task-{c['task']}_{c['run_label']}_space-{c['space']}_res-{c['resolution']}_desc-{c['descriptor']}_parcel_ts.npy"
+        for c in NARRATIVES_TASK_GROUPS[task]
     ]
 
 excluded_scans_for_task = []
@@ -157,7 +157,7 @@ for task in config["narratives"]["tasks"]:
         else:
             reason = "Excluded for unspecified reason."
 
-        for c in BOLD_FILES:
+        for c in NARRATIVES_BOLD_FILES:
             if c["task"] == task:
                 excluded_scans_for_task.append({
                     "task": task,
@@ -166,9 +166,9 @@ for task in config["narratives"]["tasks"]:
                 })
         continue
 
-    write_length_check_json(task, parcel_outputs_for_task(task), f"{PROCESSING_OUTPUT_DIR}/qc/task-{task}_length_check.json")
-#    if not write_length_check_json(task, parcel_outputs_for_task(task), f"{PROCESSING_OUTPUT_DIR}/qc/task-{task}_length_check.json"):
-#        print(f"Warning: Length check failed for task {task}. See {PROCESSING_OUTPUT_DIR}/qc/task-{task}_length_check.json for details.")
+    narratives_write_length_check_json(task, parcel_outputs_for_task(task), f"{NARRATIVES_PROCESSING_OUTPUT_DIR}/qc/task-{task}_length_check.json")
+#    if not narratives_write_length_check_json(task, parcel_outputs_for_task(task), f"{NARRATIVES_PROCESSING_OUTPUT_DIR}/qc/task-{task}_length_check.json"):
+#        print(f"Warning: Length check failed for task {task}. See {NARRATIVES_PROCESSING_OUTPUT_DIR}/qc/task-{task}_length_check.json for details.")
 
 excluded_scans_for_task_path = Path(config["narratives"]["excluded_scans_for_task"])
 excluded_scans_for_task_path.parent.mkdir(parents=True, exist_ok=True)
@@ -176,28 +176,28 @@ excluded_scans_for_task_path.parent.mkdir(parents=True, exist_ok=True)
 with open(config["narratives"]["excluded_scans_for_task"], "w") as f:
     json.dump(excluded_scans_for_task, f, indent=2, sort_keys=True)
 
-ISC_NPY_OUTPUTS = [
-    f"{PROCESSING_OUTPUT_DIR}/isc/task-{task}_isc_mean.npy"
-    for task in TASK_GROUPS
+NARRATIVES_ISC_NPY_OUTPUTS = [
+    f"{NARRATIVES_PROCESSING_OUTPUT_DIR}/isc/task-{task}_isc_mean.npy"
+    for task in NARRATIVES_TASK_GROUPS
 ]
 
-ISC_NII_OUTPUTS = [
-    f"{PROCESSING_OUTPUT_DIR}/isc/task-{task}_isc_mean.nii.gz"
-    for task in TASK_GROUPS
+NARRATIVES_ISC_NII_OUTPUTS = [
+    f"{NARRATIVES_PROCESSING_OUTPUT_DIR}/isc/task-{task}_isc_mean.nii.gz"
+    for task in NARRATIVES_TASK_GROUPS
 ]
 
-NARRATIVES_ISC_DONE = f"{PROCESSING_OUTPUT_DIR}/manifests/isc.done"
+NARRATIVES_ISC_DONE = f"{NARRATIVES_PROCESSING_OUTPUT_DIR}/manifests/isc.done"
 
 rule all_narratives_dataset:
     input:
-        ISC_NPY_OUTPUTS,
-        ISC_NII_OUTPUTS,
+        NARRATIVES_ISC_NPY_OUTPUTS,
+        NARRATIVES_ISC_NII_OUTPUTS,
         NARRATIVES_STIMULI_TABLE,
         NARRATIVES_ISC_DONE
 
 rule mark_narratives_isc_done:
     input:
-        ISC_NII_OUTPUTS
+        NARRATIVES_ISC_NII_OUTPUTS
     output:
         touch(NARRATIVES_ISC_DONE)
 
@@ -212,7 +212,7 @@ rule extract_narratives_parcels:
             descriptor=wc.descriptor,
         )
     output:
-        parcel_ts=f"{PROCESSING_OUTPUT_DIR}/parcels/{{task}}/sub-{{subject}}_task-{{task}}_{{run_label}}_space-{{space}}_res-{{resolution}}_desc-{{descriptor}}_parcel_ts.npy"
+        parcel_ts=f"{NARRATIVES_PROCESSING_OUTPUT_DIR}/parcels/{{task}}/sub-{{subject}}_task-{{task}}_{{run_label}}_space-{{space}}_res-{{resolution}}_desc-{{descriptor}}_parcel_ts.npy"
     params:
         n_rois=config["atlas"]["n_rois"],
         yeo_networks=config["atlas"]["yeo_networks"],
@@ -229,19 +229,19 @@ rule extract_narratives_parcels:
                 --atlas_dir {params.atlas_dir:q}
         """
 
-def task_parcel_inputs(wc):
-    items = TASK_GROUPS[wc.task]
+def narratives_task_parcel_inputs(wc):
+    items = NARRATIVES_TASK_GROUPS[wc.task]
     return [
-        f"{PROCESSING_OUTPUT_DIR}/parcels/{c['task']}/sub-{c['subject']}_task-{c['task']}_{run_label(c['run_tag'])}_space-{c['space']}_res-{c['resolution']}_desc-{c['descriptor']}_parcel_ts.npy"
+        f"{NARRATIVES_PROCESSING_OUTPUT_DIR}/parcels/{c['task']}/sub-{c['subject']}_task-{c['task']}_{narratives_run_label(c['run_tag'])}_space-{c['space']}_res-{c['resolution']}_desc-{c['descriptor']}_parcel_ts.npy"
         for c in items
     ]
 
 rule compute_narratives_isc:
     input:
-        task_parcel_inputs
+        narratives_task_parcel_inputs
     output:
-        isc_npy=f"{PROCESSING_OUTPUT_DIR}/isc/task-{{task}}_isc_mean.npy",
-        isc_nii=f"{PROCESSING_OUTPUT_DIR}/isc/task-{{task}}_isc_mean.nii.gz"
+        isc_npy=f"{NARRATIVES_PROCESSING_OUTPUT_DIR}/isc/task-{{task}}_isc_mean.npy",
+        isc_nii=f"{NARRATIVES_PROCESSING_OUTPUT_DIR}/isc/task-{{task}}_isc_mean.nii.gz"
     params:
         n_rois=config["atlas"]["n_rois"],
         yeo_networks=config["atlas"]["yeo_networks"],

@@ -4,18 +4,18 @@ from glob import glob
 
 import pandas as pd
 
-INTERMEDIATE_DIR = "results/mind/caption_scene/intermediate_files"
-PROCESSING_OUTPUT_DIR = config["caption_scene"]["processing_output_dir"]
-ISC_DIR = f"{config['caption_scene']['processing_output_dir']}/isc"
+CAPTION_SCENE_INTERMEDIATE_DIR = "results/mind/caption_scene/intermediate_files"
+CAPTION_SCENE_PROCESSING_OUTPUT_DIR = config["caption_scene"]["processing_output_dir"]
+CAPTION_SCENE_ISC_DIR = f"{config['caption_scene']['processing_output_dir']}/isc"
 
-BOLD_GLOB = config["caption_scene"]["bold_glob"]
+CAPTION_SCENE_BOLD_GLOB = config["caption_scene"]["bold_glob"]
 
-GLOBAL_MANIFEST = f"{INTERMEDIATE_DIR}/manifest/csd_events_manifest.tsv"
+CAPTION_SCENE_GLOBAL_MANIFEST = f"{CAPTION_SCENE_INTERMEDIATE_DIR}/manifest/csd_events_manifest.tsv"
 
 CAPTION_SCENE_STIMULI_TABLE = config["caption_scene"]["stimuli"]
 CAPTION_SCENE_IMAGE_CAPTION_TSV = "resources/datasets/caption_scene_dataset/V1/stimuli/COCO_CN/Image_caption_pairs.tsv"
 
-def parse_bold_path(path):
+def caption_scene_parse_bold_path(path):
     name = Path(path).name
 
     pattern = (
@@ -33,15 +33,15 @@ def parse_bold_path(path):
 
     return match.groupdict()
 
-def sample_key(subject, session, run):
-    return f"sub-{subject}_ses-{session}_run-{run}"
-
-def normalize_int_string(value):
+def caption_scene_normalize_int_string(value):
     return str(int(value))
 
-def run_table_path(subject, run):
-    subject_int = normalize_int_string(subject)
-    run_int = normalize_int_string(run)
+def caption_scene_sample_key(subject, session, run):
+    return f"sub-{subject}_ses-{session}_run-{run}"
+
+def caption_scene_run_table_path(subject, run):
+    subject_int = caption_scene_normalize_int_string(subject)
+    run_int = caption_scene_normalize_int_string(run)
 
     return str(
         Path("resources/datasets/caption_scene_dataset/V1/stimuli/CSD")
@@ -49,36 +49,36 @@ def run_table_path(subject, run):
         / f"subject{subject_int}_run{run_int}.txt"
     )
 
-BOLD_FILES = sorted(glob(BOLD_GLOB))
+CAPTION_SCENE_BOLD_FILES = sorted(glob(CAPTION_SCENE_BOLD_GLOB))
 
-if len(BOLD_FILES) == 0:
-    raise ValueError(f"No BOLD files found with glob: {BOLD_GLOB}")
+if len(CAPTION_SCENE_BOLD_FILES) == 0:
+    raise ValueError(f"No BOLD files found with glob: {CAPTION_SCENE_BOLD_GLOB}")
 
-RUNS = []
-BOLD_BY_KEY = {}
-RUN_TABLE_BY_KEY = {}
+CAPTION_SCENE_RUNS = []
+CAPTION_SCENE_BOLD_BY_KEY = {}
+CAPTION_SCENE_RUN_TABLE_BY_KEY = {}
 
-for bold_file in BOLD_FILES:
-    fields = parse_bold_path(bold_file)
+for bold_file in CAPTION_SCENE_BOLD_FILES:
+    fields = caption_scene_parse_bold_path(bold_file)
 
     subject = fields["subject"]
     session = fields["session"]
     run = fields["run"]
 
-    key = sample_key(subject, session, run)
+    key = caption_scene_sample_key(subject, session, run)
 
-    if key in BOLD_BY_KEY:
+    if key in CAPTION_SCENE_BOLD_BY_KEY:
         raise ValueError(f"Duplicate BOLD key found: {key}")
 
-    run_table = run_table_path(subject, run)
+    run_table = caption_scene_run_table_path(subject, run)
 
     if not Path(run_table).exists():
         raise FileNotFoundError(f"Missing run table for {key}: {run_table}")
 
-    BOLD_BY_KEY[key] = bold_file
-    RUN_TABLE_BY_KEY[key] = run_table
+    CAPTION_SCENE_BOLD_BY_KEY[key] = bold_file
+    CAPTION_SCENE_RUN_TABLE_BY_KEY[key] = run_table
 
-    RUNS.append(
+    CAPTION_SCENE_RUNS.append(
         {
             "key": key,
             "subject": subject,
@@ -89,14 +89,28 @@ for bold_file in BOLD_FILES:
         }
     )
 
-RUN_TABLES = [x["run_table"] for x in RUNS]
+CAPTION_SCENE_RUN_TABLES = [x["run_table"] for x in CAPTION_SCENE_RUNS]
 
-def bold_input_from_wildcards(wildcards):
-    key = sample_key(wildcards.subject, wildcards.session, wildcards.run)
-    return BOLD_BY_KEY[key]
+def caption_scene_bold_input_from_wildcards(wildcards):
+    subject = f"{int(wildcards.subject):02d}"
+    session = f"{int(wildcards.session):02d}"
+    run = f"{int(wildcards.run):03d}"
 
+    key = caption_scene_sample_key(subject, session, run)
 
-def read_manifest(path=GLOBAL_MANIFEST):
+    if key not in CAPTION_SCENE_BOLD_BY_KEY:
+        print("\nREQUESTED KEY:")
+        print(key)
+
+        print("\nAVAILABLE KEYS (first 50):")
+        for available_key in sorted(CAPTION_SCENE_BOLD_BY_KEY.keys())[:50]:
+            print(available_key)
+
+        raise KeyError(key)
+
+    return CAPTION_SCENE_BOLD_BY_KEY[key]
+
+def read_manifest(path=CAPTION_SCENE_GLOBAL_MANIFEST):
     df = pd.read_csv(path, sep="\t")
 
     for column in [
@@ -113,19 +127,19 @@ def read_manifest(path=GLOBAL_MANIFEST):
     return df
 
 def all_caption_scene_outputs(wildcards):
-    checkpoint_output = checkpoints.make_manifest.get().output.manifest
+    checkpoint_output = checkpoints.make_caption_scene_manifest.get().output.manifest
     df = read_manifest(checkpoint_output)
 
     stimuli = sorted(df["stimulus_id"].dropna().unique().tolist())
 
     isc_nii_files = [
-        f"{ISC_DIR}/task-{stimulus_id}_isc_mean.nii.gz"
+        f"{CAPTION_SCENE_ISC_DIR}/task-{stimulus_id}_isc_mean.nii.gz"
         for stimulus_id in stimuli
     ]
 
     return isc_nii_files + [CAPTION_SCENE_STIMULI_TABLE]
 
-def task_parcel_inputs(wildcards):
+def caption_scene_task_parcel_inputs(wildcards):
     df = read_manifest()
 
     rows = df[df["stimulus_id"] == str(wildcards.task)]
@@ -135,14 +149,14 @@ def task_parcel_inputs(wildcards):
 
     return [
         (
-            f"{PROCESSING_OUTPUT_DIR}/parcels/task-{row.stimulus_id}/"
+            f"{CAPTION_SCENE_PROCESSING_OUTPUT_DIR}/parcels/task-{row.stimulus_id}/"
             f"sub-{row.subject}_ses-{row.session}_run-{row.run}"
             f"_task-{row.stimulus_id}_event-{row.event_index}_parcel_ts.npy"
         )
         for row in rows.itertuples(index=False)
     ]
 
-CAPTION_SCENE_ISC_DONE = f"{PROCESSING_OUTPUT_DIR}/manifests/isc.done"
+CAPTION_SCENE_ISC_DONE = f"{CAPTION_SCENE_PROCESSING_OUTPUT_DIR}/manifests/isc.done"
 
 rule all_caption_scene_dataset:
     input:
@@ -155,23 +169,23 @@ rule mark_caption_scene_isc_done:
     output:
         touch(CAPTION_SCENE_ISC_DONE)
 
-checkpoint make_manifest:
+checkpoint make_caption_scene_manifest:
     input:
-        bold_files=BOLD_FILES,
-        run_tables=RUN_TABLES,
+        bold_files=CAPTION_SCENE_BOLD_FILES,
+        run_tables=CAPTION_SCENE_RUN_TABLES,
     output:
-        manifest=GLOBAL_MANIFEST,
+        manifest=CAPTION_SCENE_GLOBAL_MANIFEST,
     params:
-        output_root=INTERMEDIATE_DIR,
+        output_root=CAPTION_SCENE_INTERMEDIATE_DIR,
         tr=config["caption_scene"]["tr"],
         event_duration_s=config["caption_scene"]["event_duration_s"],
         onset_shift_s=config["caption_scene"]["onset_shift_s"],
         run_table_encoding=config["caption_scene"].get("run_table_encoding", "gbk"),
     conda:
-        "envs/make_manifest_environment.yaml"
+        "envs/make_caption_scene_manifest_environment.yaml"
     shell:
         r"""
-            python workflow/dataset_processing/caption_scene_dataset/scripts/make_manifest.py \
+            python workflow/dataset_processing/caption_scene_dataset/scripts/make_caption_scene_manifest.py \
                 --bold_files {input.bold_files:q} \
                 --run_tables {input.run_tables:q} \
                 --output_manifest {output.manifest:q} \
@@ -198,11 +212,11 @@ rule create_caption_scene_stimuli_table:
 
 rule split_bold_by_run_manifest:
     input:
-        manifest=GLOBAL_MANIFEST,
-        bold=bold_input_from_wildcards,
+        manifest=CAPTION_SCENE_GLOBAL_MANIFEST,
+        bold=caption_scene_bold_input_from_wildcards,
     output:
         bold=(
-            f"{INTERMEDIATE_DIR}/single_stimulus_bold/"
+            f"{CAPTION_SCENE_INTERMEDIATE_DIR}/single_stimulus_bold/"
             "sub-{subject}/ses-{session}/run-{run}/"
             "{task}_event-{event_index}.nii.gz"
         ),
@@ -224,13 +238,13 @@ rule split_bold_by_run_manifest:
 rule extract_caption_scene_parcels:
     input:
         bold_file=(
-            f"{INTERMEDIATE_DIR}/single_stimulus_bold/"
+            f"{CAPTION_SCENE_INTERMEDIATE_DIR}/single_stimulus_bold/"
             "sub-{subject}/ses-{session}/run-{run}/"
             "{task}_event-{event_index}.nii.gz"
         ),
     output:
         parcel_ts=(
-            f"{PROCESSING_OUTPUT_DIR}/parcels/task-{{task}}/"
+            f"{CAPTION_SCENE_PROCESSING_OUTPUT_DIR}/parcels/task-{{task}}/"
             "sub-{subject}_ses-{session}_run-{run}_"
             "task-{task}_event-{event_index}_parcel_ts.npy"
         ),
@@ -252,10 +266,10 @@ rule extract_caption_scene_parcels:
 
 rule compute_caption_scene_isc:
     input:
-        task_parcel_inputs,
+        caption_scene_task_parcel_inputs,
     output:
-        isc_npy=f"{INTERMEDIATE_DIR}/isc/task-{{task}}_isc_mean.npy",
-        isc_nii=f"{ISC_DIR}/task-{{task}}_isc_mean.nii.gz",
+        isc_npy=f"{CAPTION_SCENE_INTERMEDIATE_DIR}/isc/task-{{task}}_isc_mean.npy",
+        isc_nii=f"{CAPTION_SCENE_ISC_DIR}/task-{{task}}_isc_mean.nii.gz",
     params:
         n_rois=config["atlas"]["n_rois"],
         yeo_networks=config["atlas"]["yeo_networks"],

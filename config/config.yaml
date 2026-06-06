@@ -1,6 +1,3 @@
-# number of nearest neighbours to compute for each stimulus and model
-number_of_neighbours: [3, 5]
-
 # configuration for relabelled similarity computation
 number_of_relabellings: 10000
 random_seed: 37
@@ -48,11 +45,12 @@ similarity_metrics:
 # datasets
 datasets:
   - "narratives"
-#  - "caption_scene"
+  - "caption_scene"
 
 ##### NARRATIVES DATASET #####
 # dataset configuration
 narratives:
+  number_of_neighbours: 5
   bold_pattern: "resources/datasets/narratives_dataset/derivatives/afni-smooth/sub-{subject}/func/sub-{subject}_task-{task}{run_tag}_space-{space}_res-{resolution}_desc-{descriptor}_bold.nii.gz"
   scans_to_be_excluded: "resources/datasets/narratives_dataset/scan_exclude.json"
   excluded_scans_for_task: "resources/datasets/narratives_dataset/excluded_scans_for_task.json"
@@ -129,6 +127,7 @@ narratives:
 
 ##### CAPTION-SCENE DATASET #####
 caption_scene:
+  number_of_neighbours: 300
   bold_glob: "resources/datasets/caption_scene_dataset/V1/derivatives/pp_data/sub-*/func/sub-*_ses-*_task-CSD_run-*.nii.gz"
   scans_to_be_excluded: "resources/datasets/caption_scene_dataset/scan_exclude.json"
   excluded_scans_for_task: "resources/datasets/caption_scene_dataset/excluded_scans_for_task.json"

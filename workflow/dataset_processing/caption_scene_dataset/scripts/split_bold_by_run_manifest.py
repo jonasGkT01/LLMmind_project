@@ -6,6 +6,10 @@ import numpy as np
 import pandas as pd
 
 def sample_key(subject, session, run):
+    subject = f"{int(subject):02d}"
+    session = f"{int(session):02d}"
+    run = f"{int(run):03d}"
+
     return f"sub-{subject}_ses-{session}_run-{run}"
 
 def main():
@@ -44,7 +48,6 @@ def main():
         (manifest["run_key"].astype(str) == run_key)
         & (manifest["stimulus_id"].astype(str) == str(args.stimulus_id))
         & (manifest["event_index"].astype(str) == str(args.event_index))
-        & (manifest["output_bold"].astype(str) == str(args.output_bold))
     ]
 
     if len(rows) == 0:

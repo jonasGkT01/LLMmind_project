@@ -12,26 +12,44 @@ include: "llm_mind_alignment/Snakefile"
 DATASETS = list(config["datasets"])
 MODEL_KEYS = list(config["models"].keys())
 SIMILARITY_TYPES = list(config["similarity_metrics"])
-NUMBER_OF_NEIGHBOURS = list(config["number_of_neighbours"])
+
+def dataset_neighbour_pairs():
+    pairs = []
+
+    for dataset in DATASETS:
+        nn = config[dataset]["number_of_neighbours"]
+
+        # allow both old scalar syntax and new list syntax
+        if isinstance(nn, int):
+            nn = [nn]
+
+        for number_of_neighbours in nn:
+            pairs.append(
+                {
+                    "dataset": dataset,
+                    "number_of_neighbours": number_of_neighbours,
+                }
+            )
+
+    return pairs
+
+DATASET_NN_PAIRS = dataset_neighbour_pairs()
 
 rule all:
     input:
-        expand(
-            "results/alignment_score/{dataset}/{similarity_type}_alignment_scores/{model}_brain_{similarity_type}_alignment_score_{number_of_neighbours}NN.parquet",
-            dataset=DATASETS,
-            similarity_type=SIMILARITY_TYPES,
-            model=MODEL_KEYS,
-            number_of_neighbours=NUMBER_OF_NEIGHBOURS
-        ),
-        expand(
-            "results/alignment_summary/{dataset}/parquet_summary/{similarity_type}_alignment_summary_{number_of_neighbours}NN_all_models.parquet",
-            dataset=DATASETS,
-            similarity_type=SIMILARITY_TYPES,
-            number_of_neighbours=NUMBER_OF_NEIGHBOURS
-        ),
-        expand(
-            "results/alignment_summary/{dataset}/tsv_summary/{similarity_type}_alignment_summary_{number_of_neighbours}NN_all_models.tsv",
-            dataset=DATASETS,
-            similarity_type=SIMILARITY_TYPES,
-            number_of_neighbours=NUMBER_OF_NEIGHBOURS
-        )
+        [
+            f"results/alignment_score/{pair['dataset']}/{similarity_type}_alignment_scores/{model}_brain_{similarity_type}_alignment_score_{pair['number_of_neighbours']}NN.parquet"
+            for pair in DATASET_NN_PAIRS
+            for similarity_type in SIMILARITY_TYPES
+            for model in MODEL_KEYS
+        ],
+        [
+            f"results/alignment_summary/{pair['dataset']}/parquet_summary/{similarity_type}_alignment_summary_{pair['number_of_neighbours']}NN_all_models.parquet"
+            for pair in DATASET_NN_PAIRS
+            for similarity_type in SIMILARITY_TYPES
+        ],
+        [
+            f"results/alignment_summary/{pair['dataset']}/tsv_summary/{similarity_type}_alignment_summary_{pair['number_of_neighbours']}NN_all_models.tsv"
+            for pair in DATASET_NN_PAIRS
+            for similarity_type in SIMILARITY_TYPES
+        ]
