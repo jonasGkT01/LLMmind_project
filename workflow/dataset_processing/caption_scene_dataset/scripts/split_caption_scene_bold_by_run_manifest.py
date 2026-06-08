@@ -22,6 +22,7 @@ def main():
     parser.add_argument("--stimulus_id", required=True)
     parser.add_argument("--event_index", required=True)
     parser.add_argument("--output_bold", required=True)
+
     args = parser.parse_args()
 
     run_key = sample_key(args.subject, args.session, args.run)
@@ -34,10 +35,12 @@ def main():
         "event_index",
         "start_vol",
         "n_vols",
+        "source_bold",
         "output_bold",
     }
 
     missing_columns = required_columns - set(manifest.columns)
+
     if missing_columns:
         raise ValueError(
             f"Manifest is missing required columns: {sorted(missing_columns)}. "
@@ -82,6 +85,9 @@ def main():
 
     if start_vol < 0:
         raise ValueError(f"start_vol cannot be negative: {start_vol}")
+
+    if n_vols <= 0:
+        raise ValueError(f"n_vols must be positive: {n_vols}")
 
     if end_vol > img.shape[3]:
         raise ValueError(

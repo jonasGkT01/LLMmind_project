@@ -1,0 +1,42 @@
+import argparse
+from pathlib import Path
+
+import pandas as pd
+
+def stimulus_id_from_image(image):
+    return Path(str(image)).stem
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--image_caption_table", required=True)
+    parser.add_argument("--output_dir", required=True)
+    args = parser.parse_args()
+
+    df = pd.read_csv(args.image_caption_table, sep="\t")
+
+    required_columns = {"Image", "Caption"}
+    missing_columns = required_columns - set(df.columns)
+
+    if missing_columns:
+        raise ValueError(
+            f"Image-caption table is missing columns: {sorted(missing_columns)}. "
+            f"Available columns are: {list(df.columns)}"
+        )
+
+    output_dir = Path(args.output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    for _, row in df.iterrows():
+        image = str(row["Image"]).strip()
+        caption = str(row["Caption"]).strip()
+
+        if image == "" or image.lower() == "none":
+            continue
+
+        stimulus_id = stimulus_id_from_image(image)
+        output_caption = output_dir / f"{stimulus_id}.txt"
+
+        output_caption.write_text(caption + "\n", encoding="utf-8")
+
+if __name__ == "__main__":
+    main()

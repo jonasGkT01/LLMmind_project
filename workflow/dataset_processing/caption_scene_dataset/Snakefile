@@ -6,13 +6,11 @@ import pandas as pd
 
 CAPTION_SCENE_INTERMEDIATE_DIR = "results/mind/caption_scene/intermediate_files"
 CAPTION_SCENE_PROCESSING_OUTPUT_DIR = config["caption_scene"]["processing_output_dir"]
-CAPTION_SCENE_ISC_DIR = f"{config['caption_scene']['processing_output_dir']}/isc"
+CAPTION_SCENE_ISC_DIR = f"{CAPTION_SCENE_PROCESSING_OUTPUT_DIR}/isc"
 
 CAPTION_SCENE_BOLD_GLOB = config["caption_scene"]["bold_glob"]
-
 CAPTION_SCENE_GLOBAL_MANIFEST = f"{CAPTION_SCENE_INTERMEDIATE_DIR}/manifest/csd_events_manifest.tsv"
 
-CAPTION_SCENE_STIMULI_TABLE = config["caption_scene"]["stimuli"]
 CAPTION_SCENE_IMAGE_CAPTION_TSV = "resources/datasets/caption_scene_dataset/V1/stimuli/COCO_CN/Image_caption_pairs.tsv"
 
 def caption_scene_parse_bold_path(path):
@@ -99,14 +97,7 @@ def caption_scene_bold_input_from_wildcards(wildcards):
     key = caption_scene_sample_key(subject, session, run)
 
     if key not in CAPTION_SCENE_BOLD_BY_KEY:
-        print("\nREQUESTED KEY:")
-        print(key)
-
-        print("\nAVAILABLE KEYS (first 50):")
-        for available_key in sorted(CAPTION_SCENE_BOLD_BY_KEY.keys())[:50]:
-            print(available_key)
-
-        raise KeyError(key)
+        raise KeyError(f"Missing BOLD file for key: {key}")
 
     return CAPTION_SCENE_BOLD_BY_KEY[key]
 
@@ -150,18 +141,20 @@ def caption_scene_task_parcel_inputs(wildcards):
     return [
         (
             f"{CAPTION_SCENE_PROCESSING_OUTPUT_DIR}/parcels/task-{row.stimulus_id}/"
-            f"sub-{row.subject}_ses-{row.session}_run-{row.run}"
-            f"_task-{row.stimulus_id}_event-{row.event_index}_parcel_ts.npy"
+            f"sub-{row.subject}_ses-{row.session}_run-{row.run}_"
+            f"task-{row.stimulus_id}_event-{row.event_index}_parcel_ts.npy"
         )
         for row in rows.itertuples(index=False)
     ]
 
 CAPTION_SCENE_ISC_DONE = f"{CAPTION_SCENE_PROCESSING_OUTPUT_DIR}/manifests/isc.done"
+CAPTION_SCENE_STIMULI_TRANSCRIPTS_DONE = "resources/datasets/caption_scene_dataset/V1/stimuli_transcripts.done"
 
 rule all_caption_scene_dataset:
     input:
         all_caption_scene_outputs,
-        CAPTION_SCENE_ISC_DONE
+        CAPTION_SCENE_ISC_DONE,
+        CAPTION_SCENE_STIMULI_TRANSCRIPTS_DONE
 
 rule mark_caption_scene_isc_done:
     input:
@@ -196,21 +189,7 @@ checkpoint make_caption_scene_manifest:
                 --run_table_encoding {params.run_table_encoding:q}
         """
 
-rule create_caption_scene_stimuli_table:
-    input:
-        caption_scene_tsv=CAPTION_SCENE_IMAGE_CAPTION_TSV
-    output:
-        stimuli_table=CAPTION_SCENE_STIMULI_TABLE
-    conda:
-        "envs/create_caption_scene_stimuli_table_environment.yaml"
-    shell:
-        r"""
-            python3 workflow/dataset_processing/caption_scene_dataset/scripts/create_caption_scene_stimuli_table.py \
-                --caption_scene_tsv {input.caption_scene_tsv:q} \
-                --output {output.stimuli_table:q}
-        """
-
-rule split_bold_by_run_manifest:
+rule split_caption_scene_bold_by_run_manifest:
     input:
         manifest=CAPTION_SCENE_GLOBAL_MANIFEST,
         bold=caption_scene_bold_input_from_wildcards,
@@ -221,10 +200,10 @@ rule split_bold_by_run_manifest:
             "{task}_event-{event_index}.nii.gz"
         ),
     conda:
-        "envs/split_bold_by_run_manifest_environment.yaml"
+        "envs/split_caption_scene_bold_by_run_manifest_environment.yaml"
     shell:
         r"""
-            python workflow/dataset_processing/caption_scene_dataset/scripts/split_bold_by_run_manifest.py \
+            python workflow/dataset_processing/caption_scene_dataset/scripts/split_caption_scene_bold_by_run_manifest.py \
                 --bold {input.bold:q} \
                 --manifest {input.manifest:q} \
                 --subject {wildcards.subject:q} \
@@ -275,14 +254,29 @@ rule compute_caption_scene_isc:
         yeo_networks=config["atlas"]["yeo_networks"],
         atlas_dir=config["atlas"]["atlas_dir"],
     conda:
-        "envs/compute_isc_environment.yaml"
+        "envs/compute_caption_scene_isc_environment.yaml"
     shell:
         r"""
-            python3 workflow/dataset_processing/caption_scene_dataset/scripts/compute_isc.py \
+            python3 workflow/dataset_processing/caption_scene_dataset/scripts/compute_caption_scene_isc.py \
                 --parcel_ts {input:q} \
                 --isc_npy {output.isc_npy:q} \
                 --isc_nii {output.isc_nii:q} \
                 --n_rois {params.n_rois} \
                 --yeo_networks {params.yeo_networks} \
                 --atlas_dir {params.atlas_dir:q}
+        """
+
+rule write_caption_scene_stimuli_transcripts:
+    input:
+        image_caption_table=CAPTION_SCENE_IMAGE_CAPTION_TSV
+    output:
+        stimuli_dir=directory(config["caption_scene"]["stimuli_dir"]),
+        touch(CAPTION_SCENE_STIMULI_TRANSCRIPTS_DONE)
+    conda:
+        "envs/write_caption_scene_stimuli_transcripts_environment.yaml"
+    shell:
+        r"""
+            python3 workflow/dataset_processing/caption_scene_dataset/scripts/write_caption_scene_stimuli_transcripts.py \
+                --image_caption_table {input.image_caption_table:q} \
+                --output_dir {output.stimuli_dir:q}
         """

@@ -57,7 +57,7 @@ rule download_pretrained_llm:
 
 rule get_embeddings:
     input:
-        stimuli_table=lambda wc: config[wc.dataset]["stimuli"],
+        stimuli_dir=lambda wc: config[wc.dataset]["stimuli_dir"],
         model="resources/models/{model}"
     output:
         "results/llm/{dataset}/embeddings/{model}_embeddings.parquet"
@@ -72,7 +72,7 @@ rule get_embeddings:
     shell:
         r"""
             python3 workflow/llm_nearest_neighbours/scripts/get_embeddings.py \
-                --stimuli_table {input.stimuli_table:q} \
+                --stimuli_dir {input.stimuli_dir:q} \
                 --output {output:q} \
                 --model_path {input.model:q} \
                 {params.quantization_arg} \

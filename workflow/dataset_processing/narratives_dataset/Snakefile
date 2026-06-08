@@ -192,7 +192,6 @@ rule all_narratives_dataset:
     input:
         NARRATIVES_ISC_NPY_OUTPUTS,
         NARRATIVES_ISC_NII_OUTPUTS,
-        NARRATIVES_STIMULI_TABLE,
         NARRATIVES_ISC_DONE
 
 rule mark_narratives_isc_done:
@@ -218,10 +217,10 @@ rule extract_narratives_parcels:
         yeo_networks=config["atlas"]["yeo_networks"],
         atlas_dir=config["atlas"]["atlas_dir"]
     conda:
-        "envs/extract_parcels_environment.yaml"
+        "envs/extract_narratives_parcels_environment.yaml"
     shell:
         r"""
-            python3 workflow/dataset_processing/narratives_dataset/scripts/extract_parcels.py \
+            python3 workflow/dataset_processing/narratives_dataset/scripts/extract_narratives_parcels.py \
                 --bold_file {input.bold_files:q} \
                 --parcel_ts {output.parcel_ts:q} \
                 --n_rois {params.n_rois} \
@@ -247,28 +246,14 @@ rule compute_narratives_isc:
         yeo_networks=config["atlas"]["yeo_networks"],
         atlas_dir=config["atlas"]["atlas_dir"]
     conda:
-        "envs/compute_isc_environment.yaml"
+        "envs/compute_narratives_isc_environment.yaml"
     shell:
         r"""
-            python3 workflow/dataset_processing/narratives_dataset/scripts/compute_isc.py \
+            python3 workflow/dataset_processing/narratives_dataset/scripts/compute_narratives_isc.py \
                 --parcel_ts {input:q} \
                 --isc_npy {output.isc_npy:q} \
                 --isc_nii {output.isc_nii:q} \
                 --n_rois {params.n_rois} \
                 --yeo_networks {params.yeo_networks} \
                 --atlas_dir {params.atlas_dir:q}
-        """
-
-rule create_narratives_stimuli_table:
-    input:
-        stimuli_dir="resources/datasets/narratives_dataset/stimuli/transcripts/"
-    output:
-        stimuli_table=NARRATIVES_STIMULI_TABLE
-    conda:
-        "envs/create_narratives_stimuli_table_environment.yaml"
-    shell:
-        r"""
-            python3 workflow/dataset_processing/narratives_dataset/scripts/create_narratives_stimuli_table.py \
-                --stimuli_dir {input.stimuli_dir:q} \
-                --output {output.stimuli_table:q}
         """

@@ -2,7 +2,6 @@
 number_of_relabellings: 10000
 random_seed: 37
 
-# models
 models:
   bloom_560m:
     name: "BLOOMZ-560M"
@@ -37,25 +36,21 @@ models:
     hf_name: "openlm-research/open_llama_13b"
     quantization_method: "8bit"
 
-# similarity metrics
 similarity_metrics:
- - "cosine"
- - "pearson"
+  - "cosine"
+  - "pearson"
 
-# datasets
 datasets:
   - "narratives"
   - "caption_scene"
 
-##### NARRATIVES DATASET #####
-# dataset configuration
 narratives:
   number_of_neighbours: 5
   bold_pattern: "resources/datasets/narratives_dataset/derivatives/afni-smooth/sub-{subject}/func/sub-{subject}_task-{task}{run_tag}_space-{space}_res-{resolution}_desc-{descriptor}_bold.nii.gz"
   scans_to_be_excluded: "resources/datasets/narratives_dataset/scan_exclude.json"
   excluded_scans_for_task: "resources/datasets/narratives_dataset/excluded_scans_for_task.json"
   processing_output_dir: "results/mind/narratives"
-  stimuli: "results/llm/narratives/manifests/stimuli.tsv"
+  stimuli_dir: "resources/datasets/narratives_dataset/stimuli/transcipts"
   subjects: 345
   tasks:
     - "21styear"
@@ -67,7 +62,6 @@ narratives:
     - "himym"
     - "lucy"
     - "merlin"
-#    - "milkyway"
     - "milkywayoriginal"
     - "milkywaysynonyms"
     - "milkywayvodka"
@@ -78,7 +72,6 @@ narratives:
     - "piemanpni"
     - "prettymouth"
     - "santa"
-#    - "schema"
     - "seinfeld"
     - "shame"
     - "shapesphysical"
@@ -99,7 +92,6 @@ narratives:
   descriptors:
     - "clean"
   subtasks:
-  # subtasks of "schema" task
   schema_subtasks:
     - "bigbang"
     - "friends"
@@ -109,7 +101,6 @@ narratives:
     - "shame"
     - "upintheair"
     - "vinny"
-  # variants of "notthefall" task
   notthefall_variants:
     - "notthefalllongscram"
     - "notthefallshortscram"
@@ -125,21 +116,19 @@ narratives:
     - "notthefalllongscram"
     - "notthefallshortscram"
 
-##### CAPTION-SCENE DATASET #####
 caption_scene:
   number_of_neighbours: 300
   bold_glob: "resources/datasets/caption_scene_dataset/V1/derivatives/pp_data/sub-*/func/sub-*_ses-*_task-CSD_run-*.nii.gz"
   scans_to_be_excluded: "resources/datasets/caption_scene_dataset/scan_exclude.json"
   excluded_scans_for_task: "resources/datasets/caption_scene_dataset/excluded_scans_for_task.json"
   processing_output_dir: "results/mind/caption_scene"
-  stimuli: "results/llm/caption_scene/manifests/stimuli.tsv"
+  stimuli_dir: "resources/datasets/caption_scene_dataset/V1/stimuli/transcripts"
   subjects: 8
   tr: 2.0
-  event_duration_s: 12.0
   onset_shift_s: 0.0
+  event_duration_s: 12.0
   run_table_encoding: "gbk"
 
-# atlas configuration
 atlas:
   atlas_dir: "resources/atlases"
   n_rois: 200

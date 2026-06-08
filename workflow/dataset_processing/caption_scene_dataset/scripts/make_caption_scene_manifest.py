@@ -64,12 +64,12 @@ def main():
 
         df = read_run_table(run_table, args.run_table_encoding)
 
-        required = {"Index", "Onset", "Blank", "Unmatch", "Image", "Caption"}
-        missing = required - set(df.columns)
+        required_columns = {"Index", "Onset", "Blank", "Unmatch", "Image", "Caption"}
+        missing_columns = required_columns - set(df.columns)
 
-        if missing:
+        if missing_columns:
             raise ValueError(
-                f"Run table {run_table} is missing columns: {sorted(missing)}"
+                f"Run table {run_table} is missing columns: {sorted(missing_columns)}"
             )
 
         df["Image"] = df["Image"].astype(str)
@@ -84,19 +84,22 @@ def main():
         seen_outputs = set()
 
         for _, row in valid.iterrows():
-            image = str(row["Image"])
+            image = str(row["Image"]).strip()
             stimulus_id = stimulus_id_from_image(image)
             event_index = int(row["Index"])
 
             onset_s = float(row["Onset"])
-            shifted_onset_s = onset_s + float(args.onset_shift_s)
+            crop_start_s = onset_s + float(args.onset_shift_s)
 
-            if shifted_onset_s < 0:
+            if crop_start_s < 0:
                 raise ValueError(
-                    f"Negative shifted onset for {run_key}, {image}: {shifted_onset_s}"
+                    f"Negative crop start for {run_key}, event {event_index}, "
+                    f"image {image}: {crop_start_s}"
                 )
 
-            start_vol = int(round(shifted_onset_s / args.tr))
+            start_vol = int(round(crop_start_s / args.tr))
+            crop_end_s = crop_start_s + float(args.event_duration_s)
+            end_vol = start_vol + n_vols
 
             output_bold = (
                 Path(args.output_root)
@@ -124,10 +127,16 @@ def main():
                     "image": image,
                     "stimulus_id": stimulus_id,
                     "caption": str(row["Caption"]),
+                    "blank": int(row["Blank"]),
+                    "unmatch": int(row["Unmatch"]),
                     "onset_s": onset_s,
-                    "shifted_onset_s": shifted_onset_s,
-                    "tr": args.tr,
+                    "onset_shift_s": float(args.onset_shift_s),
+                    "crop_start_s": crop_start_s,
+                    "event_duration_s": float(args.event_duration_s),
+                    "crop_end_s": crop_end_s,
+                    "tr": float(args.tr),
                     "start_vol": start_vol,
+                    "end_vol": end_vol,
                     "n_vols": n_vols,
                     "source_bold": str(Path(bold).resolve()),
                     "run_table": str(Path(run_table).resolve()),
