@@ -13,6 +13,8 @@ CAPTION_SCENE_GLOBAL_MANIFEST = f"{CAPTION_SCENE_INTERMEDIATE_DIR}/manifest/csd_
 
 CAPTION_SCENE_IMAGE_CAPTION_TSV = "resources/datasets/caption_scene_dataset/V1/stimuli/COCO_CN/Image_caption_pairs.tsv"
 
+CORRUPTED_NIIS = config["caption_scene"]["corrupted_niis"]
+
 def caption_scene_parse_bold_path(path):
     name = Path(path).name
 
@@ -193,6 +195,7 @@ rule split_caption_scene_bold_by_run_manifest:
     input:
         manifest=CAPTION_SCENE_GLOBAL_MANIFEST,
         bold=caption_scene_bold_input_from_wildcards,
+        corrupted_files=CORRUPTED_NIIS
     output:
         bold=(
             f"{CAPTION_SCENE_INTERMEDIATE_DIR}/single_stimulus_bold/"
@@ -206,6 +209,7 @@ rule split_caption_scene_bold_by_run_manifest:
             python workflow/dataset_processing/caption_scene_dataset/scripts/split_caption_scene_bold_by_run_manifest.py \
                 --bold {input.bold:q} \
                 --manifest {input.manifest:q} \
+                --corrupted_niis {input.corrupted_files:q} \
                 --subject {wildcards.subject:q} \
                 --session {wildcards.session:q} \
                 --run {wildcards.run:q} \

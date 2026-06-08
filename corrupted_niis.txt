@@ -1,1 +1,0 @@
-resources/datasets/caption_scene_dataset/V1/derivatives/pp_data/sub-02/func/sub-02_ses-23_task-CSD_run-159.nii.gz

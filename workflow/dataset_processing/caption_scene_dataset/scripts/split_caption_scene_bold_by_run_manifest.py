@@ -1,4 +1,5 @@
 import argparse
+import warnings
 from pathlib import Path
 
 import nibabel as nib
@@ -12,10 +13,37 @@ def sample_key(subject, session, run):
 
     return f"sub-{subject}_ses-{session}_run-{run}"
 
+def load_corrupted_niis(corrupted_niis):
+    corrupted_niis = Path(corrupted_niis)
+
+    if not corrupted_niis.exists():
+        raise FileNotFoundError(f"Corrupted NIfTI list does not exist: {corrupted_niis}")
+
+    corrupted_paths = set()
+
+    with corrupted_niis.open("r") as f:
+        for line in f:
+            path = line.strip()
+
+            if path:
+                corrupted_paths.add(str(Path(path)))
+                corrupted_paths.add(str(Path(path).resolve()))
+
+    return corrupted_paths
+
+def is_corrupted_bold(bold, corrupted_paths):
+    bold_path = Path(bold)
+
+    return (
+        str(bold_path) in corrupted_paths
+        or str(bold_path.resolve()) in corrupted_paths
+    )
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--bold", required=True)
     parser.add_argument("--manifest", required=True)
+    parser.add_argument("--corrupted_niis", required=True)
     parser.add_argument("--subject", required=True)
     parser.add_argument("--session", required=True)
     parser.add_argument("--run", required=True)
@@ -77,6 +105,16 @@ def main():
 
     output_bold = Path(args.output_bold)
     output_bold.parent.mkdir(parents=True, exist_ok=True)
+
+    corrupted_paths = load_corrupted_niis(args.corrupted_niis)
+
+    if is_corrupted_bold(args.bold, corrupted_paths):
+        warnings.warn(
+            f"Skipping corrupted BOLD file without opening it: {args.bold}. "
+            f"Expected output would have been: {output_bold}",
+            RuntimeWarning,
+        )
+        return
 
     img = nib.load(args.bold)
 
