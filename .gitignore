@@ -1,6 +1,7 @@
 .env
 .envrc
 .snakemake
+corrupted_niis.txt
 resources/
 results/
 workflow/envs/LLMmind_project/
