@@ -7,8 +7,6 @@ from itertools import product
 NARRATIVES_SUBJECTS = [f"{i:03d}" for i in range(1, config["narratives"]["subjects"] + 1)]
 NARRATIVES_PROCESSING_OUTPUT_DIR = config["narratives"]["processing_output_dir"]
 
-NARRATIVES_STIMULI_TABLE = config["narratives"]["stimuli"]
-
 def narratives_task_is_excluded(task):
     return task in config["narratives"]["problematic_subtasks"]
 
