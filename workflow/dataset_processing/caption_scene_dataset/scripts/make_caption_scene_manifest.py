@@ -1,6 +1,7 @@
 import argparse
 import math
 import re
+import warnings
 from pathlib import Path
 
 import pandas as pd
@@ -32,10 +33,37 @@ def stimulus_id_from_image(image):
 def read_run_table(path, encoding):
     return pd.read_csv(path, sep=None, engine="python", encoding=encoding)
 
+def load_corrupted_niis(corrupted_niis):
+    corrupted_niis = Path(corrupted_niis)
+
+    if not corrupted_niis.exists():
+        raise FileNotFoundError(f"Corrupted NIfTI list does not exist: {corrupted_niis}")
+
+    corrupted_paths = set()
+
+    with corrupted_niis.open("r") as f:
+        for line in f:
+            path = line.strip()
+
+            if path:
+                corrupted_paths.add(str(Path(path)))
+                corrupted_paths.add(str(Path(path).resolve()))
+
+    return corrupted_paths
+
+def is_corrupted_bold(bold, corrupted_paths):
+    bold_path = Path(bold)
+
+    return (
+        str(bold_path) in corrupted_paths
+        or str(bold_path.resolve()) in corrupted_paths
+    )
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--bold_files", nargs="+", required=True)
     parser.add_argument("--run_tables", nargs="+", required=True)
+    parser.add_argument("--corrupted_niis", required=True)
     parser.add_argument("--output_manifest", required=True)
     parser.add_argument("--output_root", required=True)
     parser.add_argument("--tr", required=True, type=float)
@@ -51,8 +79,11 @@ def main():
             f"Got {len(args.bold_files)} BOLD files and {len(args.run_tables)} run tables."
         )
 
+    corrupted_paths = load_corrupted_niis(args.corrupted_niis)
+
     n_vols = int(math.ceil(args.event_duration_s / args.tr))
     rows = []
+    skipped_corrupted = 0
 
     for bold, run_table in zip(args.bold_files, args.run_tables):
         fields = parse_bold_path(bold)
@@ -61,6 +92,15 @@ def main():
         session = fields["session"]
         run = fields["run"]
         run_key = sample_key(subject, session, run)
+
+        if is_corrupted_bold(bold, corrupted_paths):
+            skipped_corrupted += 1
+            warnings.warn(
+                f"Skipping corrupted BOLD file while creating manifest: {bold}. "
+                f"No expected single-stimulus outputs will be added for {run_key}.",
+                RuntimeWarning,
+            )
+            continue
 
         df = read_run_table(run_table, args.run_table_encoding)
 
@@ -159,6 +199,7 @@ def main():
     out.to_csv(output_path, sep="\t", index=False)
 
     print(f"Wrote global manifest with {len(out)} rows to {output_path}")
+    print(f"Skipped {skipped_corrupted} corrupted BOLD files listed in {args.corrupted_niis}")
 
 if __name__ == "__main__":
     main()

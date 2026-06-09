@@ -130,7 +130,7 @@ def all_caption_scene_outputs(wildcards):
         for stimulus_id in stimuli
     ]
 
-    return isc_nii_files + [CAPTION_SCENE_STIMULI_TABLE]
+    return isc_nii_files
 
 def caption_scene_task_parcel_inputs(wildcards):
     df = read_manifest()
@@ -168,6 +168,7 @@ checkpoint make_caption_scene_manifest:
     input:
         bold_files=CAPTION_SCENE_BOLD_FILES,
         run_tables=CAPTION_SCENE_RUN_TABLES,
+        corrupted_files=CORRUPTED_NIIS
     output:
         manifest=CAPTION_SCENE_GLOBAL_MANIFEST,
     params:
@@ -183,6 +184,7 @@ checkpoint make_caption_scene_manifest:
             python workflow/dataset_processing/caption_scene_dataset/scripts/make_caption_scene_manifest.py \
                 --bold_files {input.bold_files:q} \
                 --run_tables {input.run_tables:q} \
+                --corrupted_niis {input.corrupted_files:q} \
                 --output_manifest {output.manifest:q} \
                 --output_root {params.output_root:q} \
                 --tr {params.tr} \
@@ -194,8 +196,7 @@ checkpoint make_caption_scene_manifest:
 rule split_caption_scene_bold_by_run_manifest:
     input:
         manifest=CAPTION_SCENE_GLOBAL_MANIFEST,
-        bold=caption_scene_bold_input_from_wildcards,
-        corrupted_files=CORRUPTED_NIIS
+        bold=caption_scene_bold_input_from_wildcards
     output:
         bold=(
             f"{CAPTION_SCENE_INTERMEDIATE_DIR}/single_stimulus_bold/"
@@ -209,7 +210,6 @@ rule split_caption_scene_bold_by_run_manifest:
             python workflow/dataset_processing/caption_scene_dataset/scripts/split_caption_scene_bold_by_run_manifest.py \
                 --bold {input.bold:q} \
                 --manifest {input.manifest:q} \
-                --corrupted_niis {input.corrupted_files:q} \
                 --subject {wildcards.subject:q} \
                 --session {wildcards.session:q} \
                 --run {wildcards.run:q} \
@@ -236,10 +236,10 @@ rule extract_caption_scene_parcels:
         yeo_networks=config["atlas"]["yeo_networks"],
         atlas_dir=config["atlas"]["atlas_dir"],
     conda:
-        "envs/extract_parcels_environment.yaml"
+        "envs/extract_caption_scene_parcels_environment.yaml"
     shell:
         r"""
-            python3 workflow/dataset_processing/caption_scene_dataset/scripts/extract_parcels.py \
+            python3 workflow/dataset_processing/caption_scene_dataset/scripts/extract_caption_scene_parcels.py \
                 --bold_file {input.bold_file:q} \
                 --parcel_ts {output.parcel_ts:q} \
                 --n_rois {params.n_rois} \
@@ -275,7 +275,7 @@ rule write_caption_scene_stimuli_transcripts:
         image_caption_table=CAPTION_SCENE_IMAGE_CAPTION_TSV
     output:
         stimuli_dir=directory(config["caption_scene"]["stimuli_dir"]),
-        touch(CAPTION_SCENE_STIMULI_TRANSCRIPTS_DONE)
+        transcripts_done=CAPTION_SCENE_STIMULI_TRANSCRIPTS_DONE
     conda:
         "envs/write_caption_scene_stimuli_transcripts_environment.yaml"
     shell:
@@ -283,4 +283,6 @@ rule write_caption_scene_stimuli_transcripts:
             python3 workflow/dataset_processing/caption_scene_dataset/scripts/write_caption_scene_stimuli_transcripts.py \
                 --image_caption_table {input.image_caption_table:q} \
                 --output_dir {output.stimuli_dir:q}
+            
+            touch {output.transcripts_done}
         """
