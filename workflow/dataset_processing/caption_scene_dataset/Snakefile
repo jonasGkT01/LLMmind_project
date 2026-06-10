@@ -9,7 +9,7 @@ CAPTION_SCENE_PROCESSING_OUTPUT_DIR = config["caption_scene"]["processing_output
 CAPTION_SCENE_ISC_DIR = f"{CAPTION_SCENE_PROCESSING_OUTPUT_DIR}/isc"
 
 CAPTION_SCENE_BOLD_GLOB = config["caption_scene"]["bold_glob"]
-CAPTION_SCENE_GLOBAL_MANIFEST = f"{CAPTION_SCENE_INTERMEDIATE_DIR}/manifest/csd_events_manifest.tsv"
+CAPTION_SCENE_MANIFEST = f"{CAPTION_SCENE_INTERMEDIATE_DIR}/manifest/csd_events_manifest.tsv"
 
 CAPTION_SCENE_IMAGE_CAPTION_TSV = "resources/datasets/caption_scene_dataset/V1/stimuli/COCO_CN/Image_caption_pairs.tsv"
 
@@ -103,7 +103,7 @@ def caption_scene_bold_input_from_wildcards(wildcards):
 
     return CAPTION_SCENE_BOLD_BY_KEY[key]
 
-def read_manifest(path=CAPTION_SCENE_GLOBAL_MANIFEST):
+def read_manifest(path=CAPTION_SCENE_MANIFEST):
     df = pd.read_csv(path, sep="\t")
 
     for column in [
@@ -170,7 +170,7 @@ checkpoint make_caption_scene_manifest:
         run_tables=CAPTION_SCENE_RUN_TABLES,
         corrupted_files=CORRUPTED_NIIS
     output:
-        manifest=CAPTION_SCENE_GLOBAL_MANIFEST,
+        manifest=CAPTION_SCENE_MANIFEST,
     params:
         output_root=CAPTION_SCENE_INTERMEDIATE_DIR,
         tr=config["caption_scene"]["tr"],
@@ -195,7 +195,7 @@ checkpoint make_caption_scene_manifest:
 
 rule split_caption_scene_bold_by_run_manifest:
     input:
-        manifest=CAPTION_SCENE_GLOBAL_MANIFEST,
+        manifest=CAPTION_SCENE_MANIFEST,
         bold=caption_scene_bold_input_from_wildcards
     output:
         bold=(
@@ -272,7 +272,8 @@ rule compute_caption_scene_isc:
 
 rule write_caption_scene_stimuli_transcripts:
     input:
-        image_caption_table=CAPTION_SCENE_IMAGE_CAPTION_TSV
+        image_caption_table=CAPTION_SCENE_IMAGE_CAPTION_TSV,
+        manifest=CAPTION_SCENE_MANIFEST
     output:
         stimuli_dir=directory(config["caption_scene"]["stimuli_dir"]),
         transcripts_done=CAPTION_SCENE_STIMULI_TRANSCRIPTS_DONE
@@ -282,6 +283,7 @@ rule write_caption_scene_stimuli_transcripts:
         r"""
             python3 workflow/dataset_processing/caption_scene_dataset/scripts/write_caption_scene_stimuli_transcripts.py \
                 --image_caption_table {input.image_caption_table:q} \
+                --manifest {input.manifest:q} \
                 --output_dir {output.stimuli_dir:q}
             
             touch {output.transcripts_done}

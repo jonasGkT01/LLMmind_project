@@ -189,6 +189,28 @@ def main():
     if out.empty:
         raise ValueError("Global manifest is empty. No valid CSD events were found.")
 
+    stimulus_counts = out.groupby("stimulus_id").size()
+    valid_stimuli = stimulus_counts[stimulus_counts >= 2].index
+    removed_stimuli = stimulus_counts[stimulus_counts < 2]
+
+    if len(removed_stimuli) > 0:
+        warnings.warn(
+            "Removing stimuli with fewer than two parcel time-series files: "
+            + ", ".join(
+                f"{stimulus_id}={count}"
+                for stimulus_id, count in removed_stimuli.items()
+            ),
+            RuntimeWarning,
+        )
+
+    out = out[out["stimulus_id"].isin(valid_stimuli)].copy()
+
+    if out.empty:
+        raise ValueError(
+            "Global manifest is empty after removing stimuli with fewer than two "
+            "parcel time-series files."
+        )
+
     out = out.sort_values(
         ["subject", "session", "run", "event_index"]
     ).reset_index(drop=True)
@@ -200,6 +222,7 @@ def main():
 
     print(f"Wrote global manifest with {len(out)} rows to {output_path}")
     print(f"Skipped {skipped_corrupted} corrupted BOLD files listed in {args.corrupted_niis}")
+    print(f"Removed {len(removed_stimuli)} stimuli with fewer than two parcel time-series files")
 
 if __name__ == "__main__":
     main()

@@ -215,6 +215,7 @@ def main() -> None:
 
         row = {
             "model": model,
+            "observed_average_number_of_common_neighbours": observed_average_alignment * args.number_of_neighbours,
             "observed_average_alignment_score": observed_average_alignment,
             "empirical_null_mean_alignment_score": empirical_null_mean,
             "empirical_enrichment_observed_over_null": empirical_enrichment,
