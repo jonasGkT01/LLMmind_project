@@ -24,7 +24,7 @@ def main():
                         help="Number of nearest neighbours to compute for each concept")
     args = parser.parse_args()
 
-    
+    print(f"Starting relabelling process with {args.number_of_relabellings} iterations.")
 
     similarity_df = pd.read_parquet(args.similarity_dataframe)
     if similarity_df.shape[0] != similarity_df.shape[1]:
@@ -38,6 +38,8 @@ def main():
         relabelled_similarity_df = relabel_wide_similarity(similarity_df, seed=args.random_seed + i)
         nearest_neighbours = compute_nearest_neighbours(relabelled_similarity_df, args.number_of_neighbours)
         relabelled_nearest_neighbours[f"shuffle_{i}"] = nearest_neighbours
+
+        print(f"Completed relabelling {i+1}/{args.number_of_relabellings}")
 
     output_path = Path(args.relabelled_nearest_neighbours)
     output_path.parent.mkdir(parents=True, exist_ok=True)
