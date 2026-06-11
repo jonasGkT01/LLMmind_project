@@ -64,28 +64,33 @@ def main():
     manifest["source_bold"] = manifest["source_bold"].astype(str)
     manifest["output_bold"] = manifest["output_bold"].astype(str)
 
-    for source_bold, rows in manifest.groupby("source_bold", sort=False):
-        source_bold = Path(source_bold)
+    source_bolds = manifest["source_bold"].drop_duplicates().tolist()
 
-        if not source_bold.exists():
-            raise FileNotFoundError(f"Missing source BOLD file: {source_bold}")
+    if len(source_bolds) != 1:
+        raise ValueError(
+            "This split script expects one source BOLD file per manifest. "
+            f"Found {len(source_bolds)} source BOLD files: {source_bolds}"
+        )
 
-        print(f"Loading source BOLD once: {source_bold}")
+    source_bold = Path(source_bolds[0])
 
-        img = nib.load(str(source_bold))
+    if not source_bold.exists():
+        raise FileNotFoundError(f"Missing source BOLD file: {source_bold}")
 
-        if img.ndim != 4:
-            raise ValueError(f"Expected 4D BOLD image, got shape {img.shape}: {source_bold}")
+    print(f"Loading source BOLD once: {source_bold}")
 
-        for row in rows.itertuples(index=False):
-            print(f"Writing {row.output_bold}")
+    img = nib.load(str(source_bold))
 
-            write_crop(
-                img=img,
-                output_bold=row.output_bold,
-                start_vol=row.start_vol,
-                n_vols=row.n_vols,
-            )
+    if img.ndim != 4:
+        raise ValueError(f"Expected 4D BOLD image, got shape {img.shape}: {source_bold}")
+
+    for row in manifest.itertuples(index=False):
+        write_crop(
+            img=img,
+            output_bold=row.output_bold,
+            start_vol=row.start_vol,
+            n_vols=row.n_vols,
+        )
 
 if __name__ == "__main__":
     main()

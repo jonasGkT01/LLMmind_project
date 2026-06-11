@@ -57,6 +57,7 @@ rule download_pretrained_llm:
 
 rule get_embeddings:
     input:
+        stimuli_transcripts_done=lambda wc: config[wc.dataset]["stimuli_transcripts_done"],
         stimuli_dir=lambda wc: config[wc.dataset]["stimuli_dir"],
         model="resources/models/{model}"
     output:

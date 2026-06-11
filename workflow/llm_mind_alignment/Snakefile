@@ -46,7 +46,7 @@ rule all_llm_mind_alignment:
 
 rule compute_llm_mind_alignment_score:
     input:
-        isc_nearest_neighbours="results/mind/{dataset}/{similarity_type}_nearest_neighbours/isc_{similarity_type}_nearest_neighbours_{number_of_neighbours}NN.parquet",
+        isc_nearest_neighbours="results/mind/{dataset}/isc_{similarity_type}_nearest_neighbours_{number_of_neighbours}NN.parquet",
         llm_nearest_neighnours="results/llm/{dataset}/{similarity_type}_nearest_neighbours/{model}_{similarity_type}_nearest_neighbours_{number_of_neighbours}NN.parquet"
     output:
         llm_brain_alignment_score="results/alignment_score/{dataset}/{similarity_type}_alignment_scores/{model}_brain_{similarity_type}_alignment_score_{number_of_neighbours}NN.parquet"
@@ -67,7 +67,7 @@ rule compute_llm_mind_alignment_score:
 
 rule compute_relabelled_llm_mind_alignment_score:
     input:
-        isc_nearest_neighbours="results/mind/{dataset}/{similarity_type}_nearest_neighbours/isc_{similarity_type}_nearest_neighbours_{number_of_neighbours}NN.parquet",
+        isc_nearest_neighbours="results/mind/{dataset}/isc_{similarity_type}_nearest_neighbours_{number_of_neighbours}NN.parquet",
         relabelled_llm_nearest_neighbours="results/llm/{dataset}/relabelled_nearest_neighbours/relabelled_{model}_{similarity_type}_nearest_neighbours_{number_of_neighbours}NN.parquet"
     output:
         relabelled_alignment_score="results/alignment_score/{dataset}/{similarity_type}_alignment_scores/{model}_brain_relabelled_{similarity_type}_alignment_score_{number_of_neighbours}NN.parquet"

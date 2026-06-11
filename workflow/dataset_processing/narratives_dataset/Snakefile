@@ -10,6 +10,8 @@ NARRATIVES_PROCESSING_OUTPUT_DIR = config["narratives"]["processing_output_dir"]
 NARRATIVES_PARCEL_MANIFEST = f"{NARRATIVES_PROCESSING_OUTPUT_DIR}/manifests/parcel_extraction_manifest.tsv"
 NARRATIVES_ISC_MANIFEST = f"{NARRATIVES_PROCESSING_OUTPUT_DIR}/manifests/isc_manifest.tsv"
 
+NARRATIVES_STIMULI_TRANSCRIPTS_DONE = config["narratives"]["stimuli_transcripts_done"]
+
 def narratives_task_is_excluded(task):
     return task in config["narratives"]["problematic_subtasks"]
 
@@ -227,13 +229,15 @@ rule all_narratives_dataset:
     input:
         NARRATIVES_ISC_NPY_OUTPUTS,
         NARRATIVES_ISC_NII_OUTPUTS,
-        NARRATIVES_ISC_DONE
+        NARRATIVES_ISC_DONE,
+        NARRATIVES_STIMULI_TRANSCRIPTS_DONE
 
-rule mark_narratives_isc_done:
+rule mark_narratives_isc_and_stimuli_transcripts_done:
     input:
         NARRATIVES_ISC_NII_OUTPUTS
     output:
-        touch(NARRATIVES_ISC_DONE)
+        touch(NARRATIVES_ISC_DONE),
+        touch(NARRATIVES_STIMULI_TRANSCRIPTS_DONE)
 
 rule write_narratives_parcel_manifest:
     output:

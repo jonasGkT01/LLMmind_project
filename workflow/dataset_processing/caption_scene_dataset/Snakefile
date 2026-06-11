@@ -10,12 +10,14 @@ CAPTION_SCENE_ISC_DIR = f"{CAPTION_SCENE_PROCESSING_OUTPUT_DIR}/isc"
 
 CAPTION_SCENE_BOLD_GLOB = config["caption_scene"]["bold_glob"]
 CAPTION_SCENE_MANIFEST = f"{CAPTION_SCENE_INTERMEDIATE_DIR}/manifest/csd_events_manifest.tsv"
+CAPTION_SCENE_RUN_MANIFEST_DIR = f"{CAPTION_SCENE_INTERMEDIATE_DIR}/manifest/by_run"
+CAPTION_SCENE_RUN_MANIFEST_INDEX = f"{CAPTION_SCENE_INTERMEDIATE_DIR}/manifest/by_run_manifest_index.tsv"
 
 CAPTION_SCENE_PARCELS_DONE = f"{CAPTION_SCENE_PROCESSING_OUTPUT_DIR}/manifests/parcels.done"
 CAPTION_SCENE_ISC_DONE = f"{CAPTION_SCENE_PROCESSING_OUTPUT_DIR}/manifests/isc.done"
 
 CAPTION_SCENE_IMAGE_CAPTION_TSV = "resources/datasets/caption_scene_dataset/V1/stimuli/COCO_CN/Image_caption_pairs.tsv"
-CAPTION_SCENE_STIMULI_TRANSCRIPTS_DONE = "resources/datasets/caption_scene_dataset/V1/stimuli_transcripts.done"
+CAPTION_SCENE_STIMULI_TRANSCRIPTS_DONE = config["caption_scene"]["stimuli_transcripts_done"]
 
 CORRUPTED_NIIS = config["caption_scene"]["corrupted_niis"]
 
@@ -93,7 +95,21 @@ for bold_file in CAPTION_SCENE_BOLD_FILES:
         }
     )
 
+CAPTION_SCENE_RUN_KEYS = [x["key"] for x in CAPTION_SCENE_RUNS]
 CAPTION_SCENE_RUN_TABLES = [x["run_table"] for x in CAPTION_SCENE_RUNS]
+
+def caption_scene_split_done_files(wildcards):
+    checkpoint_output = checkpoints.make_caption_scene_manifest.get().output.run_manifest_index
+    df = pd.read_csv(checkpoint_output, sep="\t")
+
+    run_keys = sorted(df["run_key"].dropna().astype(str).unique().tolist())
+
+    split_done_files = [
+        f"{CAPTION_SCENE_INTERMEDIATE_DIR}/single_stimulus_bold/split_done/{run_key}.done"
+        for run_key in run_keys
+    ]
+
+    return split_done_files
 
 def read_manifest(path=CAPTION_SCENE_MANIFEST):
     df = pd.read_csv(path, sep="\t")
@@ -137,6 +153,8 @@ checkpoint make_caption_scene_manifest:
         corrupted_files=CORRUPTED_NIIS
     output:
         manifest=CAPTION_SCENE_MANIFEST,
+        run_manifest_dir=directory(CAPTION_SCENE_RUN_MANIFEST_DIR),
+        run_manifest_index=CAPTION_SCENE_RUN_MANIFEST_INDEX
     params:
         output_root=CAPTION_SCENE_INTERMEDIATE_DIR,
         tr=config["caption_scene"]["tr"],
@@ -152,6 +170,8 @@ checkpoint make_caption_scene_manifest:
                 --run_tables {input.run_tables:q} \
                 --corrupted_niis {input.corrupted_files:q} \
                 --output_manifest {output.manifest:q} \
+                --output_run_manifest_dir {output.run_manifest_dir:q} \
+                --output_run_manifest_index {output.run_manifest_index:q} \
                 --output_root {params.output_root:q} \
                 --tr {params.tr} \
                 --event_duration_s {params.event_duration_s} \
@@ -161,15 +181,18 @@ checkpoint make_caption_scene_manifest:
 
 rule split_caption_scene_bold_by_run_manifest:
     input:
-        manifest=CAPTION_SCENE_MANIFEST
+        manifest=CAPTION_SCENE_MANIFEST,
+        run_manifest_dir=CAPTION_SCENE_RUN_MANIFEST_DIR
     output:
-        done=f"{CAPTION_SCENE_INTERMEDIATE_DIR}/single_stimulus_bold/split.done"
+        done=f"{CAPTION_SCENE_INTERMEDIATE_DIR}/single_stimulus_bold/split_done/{{run_key}}.done"
+    params:
+        run_manifest=lambda wildcards: f"{CAPTION_SCENE_RUN_MANIFEST_DIR}/{wildcards.run_key}.tsv"
     conda:
         "envs/split_caption_scene_bold_by_run_manifest_environment.yaml"
     shell:
         r"""
             python workflow/dataset_processing/caption_scene_dataset/scripts/split_caption_scene_bold_by_run_manifest.py \
-                --manifest {input.manifest:q}
+                --manifest {params.run_manifest:q}
 
             touch {output.done}
         """
@@ -177,7 +200,7 @@ rule split_caption_scene_bold_by_run_manifest:
 rule extract_caption_scene_parcels:
     input:
         manifest=CAPTION_SCENE_MANIFEST,
-        split_done=f"{CAPTION_SCENE_INTERMEDIATE_DIR}/single_stimulus_bold/split.done"
+        split_done=caption_scene_split_done_files
     output:
         touch(CAPTION_SCENE_PARCELS_DONE)
     params:

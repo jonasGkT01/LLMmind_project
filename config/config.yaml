@@ -1,5 +1,5 @@
 # configuration for relabelled similarity computation
-number_of_relabellings: 10000
+number_of_relabellings: 100
 random_seed: 37
 
 models:
@@ -51,6 +51,7 @@ narratives:
   excluded_scans_for_task: "resources/datasets/narratives_dataset/excluded_scans_for_task.json"
   processing_output_dir: "results/mind/narratives"
   stimuli_dir: "resources/datasets/narratives_dataset/stimuli/transcipts"
+  stimuli_transcripts_done: "resources/datasets/narratives_dataset/stimuli_transcripts.done"
   subjects: 345
   tasks:
     - "21styear"
@@ -124,6 +125,7 @@ caption_scene:
   corrupted_niis: "resources/datasets/caption_scene_dataset/corrupted_niis.txt"
   processing_output_dir: "results/mind/caption_scene"
   stimuli_dir: "resources/datasets/caption_scene_dataset/V1/stimuli/transcripts"
+  stimuli_transcripts_done: "resources/datasets/caption_scene_dataset/V1/stimuli_transcripts.done"
   subjects: 8
   tr: 2.0
   onset_shift_s: 0.0

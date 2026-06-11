@@ -59,12 +59,58 @@ def is_corrupted_bold(bold, corrupted_paths):
         or str(bold_path.resolve()) in corrupted_paths
     )
 
+def write_run_manifests(out, output_run_manifest_dir, output_run_manifest_index):
+    output_run_manifest_dir = Path(output_run_manifest_dir)
+    output_run_manifest_index = Path(output_run_manifest_index)
+
+    output_run_manifest_dir.mkdir(parents=True, exist_ok=True)
+    output_run_manifest_index.parent.mkdir(parents=True, exist_ok=True)
+
+    index_rows = []
+
+    for run_key, run_df in out.groupby("run_key", sort=False):
+        run_manifest = output_run_manifest_dir / f"{run_key}.tsv"
+        run_df.to_csv(run_manifest, sep="\t", index=False)
+
+        unique_source_bolds = sorted(run_df["source_bold"].unique().tolist())
+        unique_run_tables = sorted(run_df["run_table"].unique().tolist())
+
+        if len(unique_source_bolds) != 1:
+            raise ValueError(
+                f"Run manifest {run_key} has multiple source BOLD files: "
+                f"{unique_source_bolds}"
+            )
+
+        if len(unique_run_tables) != 1:
+            raise ValueError(
+                f"Run manifest {run_key} has multiple run tables: "
+                f"{unique_run_tables}"
+            )
+
+        index_rows.append(
+            {
+                "run_key": run_key,
+                "source_bold": unique_source_bolds[0],
+                "run_table": unique_run_tables[0],
+                "run_manifest": str(run_manifest),
+                "n_events": len(run_df),
+            }
+        )
+
+    pd.DataFrame(index_rows).to_csv(
+        output_run_manifest_index,
+        sep="\t",
+        index=False,
+    )
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--bold_files", nargs="+", required=True)
     parser.add_argument("--run_tables", nargs="+", required=True)
     parser.add_argument("--corrupted_niis", required=True)
     parser.add_argument("--output_manifest", required=True)
+    parser.add_argument("--output_run_manifest_dir", required=True)
+    parser.add_argument("--output_run_manifest_index", required=True)
     parser.add_argument("--output_root", required=True)
     parser.add_argument("--tr", required=True, type=float)
     parser.add_argument("--event_duration_s", required=True, type=float)
@@ -220,7 +266,15 @@ def main():
 
     out.to_csv(output_path, sep="\t", index=False)
 
+    write_run_manifests(
+        out=out,
+        output_run_manifest_dir=args.output_run_manifest_dir,
+        output_run_manifest_index=args.output_run_manifest_index,
+    )
+
     print(f"Wrote global manifest with {len(out)} rows to {output_path}")
+    print(f"Wrote run manifests to {args.output_run_manifest_dir}")
+    print(f"Wrote run manifest index to {args.output_run_manifest_index}")
     print(f"Skipped {skipped_corrupted} corrupted BOLD files listed in {args.corrupted_niis}")
     print(f"Removed {len(removed_stimuli)} stimuli with fewer than two parcel time-series files")
 
