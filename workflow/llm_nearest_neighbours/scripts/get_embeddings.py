@@ -157,7 +157,7 @@ def embed_long_text(
 def main():
     parser = argparse.ArgumentParser(description="Embed transcripts with chunking")
     parser.add_argument(
-        "--input_dir",
+        "--stimuli_dir",
         required=True,
         help="Path to the input directory containing txt files to embed")
     parser.add_argument(
@@ -237,7 +237,7 @@ def main():
     items = []
     pattern = re.compile(r"^(.+)_transcript\.txt$")
 
-    for filename in sorted(os.listdir(args.input_dir)):
+    for filename in sorted(os.listdir(args.stimuli_dir)):
         match = pattern.match(filename)
         if not match:
             continue
@@ -247,7 +247,7 @@ def main():
         if task in args.excluded_stimuli:
             continue
 
-        filepath = os.path.join(args.input_dir, filename)
+        filepath = os.path.join(args.stimuli_dir, filename)
 
         with open(filepath, "r", encoding="utf-8") as f:
             stimulus = f.read()
@@ -261,7 +261,7 @@ def main():
 
     if not items:
         raise ValueError(
-            f"No input files found in {args.input_dir}. Expected files matching '*_transcript.txt'."
+            f"No input files found in {args.stimuli_dir}. Expected files matching '*_transcript.txt'."
         )
 
     records = []

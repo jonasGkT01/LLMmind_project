@@ -61,6 +61,8 @@ rule get_embeddings:
         model="resources/models/{model}"
     output:
         "results/llm/{dataset}/embeddings/{model}_embeddings.parquet"
+    resources:
+        gpu=1
     params:
         quantization_arg=lambda wc: (
             "" if config["models"][wc.model]["quantization_method"] is None

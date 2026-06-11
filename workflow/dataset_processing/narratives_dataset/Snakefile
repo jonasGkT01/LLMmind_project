@@ -7,6 +7,9 @@ from itertools import product
 NARRATIVES_SUBJECTS = [f"{i:03d}" for i in range(1, config["narratives"]["subjects"] + 1)]
 NARRATIVES_PROCESSING_OUTPUT_DIR = config["narratives"]["processing_output_dir"]
 
+NARRATIVES_PARCEL_MANIFEST = f"{NARRATIVES_PROCESSING_OUTPUT_DIR}/manifests/parcel_extraction_manifest.tsv"
+NARRATIVES_ISC_MANIFEST = f"{NARRATIVES_PROCESSING_OUTPUT_DIR}/manifests/isc_manifest.tsv"
+
 def narratives_task_is_excluded(task):
     return task in config["narratives"]["problematic_subtasks"]
 
@@ -34,6 +37,9 @@ def narratives_scan_prefix(subject, task, run_tag):
 
 def narratives_excluded(subject, task, run_tag):
     return narratives_scan_prefix(subject, task, run_tag) in narratives_excluded_scan_prefixes(task)
+
+def narratives_parcel_output(c):
+    return f"{NARRATIVES_PROCESSING_OUTPUT_DIR}/parcels/{c['task']}/sub-{c['subject']}_task-{c['task']}_{c['run_label']}_space-{c['space']}_res-{c['resolution']}_desc-{c['descriptor']}_parcel_ts.npy"
 
 def narratives_write_length_check_json(task, parcel_files, output_json):
     parcel_files = [Path(p) for p in parcel_files]
@@ -140,9 +146,40 @@ for c in NARRATIVES_BOLD_FILES:
 
 def parcel_outputs_for_task(task):
     return [
-        f"{NARRATIVES_PROCESSING_OUTPUT_DIR}/parcels/{c['task']}/sub-{c['subject']}_task-{c['task']}_{c['run_label']}_space-{c['space']}_res-{c['resolution']}_desc-{c['descriptor']}_parcel_ts.npy"
+        narratives_parcel_output(c)
         for c in NARRATIVES_TASK_GROUPS[task]
     ]
+
+NARRATIVES_PARCEL_OUTPUTS = [
+    narratives_parcel_output(c)
+    for task in NARRATIVES_TASK_GROUPS
+    for c in NARRATIVES_TASK_GROUPS[task]
+]
+
+def write_narratives_parcel_manifest(output_tsv):
+    output_tsv = Path(output_tsv)
+    output_tsv.parent.mkdir(parents=True, exist_ok=True)
+
+    with open(output_tsv, "w") as f:
+        f.write("bold_file\tparcel_ts\n")
+
+        for task in NARRATIVES_TASK_GROUPS:
+            for c in NARRATIVES_TASK_GROUPS[task]:
+                f.write(f"{c['bold_file']}\t{narratives_parcel_output(c)}\n")
+
+def write_narratives_isc_manifest(output_tsv):
+    output_tsv = Path(output_tsv)
+    output_tsv.parent.mkdir(parents=True, exist_ok=True)
+
+    with open(output_tsv, "w") as f:
+        f.write("task\tparcel_ts\tisc_npy\tisc_nii\n")
+
+        for task in NARRATIVES_TASK_GROUPS:
+            isc_npy = f"{NARRATIVES_PROCESSING_OUTPUT_DIR}/isc/task-{task}_isc_mean.npy"
+            isc_nii = f"{NARRATIVES_PROCESSING_OUTPUT_DIR}/isc/task-{task}_isc_mean.nii.gz"
+
+            for parcel_ts in parcel_outputs_for_task(task):
+                f.write(f"{task}\t{parcel_ts}\t{isc_npy}\t{isc_nii}\n")
 
 excluded_scans_for_task = []
 for task in config["narratives"]["tasks"]:
@@ -198,18 +235,25 @@ rule mark_narratives_isc_done:
     output:
         touch(NARRATIVES_ISC_DONE)
 
+rule write_narratives_parcel_manifest:
+    output:
+        manifest=NARRATIVES_PARCEL_MANIFEST
+    run:
+        write_narratives_parcel_manifest(output.manifest)
+
+rule write_narratives_isc_manifest:
+    input:
+        parcel_manifest=NARRATIVES_PARCEL_MANIFEST
+    output:
+        manifest=NARRATIVES_ISC_MANIFEST
+    run:
+        write_narratives_isc_manifest(output.manifest)
+
 rule extract_narratives_parcels:
     input:
-        bold_files=lambda wc: config["narratives"]["bold_pattern"].format(
-            subject=wc.subject,
-            task=wc.task,
-            run_tag="" if wc.run_label == "norun" else f"_{wc.run_label}",
-            space=wc.space,
-            resolution=wc.resolution,
-            descriptor=wc.descriptor,
-        )
+        manifest=NARRATIVES_PARCEL_MANIFEST
     output:
-        parcel_ts=f"{NARRATIVES_PROCESSING_OUTPUT_DIR}/parcels/{{task}}/sub-{{subject}}_task-{{task}}_{{run_label}}_space-{{space}}_res-{{resolution}}_desc-{{descriptor}}_parcel_ts.npy"
+        NARRATIVES_PARCEL_OUTPUTS
     params:
         n_rois=config["atlas"]["n_rois"],
         yeo_networks=config["atlas"]["yeo_networks"],
@@ -219,26 +263,19 @@ rule extract_narratives_parcels:
     shell:
         r"""
             python3 workflow/dataset_processing/narratives_dataset/scripts/extract_narratives_parcels.py \
-                --bold_file {input.bold_files:q} \
-                --parcel_ts {output.parcel_ts:q} \
+                --manifest {input.manifest:q} \
                 --n_rois {params.n_rois} \
                 --yeo_networks {params.yeo_networks} \
                 --atlas_dir {params.atlas_dir:q}
         """
 
-def narratives_task_parcel_inputs(wc):
-    items = NARRATIVES_TASK_GROUPS[wc.task]
-    return [
-        f"{NARRATIVES_PROCESSING_OUTPUT_DIR}/parcels/{c['task']}/sub-{c['subject']}_task-{c['task']}_{narratives_run_label(c['run_tag'])}_space-{c['space']}_res-{c['resolution']}_desc-{c['descriptor']}_parcel_ts.npy"
-        for c in items
-    ]
-
 rule compute_narratives_isc:
     input:
-        narratives_task_parcel_inputs
+        manifest=NARRATIVES_ISC_MANIFEST,
+        parcel_ts=NARRATIVES_PARCEL_OUTPUTS
     output:
-        isc_npy=f"{NARRATIVES_PROCESSING_OUTPUT_DIR}/isc/task-{{task}}_isc_mean.npy",
-        isc_nii=f"{NARRATIVES_PROCESSING_OUTPUT_DIR}/isc/task-{{task}}_isc_mean.nii.gz"
+        isc_npy=NARRATIVES_ISC_NPY_OUTPUTS,
+        isc_nii=NARRATIVES_ISC_NII_OUTPUTS
     params:
         n_rois=config["atlas"]["n_rois"],
         yeo_networks=config["atlas"]["yeo_networks"],
@@ -248,9 +285,7 @@ rule compute_narratives_isc:
     shell:
         r"""
             python3 workflow/dataset_processing/narratives_dataset/scripts/compute_narratives_isc.py \
-                --parcel_ts {input:q} \
-                --isc_npy {output.isc_npy:q} \
-                --isc_nii {output.isc_nii:q} \
+                --manifest {input.manifest:q} \
                 --n_rois {params.n_rois} \
                 --yeo_networks {params.yeo_networks} \
                 --atlas_dir {params.atlas_dir:q}

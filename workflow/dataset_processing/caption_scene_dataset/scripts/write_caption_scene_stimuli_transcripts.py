@@ -53,7 +53,7 @@ def main():
         if stimulus_id not in manifest_stimuli:
             continue
 
-        output_caption = output_dir / f"{stimulus_id}.txt"
+        output_caption = output_dir / f"{stimulus_id}_transcript.txt"
         output_caption.write_text(caption + "\n", encoding="utf-8")
 
 if __name__ == "__main__":

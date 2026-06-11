@@ -11,7 +11,11 @@ CAPTION_SCENE_ISC_DIR = f"{CAPTION_SCENE_PROCESSING_OUTPUT_DIR}/isc"
 CAPTION_SCENE_BOLD_GLOB = config["caption_scene"]["bold_glob"]
 CAPTION_SCENE_MANIFEST = f"{CAPTION_SCENE_INTERMEDIATE_DIR}/manifest/csd_events_manifest.tsv"
 
+CAPTION_SCENE_PARCELS_DONE = f"{CAPTION_SCENE_PROCESSING_OUTPUT_DIR}/manifests/parcels.done"
+CAPTION_SCENE_ISC_DONE = f"{CAPTION_SCENE_PROCESSING_OUTPUT_DIR}/manifests/isc.done"
+
 CAPTION_SCENE_IMAGE_CAPTION_TSV = "resources/datasets/caption_scene_dataset/V1/stimuli/COCO_CN/Image_caption_pairs.tsv"
+CAPTION_SCENE_STIMULI_TRANSCRIPTS_DONE = "resources/datasets/caption_scene_dataset/V1/stimuli_transcripts.done"
 
 CORRUPTED_NIIS = config["caption_scene"]["corrupted_niis"]
 
@@ -91,18 +95,6 @@ for bold_file in CAPTION_SCENE_BOLD_FILES:
 
 CAPTION_SCENE_RUN_TABLES = [x["run_table"] for x in CAPTION_SCENE_RUNS]
 
-def caption_scene_bold_input_from_wildcards(wildcards):
-    subject = f"{int(wildcards.subject):02d}"
-    session = f"{int(wildcards.session):02d}"
-    run = f"{int(wildcards.run):03d}"
-
-    key = caption_scene_sample_key(subject, session, run)
-
-    if key not in CAPTION_SCENE_BOLD_BY_KEY:
-        raise KeyError(f"Missing BOLD file for key: {key}")
-
-    return CAPTION_SCENE_BOLD_BY_KEY[key]
-
 def read_manifest(path=CAPTION_SCENE_MANIFEST):
     df = pd.read_csv(path, sep="\t")
 
@@ -119,7 +111,7 @@ def read_manifest(path=CAPTION_SCENE_MANIFEST):
 
     return df
 
-def all_caption_scene_outputs(wildcards):
+def caption_scene_all_isc_outputs(wildcards):
     checkpoint_output = checkpoints.make_caption_scene_manifest.get().output.manifest
     df = read_manifest(checkpoint_output)
 
@@ -132,37 +124,11 @@ def all_caption_scene_outputs(wildcards):
 
     return isc_nii_files
 
-def caption_scene_task_parcel_inputs(wildcards):
-    df = read_manifest()
-
-    rows = df[df["stimulus_id"] == str(wildcards.task)]
-
-    if len(rows) == 0:
-        raise ValueError(f"No rows found in manifest for stimulus_id={wildcards.task}")
-
-    return [
-        (
-            f"{CAPTION_SCENE_PROCESSING_OUTPUT_DIR}/parcels/task-{row.stimulus_id}/"
-            f"sub-{row.subject}_ses-{row.session}_run-{row.run}_"
-            f"task-{row.stimulus_id}_event-{row.event_index}_parcel_ts.npy"
-        )
-        for row in rows.itertuples(index=False)
-    ]
-
-CAPTION_SCENE_ISC_DONE = f"{CAPTION_SCENE_PROCESSING_OUTPUT_DIR}/manifests/isc.done"
-CAPTION_SCENE_STIMULI_TRANSCRIPTS_DONE = "resources/datasets/caption_scene_dataset/V1/stimuli_transcripts.done"
-
 rule all_caption_scene_dataset:
     input:
-        all_caption_scene_outputs,
+        caption_scene_all_isc_outputs,
         CAPTION_SCENE_ISC_DONE,
         CAPTION_SCENE_STIMULI_TRANSCRIPTS_DONE
-
-rule mark_caption_scene_isc_done:
-    input:
-        all_caption_scene_outputs
-    output:
-        touch(CAPTION_SCENE_ISC_DONE)
 
 checkpoint make_caption_scene_manifest:
     input:
@@ -195,53 +161,37 @@ checkpoint make_caption_scene_manifest:
 
 rule split_caption_scene_bold_by_run_manifest:
     input:
-        manifest=CAPTION_SCENE_MANIFEST,
-        bold=caption_scene_bold_input_from_wildcards
+        manifest=CAPTION_SCENE_MANIFEST
     output:
-        bold=(
-            f"{CAPTION_SCENE_INTERMEDIATE_DIR}/single_stimulus_bold/"
-            "sub-{subject}/ses-{session}/run-{run}/"
-            "{task}_event-{event_index}.nii.gz"
-        ),
+        done=f"{CAPTION_SCENE_INTERMEDIATE_DIR}/single_stimulus_bold/split.done"
     conda:
         "envs/split_caption_scene_bold_by_run_manifest_environment.yaml"
     shell:
         r"""
             python workflow/dataset_processing/caption_scene_dataset/scripts/split_caption_scene_bold_by_run_manifest.py \
-                --bold {input.bold:q} \
-                --manifest {input.manifest:q} \
-                --subject {wildcards.subject:q} \
-                --session {wildcards.session:q} \
-                --run {wildcards.run:q} \
-                --stimulus_id {wildcards.task:q} \
-                --event_index {wildcards.event_index:q} \
-                --output_bold {output.bold:q}
+                --manifest {input.manifest:q}
+
+            touch {output.done}
         """
 
 rule extract_caption_scene_parcels:
     input:
-        bold_file=(
-            f"{CAPTION_SCENE_INTERMEDIATE_DIR}/single_stimulus_bold/"
-            "sub-{subject}/ses-{session}/run-{run}/"
-            "{task}_event-{event_index}.nii.gz"
-        ),
+        manifest=CAPTION_SCENE_MANIFEST,
+        split_done=f"{CAPTION_SCENE_INTERMEDIATE_DIR}/single_stimulus_bold/split.done"
     output:
-        parcel_ts=(
-            f"{CAPTION_SCENE_PROCESSING_OUTPUT_DIR}/parcels/task-{{task}}/"
-            "sub-{subject}_ses-{session}_run-{run}_"
-            "task-{task}_event-{event_index}_parcel_ts.npy"
-        ),
+        touch(CAPTION_SCENE_PARCELS_DONE)
     params:
         n_rois=config["atlas"]["n_rois"],
         yeo_networks=config["atlas"]["yeo_networks"],
         atlas_dir=config["atlas"]["atlas_dir"],
+        output_root=CAPTION_SCENE_PROCESSING_OUTPUT_DIR
     conda:
         "envs/extract_caption_scene_parcels_environment.yaml"
     shell:
         r"""
             python3 workflow/dataset_processing/caption_scene_dataset/scripts/extract_caption_scene_parcels.py \
-                --bold_file {input.bold_file:q} \
-                --parcel_ts {output.parcel_ts:q} \
+                --manifest {input.manifest:q} \
+                --output_root {params.output_root:q} \
                 --n_rois {params.n_rois} \
                 --yeo_networks {params.yeo_networks} \
                 --atlas_dir {params.atlas_dir:q}
@@ -249,22 +199,26 @@ rule extract_caption_scene_parcels:
 
 rule compute_caption_scene_isc:
     input:
-        caption_scene_task_parcel_inputs,
+        manifest=CAPTION_SCENE_MANIFEST,
+        parcels_done=CAPTION_SCENE_PARCELS_DONE
     output:
-        isc_npy=f"{CAPTION_SCENE_INTERMEDIATE_DIR}/isc/task-{{task}}_isc_mean.npy",
-        isc_nii=f"{CAPTION_SCENE_ISC_DIR}/task-{{task}}_isc_mean.nii.gz",
+        touch(CAPTION_SCENE_ISC_DONE)
     params:
         n_rois=config["atlas"]["n_rois"],
         yeo_networks=config["atlas"]["yeo_networks"],
         atlas_dir=config["atlas"]["atlas_dir"],
+        parcel_root=f"{CAPTION_SCENE_PROCESSING_OUTPUT_DIR}/parcels",
+        isc_npy_root=f"{CAPTION_SCENE_INTERMEDIATE_DIR}/isc",
+        isc_nii_root=CAPTION_SCENE_ISC_DIR
     conda:
         "envs/compute_caption_scene_isc_environment.yaml"
     shell:
         r"""
             python3 workflow/dataset_processing/caption_scene_dataset/scripts/compute_caption_scene_isc.py \
-                --parcel_ts {input:q} \
-                --isc_npy {output.isc_npy:q} \
-                --isc_nii {output.isc_nii:q} \
+                --manifest {input.manifest:q} \
+                --parcel_root {params.parcel_root:q} \
+                --isc_npy_root {params.isc_npy_root:q} \
+                --isc_nii_root {params.isc_nii_root:q} \
                 --n_rois {params.n_rois} \
                 --yeo_networks {params.yeo_networks} \
                 --atlas_dir {params.atlas_dir:q}
