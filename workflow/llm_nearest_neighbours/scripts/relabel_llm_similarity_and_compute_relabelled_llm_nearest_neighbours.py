@@ -28,7 +28,7 @@ def compute_relabelled_nearest_neighbours_numpy(
             f"Requested {k} neighbours, but only {n} concepts are available."
         )
 
-    rows = []
+    relabelled_nearest_neighbours = []
 
     for shuffle_i in range(number_of_relabellings):
         rng = np.random.default_rng(random_seed + shuffle_i)
@@ -57,14 +57,14 @@ def compute_relabelled_nearest_neighbours_numpy(
             }
         )
 
-        rows.append(shuffle_df)
+        relabelled_nearest_neighbours.append(shuffle_df)
 
         print(
             f"Completed relabelling {shuffle_i + 1}/{number_of_relabellings}",
             flush=True,
         )
 
-    return pd.concat(rows, ignore_index=True)
+    return pd.concat(relabelled_nearest_neighbours, ignore_index=True)
 
 def main():
     parser = argparse.ArgumentParser()
