@@ -108,7 +108,7 @@ def compute_hypergeometric_statistics(
     }
 
 def extract_null_alignment_scores(
-    relabelled_big_df: pd.DataFrame,
+    relabelled_df: pd.DataFrame,
 ) -> np.ndarray:
     """
         Input dataframe is expected to have a MultiIndex:
@@ -122,16 +122,16 @@ def extract_null_alignment_scores(
         This returns one mean alignment score per shuffle.
     """
 
-    if "shuffle_id" not in relabelled_big_df.index.names:
+    if "shuffle_id" not in relabelled_df.index.names:
         raise ValueError(
             "Expected relabelled alignment dataframe to have "
             "'shuffle_id' as an index level. "
-            f"Index levels are: {relabelled_big_df.index.names}"
+            f"Index levels are: {relabelled_df.index.names}"
         )
 
     null_alignment_scores = []
 
-    for shuffle_id, shuffle_df in relabelled_big_df.groupby(level="shuffle_id"):
+    for shuffle_id, shuffle_df in relabelled_df.groupby("shuffle_id"):
         null_alignment_scores.append(shuffle_df["alignment_score"].mean())
 
     return np.array(null_alignment_scores)

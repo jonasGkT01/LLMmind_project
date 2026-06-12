@@ -37,7 +37,7 @@ rule all_llm_nearest_neighbours:
             for model in MODEL_KEYS
         ],
         [
-            f"results/llm/{pair['dataset']}/relabelled_similarity/relabelled_{model}_{similarity_type}_nearest_neighbours_{pair['number_of_neighbours']}NN.parquet"
+            f"results/llm/{pair['dataset']}/relabelled_nearest_neighbours/relabelled_{model}_{similarity_type}_nearest_neighbours_{pair['number_of_neighbours']}NN.parquet"
             for pair in DATASET_NN_PAIRS
             for model in MODEL_KEYS
             for similarity_type in SIMILARITY_TYPES
