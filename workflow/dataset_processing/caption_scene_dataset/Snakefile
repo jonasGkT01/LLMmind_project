@@ -13,8 +13,8 @@ CAPTION_SCENE_MANIFEST = f"{CAPTION_SCENE_INTERMEDIATE_DIR}/manifest/csd_events_
 CAPTION_SCENE_RUN_MANIFEST_DIR = f"{CAPTION_SCENE_INTERMEDIATE_DIR}/manifest/by_run"
 CAPTION_SCENE_RUN_MANIFEST_INDEX = f"{CAPTION_SCENE_INTERMEDIATE_DIR}/manifest/by_run_manifest_index.tsv"
 
-CAPTION_SCENE_PARCELS_DONE = f"{CAPTION_SCENE_PROCESSING_OUTPUT_DIR}/manifests/parcels.done"
-CAPTION_SCENE_ISC_DONE = f"{CAPTION_SCENE_PROCESSING_OUTPUT_DIR}/manifests/isc.done"
+CAPTION_SCENE_PARCELS_DONE = f"{CAPTION_SCENE_PROCESSING_OUTPUT_DIR}/manifests/.parcels_done"
+CAPTION_SCENE_ISC_DONE = f"{CAPTION_SCENE_PROCESSING_OUTPUT_DIR}/manifests/.isc_done"
 
 CAPTION_SCENE_IMAGE_CAPTION_TSV = "resources/datasets/caption_scene_dataset/V1/stimuli/COCO_CN/Image_caption_pairs.tsv"
 CAPTION_SCENE_STIMULI_TRANSCRIPTS_DONE = config["caption_scene"]["stimuli_transcripts_done"]
@@ -146,6 +146,12 @@ rule all_caption_scene_dataset:
         CAPTION_SCENE_ISC_DONE,
         CAPTION_SCENE_STIMULI_TRANSCRIPTS_DONE
 
+rule finish_caption_scene_isc:
+    input:
+        caption_scene_all_isc_outputs
+    output:
+        touch(CAPTION_SCENE_ISC_DONE)
+
 checkpoint make_caption_scene_manifest:
     input:
         bold_files=CAPTION_SCENE_BOLD_FILES,
@@ -197,6 +203,25 @@ rule split_caption_scene_bold_by_run_manifest:
             touch {output.done}
         """
 
+def caption_scene_parcel_outputs(wildcards):
+    checkpoint_output = checkpoints.make_caption_scene_manifest.get().output.manifest
+    df = read_manifest(checkpoint_output)
+
+    rows = df[df["stimulus_id"] == wildcards.stimulus_id]
+
+    return [
+        str(
+            Path(CAPTION_SCENE_PROCESSING_OUTPUT_DIR)
+            / "parcels"
+            / f"task-{row.stimulus_id}"
+            / (
+                f"sub-{row.subject}_ses-{row.session}_run-{row.run}_"
+                f"task-{row.stimulus_id}_event-{row.event_index}_parcel_ts.npy"
+            )
+        )
+        for row in rows.itertuples(index=False)
+    ]
+
 rule extract_caption_scene_parcels:
     input:
         manifest=CAPTION_SCENE_MANIFEST,
@@ -222,26 +247,23 @@ rule extract_caption_scene_parcels:
 
 rule compute_caption_scene_isc:
     input:
-        manifest=CAPTION_SCENE_MANIFEST,
-        parcels_done=CAPTION_SCENE_PARCELS_DONE
+        CAPTION_SCENE_PARCELS_DONE,
+        parcel_ts=caption_scene_parcel_outputs
     output:
-        touch(CAPTION_SCENE_ISC_DONE)
+        isc_npy=f"{CAPTION_SCENE_INTERMEDIATE_DIR}/isc/task-{{stimulus_id}}_isc_mean.npy",
+        isc_nii=f"{CAPTION_SCENE_ISC_DIR}/task-{{stimulus_id}}_isc_mean.nii.gz"
     params:
         n_rois=config["atlas"]["n_rois"],
         yeo_networks=config["atlas"]["yeo_networks"],
-        atlas_dir=config["atlas"]["atlas_dir"],
-        parcel_root=f"{CAPTION_SCENE_PROCESSING_OUTPUT_DIR}/parcels",
-        isc_npy_root=f"{CAPTION_SCENE_INTERMEDIATE_DIR}/isc",
-        isc_nii_root=CAPTION_SCENE_ISC_DIR
+        atlas_dir=config["atlas"]["atlas_dir"]
     conda:
         "envs/compute_caption_scene_isc_environment.yaml"
     shell:
         r"""
             python3 workflow/dataset_processing/caption_scene_dataset/scripts/compute_caption_scene_isc.py \
-                --manifest {input.manifest:q} \
-                --parcel_root {params.parcel_root:q} \
-                --isc_npy_root {params.isc_npy_root:q} \
-                --isc_nii_root {params.isc_nii_root:q} \
+                --parcel_ts {input.parcel_ts:q} \
+                --isc_npy {output.isc_npy:q} \
+                --isc_nii {output.isc_nii:q} \
                 --n_rois {params.n_rois} \
                 --yeo_networks {params.yeo_networks} \
                 --atlas_dir {params.atlas_dir:q}

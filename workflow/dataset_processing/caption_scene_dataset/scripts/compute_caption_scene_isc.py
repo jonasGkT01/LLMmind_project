@@ -104,32 +104,13 @@ def save_isc(isc_mean, isc_npy, isc_nii, atlas_data, atlas_img):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--manifest", required=True)
-    parser.add_argument("--parcel_root", required=True)
-    parser.add_argument("--isc_npy_root", required=True)
-    parser.add_argument("--isc_nii_root", required=True)
+    parser.add_argument("--parcel_ts", nargs="+", required=True)
+    parser.add_argument("--isc_npy", required=True)
+    parser.add_argument("--isc_nii", required=True)
     parser.add_argument("--n_rois", type=int, required=True)
     parser.add_argument("--yeo_networks", type=int, required=True)
     parser.add_argument("--atlas_dir", type=str, required=True)
     args = parser.parse_args()
-
-    manifest = pd.read_csv(args.manifest, sep="\t")
-
-    required_columns = {
-        "subject",
-        "session",
-        "run",
-        "event_index",
-        "stimulus_id",
-    }
-
-    missing_columns = required_columns - set(manifest.columns)
-
-    if missing_columns:
-        raise ValueError(f"Manifest is missing columns: {sorted(missing_columns)}")
-
-    for column in required_columns:
-        manifest[column] = manifest[column].astype(str)
 
     atlas = datasets.fetch_atlas_schaefer_2018(
         n_rois=args.n_rois,
@@ -140,34 +121,17 @@ def main():
     atlas_img = image.load_img(atlas.maps)
     atlas_data = atlas_img.get_fdata().astype(int)
 
-    for stimulus_id, rows in manifest.groupby("stimulus_id", sort=True):
-        parcel_ts_files = [
-            parcel_output_path(row, args.parcel_root)
-            for row in rows.itertuples(index=False)
-        ]
+    print(f"Computing ISC from {len(args.parcel_ts)} parcel files")
 
-        missing_files = [str(f) for f in parcel_ts_files if not f.exists()]
+    isc_mean = compute_isc(args.parcel_ts, args.n_rois)
 
-        if missing_files:
-            raise FileNotFoundError(
-                f"Missing parcel time-series files for stimulus_id={stimulus_id}: "
-                + ", ".join(missing_files)
-            )
-
-        isc_npy = Path(args.isc_npy_root) / f"task-{stimulus_id}_isc_mean.npy"
-        isc_nii = Path(args.isc_nii_root) / f"task-{stimulus_id}_isc_mean.nii.gz"
-
-        print(f"Computing ISC for stimulus_id={stimulus_id} from {len(parcel_ts_files)} files")
-
-        isc_mean = compute_isc(parcel_ts_files, args.n_rois)
-
-        save_isc(
-            isc_mean=isc_mean,
-            isc_npy=isc_npy,
-            isc_nii=isc_nii,
-            atlas_data=atlas_data,
-            atlas_img=atlas_img,
-        )
+    save_isc(
+        isc_mean=isc_mean,
+        isc_npy=args.isc_npy,
+        isc_nii=args.isc_nii,
+        atlas_data=atlas_data,
+        atlas_img=atlas_img,
+    )
 
 if __name__ == "__main__":
     main()

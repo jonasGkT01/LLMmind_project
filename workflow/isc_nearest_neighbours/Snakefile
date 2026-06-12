@@ -35,7 +35,7 @@ rule all_isc_nearest_neighbours:
         ]
 
 def isc_done_for_dataset(wc):
-    return config[wc.dataset]["processing_output_dir"] + "/manifests/isc.done"
+    return config[wc.dataset]["processing_output_dir"] + "/manifests/.isc_done"
 
 def isc_dir_for_dataset(wc):
     return config[wc.dataset]["processing_output_dir"] + "/isc"

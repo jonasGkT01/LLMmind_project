@@ -223,7 +223,7 @@ NARRATIVES_ISC_NII_OUTPUTS = [
     for task in NARRATIVES_TASK_GROUPS
 ]
 
-NARRATIVES_ISC_DONE = f"{NARRATIVES_PROCESSING_OUTPUT_DIR}/manifests/isc.done"
+NARRATIVES_ISC_DONE = f"{NARRATIVES_PROCESSING_OUTPUT_DIR}/manifests/.isc_done"
 
 rule all_narratives_dataset:
     input:

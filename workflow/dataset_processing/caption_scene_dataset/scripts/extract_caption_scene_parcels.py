@@ -37,7 +37,7 @@ def build_parcel_matrix(labels_3d, n_rois):
 
     if np.any(counts == 0):
         missing = np.where(counts == 0)[0] + 1
-        raise ValueError(f"Atlas has empty parcels: {missing.tolist()}")
+        raise ValueError(f"Atlas has empty parcels after resampling: {missing.tolist()}")
 
     weights = 1.0 / counts[parcel_idx]
 
@@ -46,6 +46,23 @@ def build_parcel_matrix(labels_3d, n_rois):
         shape=(n_rois, labels.size),
         dtype=np.float32,
     )
+
+def load_resampled_atlas(atlas_maps, reference_bold_file, n_rois):
+    reference_img = nib.load(str(reference_bold_file))
+    atlas_img = image.load_img(atlas_maps)
+
+    atlas_img = image.resample_to_img(
+        atlas_img,
+        reference_img,
+        interpolation="nearest",
+        force_resample=True,
+        copy_header=True,
+    )
+
+    labels = atlas_img.get_fdata().astype(np.int32)
+    parcel_matrix = build_parcel_matrix(labels, n_rois)
+
+    return labels, parcel_matrix
 
 def extract_parcels(bold_file, parcel_matrix, atlas_shape):
     img = nib.load(str(bold_file))
@@ -99,16 +116,25 @@ def main():
     for column in required_columns:
         manifest[column] = manifest[column].astype(str)
 
+    if manifest.empty:
+        raise ValueError(f"Manifest is empty: {args.manifest}")
+
+    first_bold_file = Path(manifest.iloc[0]["output_bold"])
+
+    if not first_bold_file.exists():
+        raise FileNotFoundError(f"Missing reference BOLD file: {first_bold_file}")
+
     atlas = datasets.fetch_atlas_schaefer_2018(
         n_rois=args.n_rois,
         data_dir=args.atlas_dir,
         yeo_networks=args.yeo_networks,
     )
 
-    atlas_img = image.load_img(atlas.maps)
-    labels = atlas_img.get_fdata().astype(np.int32)
-
-    parcel_matrix = build_parcel_matrix(labels, args.n_rois)
+    labels, parcel_matrix = load_resampled_atlas(
+        atlas_maps=atlas.maps,
+        reference_bold_file=first_bold_file,
+        n_rois=args.n_rois,
+    )
 
     for row in manifest.itertuples(index=False):
         bold_file = Path(row.output_bold)
