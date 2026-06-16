@@ -234,7 +234,7 @@ rule all_narratives_dataset:
 
 rule mark_narratives_isc_and_stimuli_transcripts_done:
     input:
-        NARRATIVES_ISC_NII_OUTPUTS
+        NARRATIVES_ISC_NPY_OUTPUTS
     output:
         touch(NARRATIVES_ISC_DONE),
         touch(NARRATIVES_STIMULI_TRANSCRIPTS_DONE)

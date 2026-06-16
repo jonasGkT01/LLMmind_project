@@ -1,39 +1,47 @@
 # configuration for relabelled similarity computation
-number_of_relabellings: 100
+number_of_relabellings: 10000
 random_seed: 37
 
 models:
   bloom_560m:
     name: "BLOOMZ-560M"
     hf_name: "bigscience/bloomz-560m"
+    type: "language"
     quantization_method: null
   bloom_1b1:
     name: "BLOOMZ-1.1B"
     hf_name: "bigscience/bloomz-1b1"
+    modality: "language"
     quantization_method: null
   bloom_1b7:
     name: "BLOOMZ-1.7B"
     hf_name: "bigscience/bloomz-1b7"
+    modality: "language"
     quantization_method: null
   bloom_3b:
     name: "BLOOMZ-3B"
     hf_name: "bigscience/bloomz-3b"
+    modality: "language"
     quantization_method: null
   bloom_7b1:
     name: "BLOOMZ-7.1B"
     hf_name: "bigscience/bloomz-7b1"
+    modality: "language"
     quantization_method: null
   openllama_3b:
     name: "OpenLLaMA-3B"
     hf_name: "openlm-research/open_llama_3b"
+    modality: "language"
     quantization_method: null
   openllama_7b:
     name: "OpenLLaMA-7B"
     hf_name: "openlm-research/open_llama_7b"
+    modality: "language"
     quantization_method: null
   openllama_13b:
     name: "OpenLLaMA-13B"
     hf_name: "openlm-research/open_llama_13b"
+    modality: "language"
     quantization_method: "8bit"
 
 similarity_metrics:

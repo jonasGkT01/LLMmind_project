@@ -134,7 +134,7 @@ def caption_scene_all_isc_outputs(wildcards):
     stimuli = sorted(df["stimulus_id"].dropna().unique().tolist())
 
     isc_nii_files = [
-        f"{CAPTION_SCENE_ISC_DIR}/task-{stimulus_id}_isc_mean.nii.gz"
+        f"{CAPTION_SCENE_ISC_DIR}/task-{stimulus_id}_isc_mean.npy"
         for stimulus_id in stimuli
     ]
 
@@ -250,7 +250,7 @@ rule compute_caption_scene_isc:
         CAPTION_SCENE_PARCELS_DONE,
         parcel_ts=caption_scene_parcel_outputs
     output:
-        isc_npy=f"{CAPTION_SCENE_INTERMEDIATE_DIR}/isc/task-{{stimulus_id}}_isc_mean.npy",
+        isc_npy=f"{CAPTION_SCENE_ISC_DIR}/task-{{stimulus_id}}_isc_mean.npy",
         isc_nii=f"{CAPTION_SCENE_ISC_DIR}/task-{{stimulus_id}}_isc_mean.nii.gz"
     params:
         n_rois=config["atlas"]["n_rois"],
