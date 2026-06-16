@@ -3,10 +3,80 @@ number_of_relabellings: 10000
 random_seed: 37
 
 models:
+#  i21k_t:
+#    name: "ViT-Tiny/16 ImageNet-21K"
+#    hf_name: "timm/vit_tiny_patch16_224.augreg_in21k"
+#    modality: "visual"
+#    quantization_method: null
+#  i21k_s:
+#    name: "ViT-Small/16 ImageNet-21K"
+#    hf_name: "timm/vit_small_patch16_224.augreg_in21k"
+#    modality: "visual"
+#    quantization_method: null
+#  i21k_b:
+#    name: "ViT-Base/16 ImageNet-21K"
+#    hf_name: "timm/vit_base_patch16_224.augreg_in21k"
+#    modality: "visual"
+#    quantization_method: null
+#  i21k_l:
+#    name: "ViT-Large/16 ImageNet-21K"
+#    hf_name: "timm/vit_large_patch16_224.augreg_in21k"
+#    modality: "visual"
+#    quantization_method: null
+#  dinov2_s:
+#    name: "DINOv2 ViT-S/14"
+#    hf_name: "facebook/dinov2-small"
+#    modality: "visual"
+#    quantization_method: null
+#  dinov2_m:
+#    name: "DINOv2 ViT-B/14"
+#    hf_name: "facebook/dinov2-base"
+#    modality: "visual"
+#    quantization_method: null
+#  dinov2_l:
+#    name: "DINOv2 ViT-L/14"
+#    hf_name: "facebook/dinov2-large"
+#    modality: "visual"
+#    quantization_method: null
+#  dinov2_g:
+#    name: "DINOv2 ViT-g/14"
+#    hf_name: "facebook/dinov2-giant"
+#    modality: "visual"
+#    quantization_method: null
+#  clip_b:
+#    name: "CLIP ViT-B/16 LAION-2B"
+#    hf_name: "timm/vit_base_patch16_clip_224.laion2b"
+#    modality: "multimodal"
+#    quantization_method: null
+#  clip_l:
+#    name: "CLIP ViT-L/14 LAION-2B"
+#    hf_name: "timm/vit_large_patch14_clip_224.laion2b"
+#    modality: "multimodal"
+#    quantization_method: null
+#  clip_h:
+#    name: "CLIP ViT-H/14 LAION-2B"
+#    hf_name: "timm/vit_huge_patch14_clip_224.laion2b"
+#    modality: "multimodal"
+#    quantization_method: null
+#  clip_i21k_ft_b:
+#    name: "CLIP ViT-B/16 LAION-2B, ImageNet-12K fine-tuned"
+#    hf_name: "timm/vit_base_patch16_clip_224.laion2b_ft_in12k"
+#    modality: "visual"
+#    quantization_method: null
+#  clip_i21k_ft_l:
+#    name: "CLIP ViT-L/14 LAION-2B, ImageNet-12K fine-tuned"
+#    hf_name: "timm/vit_large_patch14_clip_224.laion2b_ft_in12k"
+#    modality: "visual"
+#    quantization_method: null
+#  clip_i21k_ft_h:
+#    name: "CLIP ViT-H/14 LAION-2B, ImageNet-12K fine-tuned"
+#    hf_name: "timm/vit_huge_patch14_clip_224.laion2b_ft_in12k"
+#    modality: "visual"
+#    quantization_method: null
   bloom_560m:
     name: "BLOOMZ-560M"
     hf_name: "bigscience/bloomz-560m"
-    type: "language"
+    modality: "language"
     quantization_method: null
   bloom_1b1:
     name: "BLOOMZ-1.1B"
@@ -58,8 +128,10 @@ narratives:
   scans_to_be_excluded: "resources/datasets/narratives_dataset/scan_exclude.json"
   excluded_scans_for_task: "resources/datasets/narratives_dataset/excluded_scans_for_task.json"
   processing_output_dir: "results/mind/narratives"
-  stimuli_dir: "resources/datasets/narratives_dataset/stimuli/transcripts"
-  stimuli_transcripts_done: "resources/datasets/narratives_dataset/.stimuli_transcripts_done"
+  stimuli_dir: 
+    language: "resources/datasets/narratives_dataset/stimuli/transcripts_renamed"
+  excluded_stimuli: "resources/datasets/narratives_dataset/excluded_stimuli.txt"
+  stimuli_ready: "resources/datasets/narratives_dataset/.stimuli_ready"
   subjects: 345
   tasks:
     - "21styear"
@@ -100,7 +172,6 @@ narratives:
     - "native"
   descriptors:
     - "clean"
-  subtasks:
   schema_subtasks:
     - "bigbang"
     - "friends"
@@ -130,10 +201,12 @@ caption_scene:
   bold_glob: "resources/datasets/caption_scene_dataset/V1/derivatives/pp_data/sub-*/func/sub-*_ses-*_task-CSD_run-*.nii.gz"
   scans_to_be_excluded: "resources/datasets/caption_scene_dataset/scan_exclude.json"
   excluded_scans_for_task: "resources/datasets/caption_scene_dataset/excluded_scans_for_task.json"
-  corrupted_niis: "resources/datasets/caption_scene_dataset/V1/corrupted_niis.txt"
   processing_output_dir: "results/mind/caption_scene"
-  stimuli_dir: "resources/datasets/caption_scene_dataset/V1/stimuli/transcripts"
-  stimuli_transcripts_done: "resources/datasets/caption_scene_dataset/V1/.stimuli_transcripts_done"
+  stimuli_dir: 
+    language: "resources/datasets/caption_scene_dataset/V1/stimuli/transcripts"
+    visual: "resources/datasets/caption_scene_dataset/V1/stimuli/COCO_CN/All_images_480"
+  excluded_stimuli: "resources/datasets/caption_scene_dataset/V1/excluded_stimuli.txt"
+  stimuli_ready: "resources/datasets/caption_scene_dataset/V1/.stimuli_ready"
   subjects: 8
   tr: 2.0
   onset_shift_s: 0.0

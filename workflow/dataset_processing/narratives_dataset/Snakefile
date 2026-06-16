@@ -10,7 +10,7 @@ NARRATIVES_PROCESSING_OUTPUT_DIR = config["narratives"]["processing_output_dir"]
 NARRATIVES_PARCEL_MANIFEST = f"{NARRATIVES_PROCESSING_OUTPUT_DIR}/manifests/parcel_extraction_manifest.tsv"
 NARRATIVES_ISC_MANIFEST = f"{NARRATIVES_PROCESSING_OUTPUT_DIR}/manifests/isc_manifest.tsv"
 
-NARRATIVES_STIMULI_TRANSCRIPTS_DONE = config["narratives"]["stimuli_transcripts_done"]
+NARRATIVES_STIMULI_READY = config["narratives"]["stimuli_ready"]
 
 def narratives_task_is_excluded(task):
     return task in config["narratives"]["problematic_subtasks"]
@@ -225,19 +225,21 @@ NARRATIVES_ISC_NII_OUTPUTS = [
 
 NARRATIVES_ISC_DONE = f"{NARRATIVES_PROCESSING_OUTPUT_DIR}/manifests/.isc_done"
 
+NARRATIVES_EXCLUDED_STIMULI = config["narratives"]["excluded_stimuli"]
+
 rule all_narratives_dataset:
     input:
         NARRATIVES_ISC_NPY_OUTPUTS,
         NARRATIVES_ISC_NII_OUTPUTS,
         NARRATIVES_ISC_DONE,
-        NARRATIVES_STIMULI_TRANSCRIPTS_DONE
+        NARRATIVES_STIMULI_READY,
+        NARRATIVES_EXCLUDED_STIMULI
 
-rule mark_narratives_isc_and_stimuli_transcripts_done:
+rule mark_narratives_isc_done:
     input:
         NARRATIVES_ISC_NPY_OUTPUTS
     output:
-        touch(NARRATIVES_ISC_DONE),
-        touch(NARRATIVES_STIMULI_TRANSCRIPTS_DONE)
+        touch(NARRATIVES_ISC_DONE)
 
 rule write_narratives_parcel_manifest:
     output:
@@ -294,3 +296,42 @@ rule compute_narratives_isc:
                 --yeo_networks {params.yeo_networks} \
                 --atlas_dir {params.atlas_dir:q}
         """
+
+rule rename_narratives_stimuli_transcipts:
+    output:
+        touch(NARRATIVES_STIMULI_READY),
+        input_stimuli_dir=directory("resources/datasets/narratives_dataset/stimuli/transcripts"),
+        ouput_stimuli_dir=directory(config["narratives"]["stimuli_dir"]["language"])
+    shell:
+        """
+            input_stimuli_dir="{output.input_stimuli_dir:q}"
+            output_stimuli_dir="{output.ouput_stimuli_dir:q}"
+
+            mkdir -p "$output_stimuli_dir"
+
+            for file in "$input_stimuli_dir"/*_trasncript.txt; do
+                [ -e "$file" ] || continue
+
+                filename=$(basename "$file")
+                new_filename="${{filename%_trasncript.txt}}.txt"
+
+                mv -- "$file" "$output_stimuli_dir/$new_filename"
+            done
+        """
+
+rule write_narratives_problematic_stimuli:
+    output:
+        txt=NARRATIVES_EXCLUDED_STIMULI
+    params:
+        problematic_stimuli=config["narratives"]["problematic_subtasks"]
+    run:
+        output_path = Path(output.txt)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+
+        with output_path.open("w") as f:
+            for stimulus in sorted(set(params.problematic_stimuli)):
+                f.write(f"{stimulus}\n")
+
+        print(
+            f"Wrote {len(set(params.problematic_stimuli))} problematic stimuli to {output_path}"
+        )

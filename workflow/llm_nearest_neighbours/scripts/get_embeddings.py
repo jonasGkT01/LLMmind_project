@@ -1,45 +1,239 @@
-import os
-import re
 import argparse
+from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import torch
-from transformers import AutoTokenizer, AutoModel, BitsAndBytesConfig
+from PIL import Image
+from transformers import AutoModel, AutoProcessor, AutoTokenizer, BitsAndBytesConfig
 
 def mean_pool_last_hidden(
     last_hidden_state: torch.Tensor,
-    attention_mask: torch.Tensor,
+    attention_mask: torch.Tensor | None = None,
 ) -> torch.Tensor:
+    if attention_mask is None:
+        return last_hidden_state.mean(dim=1)
+
     mask = attention_mask.unsqueeze(-1).expand(last_hidden_state.size()).float()
     summed = (last_hidden_state * mask).sum(dim=1)
     counts = mask.sum(dim=1).clamp(min=1e-9)
+
     return summed / counts
 
-def get_safe_max_length(tokenizer, model, user_max_length: int | None = None) -> int:
+def get_safe_max_length(
+    tokenizer,
+    model,
+    user_max_length: int | None = None,
+) -> int:
     """
         Determine a safe context length for the model.
 
-        For OpenLLaMA/BLOOM-like models, 2048 is a safe default.
-        Some tokenizers expose huge placeholder values, so we avoid blindly trusting
-        tokenizer.model_max_length.
+        Some tokenizers expose very large placeholder values, so these values
+        are not trusted when they exceed 100,000 tokens.
     """
     if user_max_length is not None:
         return int(user_max_length)
 
     candidates = []
 
-    tokenizer_max = getattr(tokenizer, "model_max_length", None)
-    if isinstance(tokenizer_max, int) and tokenizer_max < 100_000:
-        candidates.append(tokenizer_max)
+    if tokenizer is not None:
+        tokenizer_max = getattr(tokenizer, "model_max_length", None)
+
+        if isinstance(tokenizer_max, int) and tokenizer_max < 100_000:
+            candidates.append(tokenizer_max)
 
     config_max = getattr(model.config, "max_position_embeddings", None)
+
     if isinstance(config_max, int) and config_max < 100_000:
         candidates.append(config_max)
+
+    text_config = getattr(model.config, "text_config", None)
+
+    if text_config is not None:
+        text_config_max = getattr(text_config, "max_position_embeddings", None)
+
+        if isinstance(text_config_max, int) and text_config_max < 100_000:
+            candidates.append(text_config_max)
 
     if candidates:
         return int(min(candidates))
 
     return 2048
+
+def load_excluded_stimuli(path):
+    if path is None:
+        return set()
+
+    path = Path(path)
+
+    if not path.exists():
+        raise FileNotFoundError(
+            f"Excluded-stimuli file does not exist: {path}"
+        )
+
+    excluded = set()
+
+    with path.open("r", encoding="utf-8") as f:
+        for line in f:
+            stimulus = line.strip()
+
+            if stimulus:
+                excluded.add(stimulus)
+
+    return excluded
+
+def get_input_type_and_files(stimuli_dir):
+    stimuli_dir = Path(stimuli_dir)
+
+    if not stimuli_dir.exists():
+        raise FileNotFoundError(
+            f"Stimuli directory does not exist: {stimuli_dir}"
+        )
+
+    if not stimuli_dir.is_dir():
+        raise NotADirectoryError(
+            f"Stimuli path is not a directory: {stimuli_dir}"
+        )
+
+    text_files = sorted(
+        path
+        for path in stimuli_dir.iterdir()
+        if path.is_file()
+        and path.suffix.lower() == ".txt"
+    )
+
+    image_files = sorted(
+        path
+        for path in stimuli_dir.iterdir()
+        if path.is_file()
+        and path.suffix.lower() in {".jpg", ".jpeg", ".png"}
+    )
+
+    if text_files and image_files:
+        raise ValueError(
+            f"Stimuli directory contains both text and image files: "
+            f"{stimuli_dir}. Each execution must process only one input type."
+        )
+
+    if text_files:
+        return "language", text_files
+
+    if image_files:
+        return "visual", image_files
+
+    raise ValueError(
+        f"No supported input files found in {stimuli_dir}. "
+        "Expected .txt, .jpg, .jpeg, or .png files."
+    )
+
+def model_input_device(model):
+    try:
+        return model.get_input_embeddings().weight.device
+    except Exception:
+        return next(model.parameters()).device
+
+def move_inputs_to_device(inputs, device):
+    moved = {}
+
+    for key, value in inputs.items():
+        if isinstance(value, torch.Tensor):
+            moved[key] = value.to(device)
+        else:
+            moved[key] = value
+
+    return moved
+
+def extract_embedding_from_output(
+    output,
+    attention_mask: torch.Tensor | None = None,
+    input_type: str | None = None,
+) -> torch.Tensor:
+    if input_type == "visual":
+        image_embeds = getattr(output, "image_embeds", None)
+
+        if isinstance(image_embeds, torch.Tensor):
+            return image_embeds.squeeze(0)
+
+        vision_model_output = getattr(output, "vision_model_output", None)
+
+        if vision_model_output is not None:
+            pooler_output = getattr(vision_model_output, "pooler_output", None)
+
+            if isinstance(pooler_output, torch.Tensor):
+                return pooler_output.squeeze(0)
+
+            last_hidden_state = getattr(
+                vision_model_output,
+                "last_hidden_state",
+                None,
+            )
+
+            if isinstance(last_hidden_state, torch.Tensor):
+                return last_hidden_state.mean(dim=1).squeeze(0)
+
+    if input_type == "language":
+        text_embeds = getattr(output, "text_embeds", None)
+
+        if isinstance(text_embeds, torch.Tensor):
+            return text_embeds.squeeze(0)
+
+        text_model_output = getattr(output, "text_model_output", None)
+
+        if text_model_output is not None:
+            pooler_output = getattr(text_model_output, "pooler_output", None)
+
+            if isinstance(pooler_output, torch.Tensor):
+                return pooler_output.squeeze(0)
+
+            last_hidden_state = getattr(
+                text_model_output,
+                "last_hidden_state",
+                None,
+            )
+
+            if isinstance(last_hidden_state, torch.Tensor):
+                pooled = mean_pool_last_hidden(
+                    last_hidden_state,
+                    attention_mask,
+                )
+
+                return pooled.squeeze(0)
+
+    pooler_output = getattr(output, "pooler_output", None)
+
+    if isinstance(pooler_output, torch.Tensor):
+        return pooler_output.squeeze(0)
+
+    last_hidden_state = getattr(output, "last_hidden_state", None)
+
+    if isinstance(last_hidden_state, torch.Tensor):
+        pooled = mean_pool_last_hidden(
+            last_hidden_state,
+            attention_mask,
+        )
+
+        return pooled.squeeze(0)
+
+    if isinstance(output, tuple):
+        for value in output:
+            if not isinstance(value, torch.Tensor):
+                continue
+
+            if value.ndim == 3:
+                pooled = mean_pool_last_hidden(
+                    value,
+                    attention_mask,
+                )
+
+                return pooled.squeeze(0)
+
+            if value.ndim == 2:
+                return value.squeeze(0)
+
+    raise ValueError(
+        "Could not extract an embedding from the model output. "
+        "This model may require a model-specific embedding procedure."
+    )
 
 def embed_long_text(
     text: str,
@@ -50,21 +244,24 @@ def embed_long_text(
     overlap: int = 256,
 ) -> tuple[torch.Tensor, int, int]:
     """
-        Embed a potentially long transcript by splitting it into overlapping token chunks.
+        Embed a potentially long text by splitting it into overlapping token chunks.
 
         Returns:
             final_embedding: tensor of shape [hidden_dim]
             n_tokens: number of original tokens before adding special tokens
             n_chunks: number of chunks used
     """
+    if tokenizer is None:
+        raise ValueError(
+            "A tokenizer is required for language embedding."
+        )
+
     if overlap < 0:
         raise ValueError("overlap must be >= 0")
 
     if overlap >= max_length:
         raise ValueError("overlap must be smaller than max_length")
 
-    # Tokenize without special tokens. This may print a length warning in some
-    # tokenizer versions, but these IDs are NOT passed to the model all at once.
     input_ids = tokenizer.encode(
         text,
         add_special_tokens=False,
@@ -73,10 +270,8 @@ def embed_long_text(
     n_tokens = len(input_ids)
 
     if n_tokens == 0:
-        raise ValueError("Empty transcript after tokenization.")
+        raise ValueError("Empty text after tokenization.")
 
-    # Manually add only BOS when available. This avoids tokenizer helper methods
-    # that are absent in your LlamaTokenizer wrapper.
     bos_token_id = getattr(tokenizer, "bos_token_id", None)
 
     n_manual_special = 1 if bos_token_id is not None else 0
@@ -91,7 +286,8 @@ def embed_long_text(
 
     if step <= 0:
         raise ValueError(
-            f"overlap is too large after accounting for special tokens. chunk_token_length={chunk_token_length}, overlap={overlap}"
+            "overlap is too large after accounting for special tokens. "
+            f"chunk_token_length={chunk_token_length}, overlap={overlap}"
         )
 
     chunk_embeddings = []
@@ -110,7 +306,8 @@ def embed_long_text(
 
         if len(model_input_ids) > max_length:
             raise RuntimeError(
-                f"Chunk length {len(model_input_ids)} exceeds max_length={max_length}."
+                f"Chunk length {len(model_input_ids)} exceeds "
+                f"max_length={max_length}."
             )
 
         input_ids_tensor = torch.tensor(
@@ -119,10 +316,13 @@ def embed_long_text(
             device=device,
         )
 
-        attention_mask = torch.ones_like(input_ids_tensor, device=device)
+        attention_mask = torch.ones_like(
+            input_ids_tensor,
+            device=device,
+        )
 
         with torch.inference_mode():
-            llm_output = model(
+            model_output = model(
                 input_ids=input_ids_tensor,
                 attention_mask=attention_mask,
                 output_hidden_states=False,
@@ -130,92 +330,458 @@ def embed_long_text(
                 use_cache=False,
             )
 
-        pooled = mean_pool_last_hidden(
-            llm_output.last_hidden_state,
-            attention_mask,
+        embedding = extract_embedding_from_output(
+            output=model_output,
+            attention_mask=attention_mask,
+            input_type="language",
         )
 
-        # Weight by original transcript tokens, excluding the manually added BOS.
-        chunk_embeddings.append(pooled.squeeze(0).detach().cpu())
+        chunk_embeddings.append(
+            embedding.detach().cpu().float()
+        )
         chunk_lengths.append(len(chunk_ids))
 
-        del input_ids_tensor, attention_mask, llm_output, pooled
+        del input_ids_tensor
+        del attention_mask
+        del model_output
+        del embedding
 
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
 
     if not chunk_embeddings:
-        raise ValueError("No chunks were produced for transcript.")
+        raise ValueError("No chunks were produced for text.")
 
     chunks = torch.stack(chunk_embeddings, dim=0).float()
-    weights = torch.tensor(chunk_lengths, dtype=torch.float32).unsqueeze(1)
+    weights = torch.tensor(
+        chunk_lengths,
+        dtype=torch.float32,
+    ).unsqueeze(1)
 
     final_embedding = (chunks * weights).sum(dim=0) / weights.sum()
 
     return final_embedding, n_tokens, len(chunk_embeddings)
 
+def embed_visual_input(
+    image_path,
+    processor,
+    model,
+    device,
+) -> torch.Tensor:
+    if processor is None:
+        raise ValueError(
+            "An AutoProcessor-compatible processor is required "
+            "for visual embedding."
+        )
+
+    with Image.open(image_path) as image:
+        image = image.convert("RGB")
+
+        inputs = processor(
+            images=image,
+            return_tensors="pt",
+        )
+
+    inputs = move_inputs_to_device(inputs, device)
+
+    with torch.inference_mode():
+        if hasattr(model, "get_image_features"):
+            embedding = model.get_image_features(**inputs)
+            embedding = embedding.squeeze(0)
+        else:
+            model_output = model(
+                **inputs,
+                return_dict=True,
+            )
+
+            embedding = extract_embedding_from_output(
+                output=model_output,
+                input_type="visual",
+            )
+
+            del model_output
+
+    embedding = embedding.detach().cpu().float()
+
+    del inputs
+
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+
+    return embedding
+
+def embed_multimodal_input(
+    text,
+    image_path,
+    processor,
+    model,
+    device,
+    tokenizer,
+    max_length,
+    input_type,
+) -> tuple[torch.Tensor, int | None]:
+    if processor is None:
+        raise ValueError(
+            "An AutoProcessor-compatible processor is required "
+            "for multimodal embedding."
+        )
+
+    processor_kwargs = {
+        "return_tensors": "pt",
+    }
+
+    image = None
+
+    if input_type == "language":
+        if text is None:
+            raise ValueError(
+                "A text input is required when input_type is language."
+            )
+
+        processor_kwargs["text"] = text
+        processor_kwargs["truncation"] = True
+        processor_kwargs["max_length"] = max_length
+
+    elif input_type == "visual":
+        if image_path is None:
+            raise ValueError(
+                "An image input is required when input_type is visual."
+            )
+
+        image = Image.open(image_path).convert("RGB")
+        processor_kwargs["images"] = image
+
+    else:
+        raise ValueError(
+            f"Unsupported input type for multimodal model: {input_type}"
+        )
+
+    try:
+        inputs = processor(**processor_kwargs)
+    finally:
+        if image is not None:
+            image.close()
+
+    inputs = move_inputs_to_device(inputs, device)
+
+    n_tokens = None
+
+    if input_type == "language" and tokenizer is not None:
+        n_tokens = len(
+            tokenizer.encode(
+                text,
+                add_special_tokens=False,
+            )
+        )
+
+    with torch.inference_mode():
+        if input_type == "language" and hasattr(model, "get_text_features"):
+            embedding = model.get_text_features(**inputs)
+            embedding = embedding.squeeze(0)
+
+        elif input_type == "visual" and hasattr(model, "get_image_features"):
+            embedding = model.get_image_features(**inputs)
+            embedding = embedding.squeeze(0)
+
+        else:
+            model_output = model(
+                **inputs,
+                return_dict=True,
+            )
+
+            attention_mask = inputs.get("attention_mask")
+
+            embedding = extract_embedding_from_output(
+                output=model_output,
+                attention_mask=attention_mask,
+                input_type=input_type,
+            )
+
+            del model_output
+
+    embedding = embedding.detach().cpu().float()
+
+    del inputs
+
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+
+    return embedding, n_tokens
+
+def read_text_file(path):
+    with Path(path).open("r", encoding="utf-8") as f:
+        return f.read()
+
+def compute_cosine_similarity_matrix(
+    embeddings: list[torch.Tensor],
+    concepts: list[str],
+) -> pd.DataFrame:
+    if not embeddings:
+        raise ValueError(
+            "Cannot compute a similarity matrix without embeddings."
+        )
+
+    embedding_shapes = {
+        tuple(embedding.shape)
+        for embedding in embeddings
+    }
+
+    if len(embedding_shapes) != 1:
+        raise ValueError(
+            "All embeddings must have the same shape. "
+            f"Found shapes: {sorted(embedding_shapes)}"
+        )
+
+    embedding_matrix = torch.stack(
+        embeddings,
+        dim=0,
+    ).float()
+
+    if embedding_matrix.ndim != 2:
+        raise ValueError(
+            "Expected one one-dimensional embedding per concept, "
+            f"but the stacked embedding matrix has shape "
+            f"{tuple(embedding_matrix.shape)}."
+        )
+
+    if not torch.isfinite(embedding_matrix).all():
+        raise ValueError(
+            "The embedding matrix contains NaN or infinite values."
+        )
+
+    norms = torch.linalg.vector_norm(
+        embedding_matrix,
+        ord=2,
+        dim=1,
+        keepdim=True,
+    )
+
+    zero_norm_indices = torch.where(
+        norms.squeeze(1) == 0
+    )[0].tolist()
+
+    if zero_norm_indices:
+        zero_norm_concepts = [
+            concepts[index]
+            for index in zero_norm_indices
+        ]
+
+        raise ValueError(
+            "Cannot compute cosine similarity because the following "
+            f"concepts have zero-norm embeddings: {zero_norm_concepts}"
+        )
+
+    normalized_embeddings = embedding_matrix / norms
+
+    similarity_matrix = (
+        normalized_embeddings
+        @ normalized_embeddings.T
+    )
+
+    similarity_matrix = similarity_matrix.clamp(
+        min=-1.0,
+        max=1.0,
+    )
+
+    similarity_matrix.fill_diagonal_(1.0)
+
+    return pd.DataFrame(
+        similarity_matrix.numpy().astype("float32"),
+        index=concepts,
+        columns=concepts,
+    )
+
 def main():
-    parser = argparse.ArgumentParser(description="Embed transcripts with chunking")
+    parser = argparse.ArgumentParser(
+        description=(
+            "Embed language, visual, or multimodal concepts and write "
+            "their pairwise cosine-similarity matrix."
+        )
+    )
     parser.add_argument(
         "--stimuli_dir",
         required=True,
-        help="Path to the input directory containing txt files to embed")
+        help=(
+            "Path to a directory containing either text files or image files. "
+            "Each execution must process only one input type."
+        ),
+    )
     parser.add_argument(
         "--output",
         required=True,
-        help="Path to the output file where embeddings will be saved")
+        help=(
+            "Path to the output Parquet file containing the square "
+            "cosine-similarity matrix."
+        ),
+    )
+    parser.add_argument(
+        "--modality",
+        required=True,
+        choices=["language", "visual", "multimodal"],
+        help="Modality in which the model is expected to operate.",
+    )
     parser.add_argument(
         "--model_path",
         required=True,
-        help="Path to the language model")
+        help="Path or Hugging Face identifier of the model.",
+    )
     parser.add_argument(
         "--quantization_method",
         choices=["4bit", "8bit"],
         default=None,
-        help="Quantization method")
+        help="Optional model quantization method.",
+    )
     parser.add_argument(
         "--excluded_stimuli",
-        nargs="*",
-        default=[],
-        help="List of stimuli to exclude from embedding")
+        default=None,
+        help=(
+            "Path to a text file containing one stimulus ID per line. "
+            "Files whose stem matches one of these IDs are excluded."
+        ),
+    )
     parser.add_argument(
         "--chunk_max_length",
         type=int,
         default=None,
-        help="Maximum model input length per chunk. Default: inferred, usually 2048.")
+        help=(
+            "Maximum language-model input length per chunk. "
+            "Default: inferred, usually 2048."
+        ),
+    )
     parser.add_argument(
         "--chunk_overlap",
         type=int,
         default=256,
-        help="Number of overlapping transcript tokens between adjacent chunks.")
+        help=(
+            "Number of overlapping text tokens between adjacent chunks. "
+            "Used for language-only models."
+        ),
+    )
     args = parser.parse_args()
 
-    tokenizer = AutoTokenizer.from_pretrained(args.model_path)
+    input_type, input_files = get_input_type_and_files(
+        args.stimuli_dir
+    )
 
-    if tokenizer.pad_token is None:
-        tokenizer.pad_token = tokenizer.eos_token
+    if args.modality == "language" and input_type != "language":
+        raise ValueError(
+            "A language-only model cannot process visual inputs."
+        )
+
+    if args.modality == "visual" and input_type != "visual":
+        raise ValueError(
+            "A visual-only model cannot process language inputs."
+        )
+
+    excluded_stimuli = load_excluded_stimuli(
+        args.excluded_stimuli
+    )
+
+    print(
+        f"Loaded {len(excluded_stimuli)} excluded stimuli",
+        flush=True,
+    )
+
+    items = []
+
+    for filepath in input_files:
+        stimulus = filepath.stem
+
+        if stimulus in excluded_stimuli:
+            print(
+                f"Skipping excluded stimulus: {stimulus}",
+                flush=True,
+            )
+            continue
+
+        items.append(
+            {
+                "stimulus": stimulus,
+                "filepath": filepath,
+            }
+        )
+
+    if not items:
+        raise ValueError(
+            f"No valid {input_type} stimuli remained after exclusions."
+        )
+
+    concepts = [
+        item["stimulus"]
+        for item in items
+    ]
+
+    if len(concepts) != len(set(concepts)):
+        duplicated_concepts = sorted(
+            {
+                concept
+                for concept in concepts
+                if concepts.count(concept) > 1
+            }
+        )
+
+        raise ValueError(
+            "Concept names must be unique because they are used as both "
+            "the similarity-matrix index and columns. "
+            f"Duplicated concepts: {duplicated_concepts}"
+        )
+
+    tokenizer = None
+    processor = None
+
+    if args.modality == "language":
+        tokenizer = AutoTokenizer.from_pretrained(
+            args.model_path,
+            trust_remote_code=True,
+        )
+
+        if tokenizer.pad_token is None:
+            tokenizer.pad_token = tokenizer.eos_token
+
+    else:
+        processor = AutoProcessor.from_pretrained(
+            args.model_path,
+            trust_remote_code=True,
+        )
+
+        tokenizer = getattr(processor, "tokenizer", None)
+
+        if tokenizer is not None and tokenizer.pad_token is None:
+            tokenizer.pad_token = tokenizer.eos_token
 
     quantization_config = None
+
     if args.quantization_method == "4bit":
-        quantization_config = BitsAndBytesConfig(load_in_4bit=True)
+        quantization_config = BitsAndBytesConfig(
+            load_in_4bit=True
+        )
+
     elif args.quantization_method == "8bit":
-        quantization_config = BitsAndBytesConfig(load_in_8bit=True)
+        quantization_config = BitsAndBytesConfig(
+            load_in_8bit=True
+        )
 
     if quantization_config is not None:
         model = AutoModel.from_pretrained(
             args.model_path,
             quantization_config=quantization_config,
             device_map="auto",
+            trust_remote_code=True,
         )
-        device = next(model.parameters()).device
+
     else:
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        model = AutoModel.from_pretrained(args.model_path).to(device)
+        device = torch.device(
+            "cuda" if torch.cuda.is_available() else "cpu"
+        )
+
+        model = AutoModel.from_pretrained(
+            args.model_path,
+            trust_remote_code=True,
+        ).to(device)
 
     model.eval()
 
-    # For quantized models with device_map="auto", this is usually the correct input device.
-    device = next(model.parameters()).device
+    device = model_input_device(model)
 
     max_length = get_safe_max_length(
         tokenizer=tokenizer,
@@ -223,53 +789,31 @@ def main():
         user_max_length=args.chunk_max_length,
     )
 
-    if args.chunk_overlap >= max_length:
-        raise ValueError(
-            f"--chunk_overlap must be smaller than chunk max length. Got overlap={args.chunk_overlap}, max_length={max_length}."
+    if input_type == "language":
+        if args.chunk_overlap >= max_length:
+            raise ValueError(
+                "--chunk_overlap must be smaller than the chunk maximum "
+                f"length. Got overlap={args.chunk_overlap}, "
+                f"max_length={max_length}."
+            )
+
+        print(
+            f"Using chunk_max_length={max_length}, "
+            f"chunk_overlap={args.chunk_overlap}",
+            flush=True,
         )
 
-    print(
-        f"Using chunk_max_length={max_length}, chunk_overlap={args.chunk_overlap}",
-        flush=True,
-    )
+    embeddings = []
 
-    # Load txt files and keep both task name and stimulus text.
-    items = []
-    pattern = re.compile(r"^(.+)_transcript\.txt$")
+    for item in items:
+        stimulus = item["stimulus"]
+        filepath = item["filepath"]
 
-    for filename in sorted(os.listdir(args.stimuli_dir)):
-        match = pattern.match(filename)
-        if not match:
-            continue
+        if args.modality == "language":
+            text = read_text_file(filepath)
 
-        task = match.group(1)
-
-        if task in args.excluded_stimuli:
-            continue
-
-        filepath = os.path.join(args.stimuli_dir, filename)
-
-        with open(filepath, "r", encoding="utf-8") as f:
-            stimulus = f.read()
-
-        items.append(
-            {
-                "task": task,
-                "stimulus": stimulus,
-            }
-        )
-
-    if not items:
-        raise ValueError(
-            f"No input files found in {args.stimuli_dir}. Expected files matching '*_transcript.txt'."
-        )
-
-    records = []
-
-    with torch.no_grad():
-        for item in items:
             embedding, n_tokens, n_chunks = embed_long_text(
-                text=item["stimulus"],
+                text=text,
                 tokenizer=tokenizer,
                 model=model,
                 device=device,
@@ -277,66 +821,93 @@ def main():
                 overlap=args.chunk_overlap,
             )
 
-            print(
-                f"{item['task']}: n_tokens={n_tokens}, n_chunks={n_chunks}",
-                flush=True,
+        elif args.modality == "visual":
+            embedding = embed_visual_input(
+                image_path=filepath,
+                processor=processor,
+                model=model,
+                device=device,
             )
 
-            records.append(
-                {
-                    "task": item["task"],
-                    "n_tokens": n_tokens,
-                    "n_chunks": n_chunks,
-                    "chunk_max_length": max_length,
-                    "chunk_overlap": args.chunk_overlap,
-                    **{
-                        i: value
-                        for i, value in enumerate(
-                            embedding.numpy().astype("float32")
-                        )
-                    },
-                }
+            n_tokens = None
+            n_chunks = None
+
+        else:
+            if input_type == "language":
+                text = read_text_file(filepath)
+                image_path = None
+            else:
+                text = None
+                image_path = filepath
+
+            embedding, n_tokens = embed_multimodal_input(
+                text=text,
+                image_path=image_path,
+                processor=processor,
+                model=model,
+                device=device,
+                tokenizer=tokenizer,
+                max_length=max_length,
+                input_type=input_type,
             )
 
-            del embedding
+            n_chunks = 1
 
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
+        embedding = embedding.reshape(-1).float()
 
-    df = pd.DataFrame(records)
+        if not torch.isfinite(embedding).all():
+            raise ValueError(
+                f"Embedding for concept {stimulus!r} contains "
+                "NaN or infinite values."
+            )
 
-    # Use task name as the dataframe index.
-    df = df.set_index("task")
-    df.index.name = "task"
+        print(
+            f"{stimulus}: model_modality={args.modality}, "
+            f"input_type={input_type}, "
+            f"embedding_dim={embedding.numel()}, "
+            f"n_tokens={n_tokens}, n_chunks={n_chunks}",
+            flush=True,
+        )
 
-    metadata_cols = [
-        "n_tokens",
-        "n_chunks",
-        "chunk_max_length",
-        "chunk_overlap",
-    ]
+        embeddings.append(
+            embedding.detach().cpu()
+        )
 
-    # Your embedding columns are integer-labelled dimensions: 0, 1, 2, ..., hidden_size-1.
-    embedding_cols = [
-        c for c in df.columns
-        if isinstance(c, int)
-    ]
+        del embedding
 
-    unexpected_cols = [
-        c for c in df.columns
-        if c not in metadata_cols and c not in embedding_cols
-    ]
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
 
-    if unexpected_cols:
-        raise ValueError(f"Unexpected non-embedding columns found: {unexpected_cols}")
+    similarity_df = compute_cosine_similarity_matrix(
+        embeddings=embeddings,
+        concepts=concepts,
+    )
 
-    df = df[metadata_cols + embedding_cols]
+    if similarity_df.shape[0] != similarity_df.shape[1]:
+        raise RuntimeError(
+            "The generated similarity matrix is not square. "
+            f"Got shape {similarity_df.shape}."
+        )
 
-    df.to_parquet(args.output, engine="pyarrow", index=True)
-    
-#    # print the alignment score dataframe
-#    with pd.option_context("display.max_rows", None, "display.max_columns", None):
-#        print(df)
+    if list(similarity_df.index) != list(similarity_df.columns):
+        raise RuntimeError(
+            "The generated similarity-matrix index and columns "
+            "do not match exactly."
+        )
+
+    output_path = Path(args.output)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    similarity_df.to_parquet(
+        output_path,
+        engine="pyarrow",
+        index=True,
+    )
+
+    print(
+        f"Wrote a {similarity_df.shape[0]} x {similarity_df.shape[1]} cosine-similarity matrix to {output_path}",
+        flush=True,
+    )
 
 if __name__ == "__main__":
     main()

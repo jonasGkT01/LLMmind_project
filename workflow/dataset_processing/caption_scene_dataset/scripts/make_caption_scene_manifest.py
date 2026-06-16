@@ -6,6 +6,8 @@ from pathlib import Path
 
 import pandas as pd
 
+import nibabel as nib
+
 def parse_bold_path(path):
     name = Path(path).name
 
@@ -33,31 +35,33 @@ def stimulus_id_from_image(image):
 def read_run_table(path, encoding):
     return pd.read_csv(path, sep=None, engine="python", encoding=encoding)
 
-def load_corrupted_niis(corrupted_niis):
-    corrupted_niis = Path(corrupted_niis)
+def write_lines(values, output_path):
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    if not corrupted_niis.exists():
-        raise FileNotFoundError(f"Corrupted NIfTI list does not exist: {corrupted_niis}")
+    with output_path.open("w") as f:
+        for value in sorted(set(values)):
+            f.write(f"{value}\n")
 
-    corrupted_paths = set()
+def is_valid_nifti(path):
+    try:
+        img = nib.load(path)
 
-    with corrupted_niis.open("r") as f:
-        for line in f:
-            path = line.strip()
+        # Access metadata.
+        _ = img.shape
+        _ = img.affine
 
-            if path:
-                corrupted_paths.add(str(Path(path)))
-                corrupted_paths.add(str(Path(path).resolve()))
+        # Force the complete compressed NIfTI payload to be read.
+        _ = img.dataobj.get_unscaled()
 
-    return corrupted_paths
+        return True
 
-def is_corrupted_bold(bold, corrupted_paths):
-    bold_path = Path(bold)
-
-    return (
-        str(bold_path) in corrupted_paths
-        or str(bold_path.resolve()) in corrupted_paths
-    )
+    except Exception as exc:
+        warnings.warn(
+            f"Skipping unreadable or corrupted NIfTI file {path}: {exc}",
+            RuntimeWarning,
+        )
+        return False
 
 def write_run_manifests(out, output_run_manifest_dir, output_run_manifest_index):
     output_run_manifest_dir = Path(output_run_manifest_dir)
@@ -107,7 +111,11 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--bold_files", nargs="+", required=True)
     parser.add_argument("--run_tables", nargs="+", required=True)
-    parser.add_argument("--corrupted_niis", required=True)
+    parser.add_argument(
+        "--output_singleton_stimuli",
+        required=True,
+        help="Output text file containing stimulus IDs represented by only one NIfTI.",
+    )
     parser.add_argument("--output_manifest", required=True)
     parser.add_argument("--output_run_manifest_dir", required=True)
     parser.add_argument("--output_run_manifest_index", required=True)
@@ -122,10 +130,9 @@ def main():
     if len(args.bold_files) != len(args.run_tables):
         raise ValueError(
             "The number of BOLD files and run tables must be identical. "
-            f"Got {len(args.bold_files)} BOLD files and {len(args.run_tables)} run tables."
+            f"Got {len(args.bold_files)} BOLD files and "
+            f"{len(args.run_tables)} run tables."
         )
-
-    corrupted_paths = load_corrupted_niis(args.corrupted_niis)
 
     n_vols = int(math.ceil(args.event_duration_s / args.tr))
     rows = []
@@ -139,23 +146,26 @@ def main():
         run = fields["run"]
         run_key = sample_key(subject, session, run)
 
-        if is_corrupted_bold(bold, corrupted_paths):
+        if not is_valid_nifti(bold):
             skipped_corrupted += 1
-            warnings.warn(
-                f"Skipping corrupted BOLD file while creating manifest: {bold}. "
-                f"No expected single-stimulus outputs will be added for {run_key}.",
-                RuntimeWarning,
-            )
             continue
 
         df = read_run_table(run_table, args.run_table_encoding)
 
-        required_columns = {"Index", "Onset", "Blank", "Unmatch", "Image", "Caption"}
+        required_columns = {
+            "Index",
+            "Onset",
+            "Blank",
+            "Unmatch",
+            "Image",
+            "Caption",
+        }
         missing_columns = required_columns - set(df.columns)
 
         if missing_columns:
             raise ValueError(
-                f"Run table {run_table} is missing columns: {sorted(missing_columns)}"
+                f"Run table {run_table} is missing columns: "
+                f"{sorted(missing_columns)}"
             )
 
         df["Image"] = df["Image"].astype(str)
@@ -233,19 +243,33 @@ def main():
     out = pd.DataFrame(rows)
 
     if out.empty:
-        raise ValueError("Global manifest is empty. No valid CSD events were found.")
+        write_lines([], args.output_singleton_stimuli)
+
+        raise ValueError(
+            "Global manifest is empty. No valid events were found after "
+            "excluding unreadable or corrupted BOLD files."
+        )
 
     stimulus_counts = out.groupby("stimulus_id").size()
-    valid_stimuli = stimulus_counts[stimulus_counts >= 2].index
-    removed_stimuli = stimulus_counts[stimulus_counts < 2]
 
-    if len(removed_stimuli) > 0:
+    valid_stimuli = stimulus_counts[
+        stimulus_counts >= 2
+    ].index
+
+    singleton_stimuli = stimulus_counts[
+        stimulus_counts == 1
+    ].index.tolist()
+
+    write_lines(
+        singleton_stimuli,
+        args.output_singleton_stimuli,
+    )
+
+    if singleton_stimuli:
         warnings.warn(
-            "Removing stimuli with fewer than two parcel time-series files: "
-            + ", ".join(
-                f"{stimulus_id}={count}"
-                for stimulus_id, count in removed_stimuli.items()
-            ),
+            "Removing stimuli represented by only one valid "
+            "single-stimulus NIfTI: "
+            + ", ".join(sorted(singleton_stimuli)),
             RuntimeWarning,
         )
 
@@ -253,8 +277,8 @@ def main():
 
     if out.empty:
         raise ValueError(
-            "Global manifest is empty after removing stimuli with fewer than two "
-            "parcel time-series files."
+            "Global manifest is empty after removing stimuli represented by "
+            "fewer than two single-stimulus NIfTI files."
         )
 
     out = out.sort_values(
@@ -275,8 +299,11 @@ def main():
     print(f"Wrote global manifest with {len(out)} rows to {output_path}")
     print(f"Wrote run manifests to {args.output_run_manifest_dir}")
     print(f"Wrote run manifest index to {args.output_run_manifest_index}")
-    print(f"Skipped {skipped_corrupted} corrupted BOLD files listed in {args.corrupted_niis}")
-    print(f"Removed {len(removed_stimuli)} stimuli with fewer than two parcel time-series files")
+    print(f"Skipped {skipped_corrupted} unreadable or corrupted BOLD files")
+    print(
+        f"Wrote {len(singleton_stimuli)} singleton stimulus IDs to "
+        f"{args.output_singleton_stimuli}"
+    )
 
 if __name__ == "__main__":
     main()

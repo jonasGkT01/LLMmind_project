@@ -3,10 +3,9 @@ from pathlib import Path
 DATASETS = list(config["datasets"])
 MODEL_KEYS = list(config["models"].keys())
 SIMILARITY_TYPES = list(config["similarity_metrics"])
-EXCLUDED_SUBTASKS = list(config["narratives"]["schema_subtasks"])
 NUMBER_OF_RELABELLINGS = config["number_of_relabellings"]
 
-def dataset_neighbour_pairs():
+def pairings():
     pairs = []
 
     for dataset in DATASETS:
@@ -17,29 +16,35 @@ def dataset_neighbour_pairs():
             nn = [nn]
 
         for number_of_neighbours in nn:
-            pairs.append(
-                {
-                    "dataset": dataset,
-                    "number_of_neighbours": number_of_neighbours,
-                }
-            )
+            for stimuli_type in list(config[dataset]["stimuli_dir"].keys()):
+                for model in MODEL_KEYS:
+                    if config["models"][model]["modality"] not in [stimuli_type, "multimodal"]:
+                        continue
+                    
+                    pairs.append(
+                        {
+                            "dataset": dataset,
+                            "number_of_neighbours": number_of_neighbours,
+                            "stimuli_type": stimuli_type,
+                            "model": model,
+                            "modality": config["models"][model]["modality"]
+                        }
+                    )
 
     return pairs
 
-DATASET_NN_PAIRS = dataset_neighbour_pairs()
+PAIRINGS = pairings()
 
 rule all_llm_nearest_neighbours:
     input:
         [
-            f"results/llm/{pair['dataset']}/{similarity_type}_nearest_neighbours/{model}_{similarity_type}_nearest_neighbours_{pair['number_of_neighbours']}NN.parquet"
-            for pair in DATASET_NN_PAIRS
+            f"results/{pair['stimuli_type']}_models/{pair['dataset']}/{similarity_type}_nearest_neighbours/{pair['model']}_{similarity_type}_nearest_neighbours_{pair['number_of_neighbours']}NN.parquet"
+            for pair in PAIRINGS
             for similarity_type in SIMILARITY_TYPES
-            for model in MODEL_KEYS
         ],
         [
-            f"results/llm/{pair['dataset']}/relabelled_nearest_neighbours/relabelled_{model}_{similarity_type}_nearest_neighbours_{pair['number_of_neighbours']}NN.parquet"
-            for pair in DATASET_NN_PAIRS
-            for model in MODEL_KEYS
+            f"results/{pair['stimuli_type']}_models/{pair['dataset']}/relabelled_nearest_neighbours/relabelled_{pair['model']}_{similarity_type}_nearest_neighbours_{pair['number_of_neighbours']}NN.parquet"
+            for pair in PAIRINGS
             for similarity_type in SIMILARITY_TYPES
         ]
 
@@ -57,19 +62,20 @@ rule download_pretrained_llm:
 
 rule get_embeddings:
     input:
-        stimuli_transcripts_done=lambda wc: config[wc.dataset]["stimuli_transcripts_done"],
-        stimuli_dir=lambda wc: config[wc.dataset]["stimuli_dir"],
+        stimuli_transcripts_done=lambda wc: config[wc.dataset]["stimuli_ready"],
+        stimuli_dir=lambda wc: config[wc.dataset]["stimuli_dir"][wc.stimuli_type],
+        excluded_stimuli=lambda wc: config[wc.dataset]["excluded_stimuli"],
         model="resources/models/{model}"
     output:
-        "results/llm/{dataset}/embeddings/{model}_embeddings.parquet"
+        "results/{stimuli_type}_models/{dataset}/embeddings/{model}_embeddings.parquet"
     resources:
         gpu=1
     params:
+        modality=lambda wc: config["models"][wc.model]["modality"],
         quantization_arg=lambda wc: (
             "" if config["models"][wc.model]["quantization_method"] is None
             else f"--quantization_method {config['models'][wc.model]['quantization_method']}"
-        ),
-        excluded_stimuli=EXCLUDED_SUBTASKS
+        )
     conda:
         "envs/get_embeddings_environment.yaml"
     shell:
@@ -77,17 +83,18 @@ rule get_embeddings:
             python3 workflow/llm_nearest_neighbours/scripts/get_embeddings.py \
                 --stimuli_dir {input.stimuli_dir:q} \
                 --output {output:q} \
+                --modality {params.modality:q} \
                 --model_path {input.model:q} \
                 {params.quantization_arg} \
-                --excluded_stimuli {params.excluded_stimuli:q}
+                --excluded_stimuli {input.excluded_stimuli:q}
         """
 
 rule compute_llm_similarity:
     input:
-        embedding_dataframe="results/llm/{dataset}/embeddings/{model}_embeddings.parquet"
+        embedding_dataframe="results/{stimuli_type}_models/{dataset}/embeddings/{model}_embeddings.parquet"
     output:
-        cosine_similarity_dataframe="results/llm/{dataset}/cosine_similarity/{model}_cosine_similarity.parquet",
-        pearson_similarity_dataframe="results/llm/{dataset}/pearson_similarity/{model}_pearson_similarity.parquet"
+        cosine_similarity_dataframe="results/{stimuli_type}_models/{dataset}/cosine_similarity/{model}_cosine_similarity.parquet",
+        pearson_similarity_dataframe="results/{stimuli_type}_models/{dataset}/pearson_similarity/{model}_pearson_similarity.parquet"
     conda:
         "envs/compute_llm_similarity_environment.yaml"
     shell:
@@ -100,9 +107,9 @@ rule compute_llm_similarity:
 
 rule compute_llm_nearest_neighbours:
     input:
-        similarity_dataframe="results/llm/{dataset}/{similarity_type}_similarity/{model}_{similarity_type}_similarity.parquet"
+        similarity_dataframe="results/{stimuli_type}_models/{dataset}/{similarity_type}_similarity/{model}_{similarity_type}_similarity.parquet"
     output:
-        nearest_neighbours="results/llm/{dataset}/{similarity_type}_nearest_neighbours/{model}_{similarity_type}_nearest_neighbours_{number_of_neighbours}NN.parquet"
+        nearest_neighbours="results/{stimuli_type}_models/{dataset}/{similarity_type}_nearest_neighbours/{model}_{similarity_type}_nearest_neighbours_{number_of_neighbours}NN.parquet"
     params:
         number_of_neighbours=lambda wc: wc.number_of_neighbours
     conda:
@@ -117,9 +124,9 @@ rule compute_llm_nearest_neighbours:
 
 rule relabel_llm_similarity_and_compute_relabelled_llm_nearest_neighbours:
     input:
-        similarity_dataframe="results/llm/{dataset}/{similarity_type}_similarity/{model}_{similarity_type}_similarity.parquet"
+        similarity_dataframe="results/{stimuli_type}_models/{dataset}/{similarity_type}_similarity/{model}_{similarity_type}_similarity.parquet"
     output:
-        relabelled_nearest_neighbours="results/llm/{dataset}/relabelled_nearest_neighbours/relabelled_{model}_{similarity_type}_nearest_neighbours_{number_of_neighbours}NN.parquet"
+        relabelled_nearest_neighbours="results/{stimuli_type}_models/{dataset}/relabelled_nearest_neighbours/relabelled_{model}_{similarity_type}_nearest_neighbours_{number_of_neighbours}NN.parquet"
     params:
         number_of_neighbours=lambda wc: wc.number_of_neighbours,
         number_of_relabellings=NUMBER_OF_RELABELLINGS,

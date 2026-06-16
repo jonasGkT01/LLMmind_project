@@ -17,9 +17,9 @@ CAPTION_SCENE_PARCELS_DONE = f"{CAPTION_SCENE_PROCESSING_OUTPUT_DIR}/manifests/.
 CAPTION_SCENE_ISC_DONE = f"{CAPTION_SCENE_PROCESSING_OUTPUT_DIR}/manifests/.isc_done"
 
 CAPTION_SCENE_IMAGE_CAPTION_TSV = "resources/datasets/caption_scene_dataset/V1/stimuli/COCO_CN/Image_caption_pairs.tsv"
-CAPTION_SCENE_STIMULI_TRANSCRIPTS_DONE = config["caption_scene"]["stimuli_transcripts_done"]
+CAPTION_SCENE_STIMULI_READY = config["caption_scene"]["stimuli_ready"]
 
-CORRUPTED_NIIS = config["caption_scene"]["corrupted_niis"]
+CAPTION_SCENE_EXCLUDED_STIMULI = config["caption_scene"]["excluded_stimuli"]
 
 def caption_scene_parse_bold_path(path):
     name = Path(path).name
@@ -144,7 +144,8 @@ rule all_caption_scene_dataset:
     input:
         caption_scene_all_isc_outputs,
         CAPTION_SCENE_ISC_DONE,
-        CAPTION_SCENE_STIMULI_TRANSCRIPTS_DONE
+        CAPTION_SCENE_STIMULI_READY,
+        CAPTION_SCENE_EXCLUDED_STIMULI
 
 rule finish_caption_scene_isc:
     input:
@@ -155,9 +156,9 @@ rule finish_caption_scene_isc:
 checkpoint make_caption_scene_manifest:
     input:
         bold_files=CAPTION_SCENE_BOLD_FILES,
-        run_tables=CAPTION_SCENE_RUN_TABLES,
-        corrupted_files=CORRUPTED_NIIS
+        run_tables=CAPTION_SCENE_RUN_TABLES
     output:
+        singleton_stimuli=CAPTION_SCENE_EXCLUDED_STIMULI,
         manifest=CAPTION_SCENE_MANIFEST,
         run_manifest_dir=directory(CAPTION_SCENE_RUN_MANIFEST_DIR),
         run_manifest_index=CAPTION_SCENE_RUN_MANIFEST_INDEX
@@ -174,7 +175,7 @@ checkpoint make_caption_scene_manifest:
             python workflow/dataset_processing/caption_scene_dataset/scripts/make_caption_scene_manifest.py \
                 --bold_files {input.bold_files:q} \
                 --run_tables {input.run_tables:q} \
-                --corrupted_niis {input.corrupted_files:q} \
+                --output_singleton_stimuli {output.singleton_stimuli:q} \
                 --output_manifest {output.manifest:q} \
                 --output_run_manifest_dir {output.run_manifest_dir:q} \
                 --output_run_manifest_index {output.run_manifest_index:q} \
@@ -274,8 +275,8 @@ rule write_caption_scene_stimuli_transcripts:
         image_caption_table=CAPTION_SCENE_IMAGE_CAPTION_TSV,
         manifest=CAPTION_SCENE_MANIFEST
     output:
-        stimuli_dir=directory(config["caption_scene"]["stimuli_dir"]),
-        transcripts_done=CAPTION_SCENE_STIMULI_TRANSCRIPTS_DONE
+        stimuli_dir=directory(config["caption_scene"]["stimuli_dir"]["language"]),
+        transcripts_done=touch(CAPTION_SCENE_STIMULI_READY)
     conda:
         "envs/write_caption_scene_stimuli_transcripts_environment.yaml"
     shell:
@@ -284,6 +285,4 @@ rule write_caption_scene_stimuli_transcripts:
                 --image_caption_table {input.image_caption_table:q} \
                 --manifest {input.manifest:q} \
                 --output_dir {output.stimuli_dir:q}
-            
-            touch {output.transcripts_done}
         """

@@ -12,6 +12,7 @@ dependencies:
   - tqdm
   - datasets
   - scikit-learn
+  - PIL
   - transformers
   - accelerate
   - sentencepiece
