@@ -1,7 +1,6 @@
 import argparse
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 import torch
 from PIL import Image
@@ -50,9 +49,16 @@ def get_safe_max_length(
     text_config = getattr(model.config, "text_config", None)
 
     if text_config is not None:
-        text_config_max = getattr(text_config, "max_position_embeddings", None)
+        text_config_max = getattr(
+            text_config,
+            "max_position_embeddings",
+            None,
+        )
 
-        if isinstance(text_config_max, int) and text_config_max < 100_000:
+        if (
+            isinstance(text_config_max, int)
+            and text_config_max < 100_000
+        ):
             candidates.append(text_config_max)
 
     if candidates:
@@ -111,7 +117,8 @@ def get_input_type_and_files(stimuli_dir):
 
     if text_files and image_files:
         raise ValueError(
-            f"Stimuli directory contains both text and image files: {stimuli_dir}. Each execution must process only one input type."
+            f"Stimuli directory contains both text and image files: "
+            f"{stimuli_dir}. Each execution must process only one input type."
         )
 
     if text_files:
@@ -121,7 +128,8 @@ def get_input_type_and_files(stimuli_dir):
         return "visual", image_files
 
     raise ValueError(
-        f"No supported input files found in {stimuli_dir}. Expected .txt, .jpg, .jpeg, or .png files."
+        f"No supported input files found in {stimuli_dir}. "
+        "Expected .txt, .jpg, .jpeg, or .png files."
     )
 
 def model_input_device(model):
@@ -152,10 +160,18 @@ def extract_embedding_from_output(
         if isinstance(image_embeds, torch.Tensor):
             return image_embeds.squeeze(0)
 
-        vision_model_output = getattr(output, "vision_model_output", None)
+        vision_model_output = getattr(
+            output,
+            "vision_model_output",
+            None,
+        )
 
         if vision_model_output is not None:
-            pooler_output = getattr(vision_model_output, "pooler_output", None)
+            pooler_output = getattr(
+                vision_model_output,
+                "pooler_output",
+                None,
+            )
 
             if isinstance(pooler_output, torch.Tensor):
                 return pooler_output.squeeze(0)
@@ -175,10 +191,18 @@ def extract_embedding_from_output(
         if isinstance(text_embeds, torch.Tensor):
             return text_embeds.squeeze(0)
 
-        text_model_output = getattr(output, "text_model_output", None)
+        text_model_output = getattr(
+            output,
+            "text_model_output",
+            None,
+        )
 
         if text_model_output is not None:
-            pooler_output = getattr(text_model_output, "pooler_output", None)
+            pooler_output = getattr(
+                text_model_output,
+                "pooler_output",
+                None,
+            )
 
             if isinstance(pooler_output, torch.Tensor):
                 return pooler_output.squeeze(0)
@@ -229,7 +253,8 @@ def extract_embedding_from_output(
                 return value.squeeze(0)
 
     raise ValueError(
-        "Could not extract an embedding from the model output. This model may require a model-specific embedding procedure."
+        "Could not extract an embedding from the model output. "
+        "This model may require a model-specific embedding procedure."
     )
 
 def embed_long_text(
@@ -269,21 +294,24 @@ def embed_long_text(
     if n_tokens == 0:
         raise ValueError("Empty text after tokenization.")
 
-    bos_token_id = getattr(tokenizer, "bos_token_id", None)
+    special_tokens_count = tokenizer.num_special_tokens_to_add(
+        pair=False
+    )
 
-    n_manual_special = 1 if bos_token_id is not None else 0
-    chunk_token_length = max_length - n_manual_special
+    chunk_token_length = max_length - special_tokens_count
 
     if chunk_token_length <= 0:
         raise ValueError(
-            f"max_length={max_length} is too small after accounting for BOS."
+            f"max_length={max_length} is too small after accounting "
+            f"for {special_tokens_count} special tokens."
         )
 
     step = chunk_token_length - overlap
 
     if step <= 0:
         raise ValueError(
-            f"overlap is too large after accounting for special tokens. chunk_token_length={chunk_token_length}, overlap={overlap}"
+            "overlap is too large after accounting for special tokens. "
+            f"chunk_token_length={chunk_token_length}, overlap={overlap}"
         )
 
     chunk_embeddings = []
@@ -295,10 +323,9 @@ def embed_long_text(
         if not chunk_ids:
             continue
 
-        if bos_token_id is not None:
-            model_input_ids = [bos_token_id] + chunk_ids
-        else:
-            model_input_ids = chunk_ids
+        model_input_ids = tokenizer.build_inputs_with_special_tokens(
+            chunk_ids
+        )
 
         if len(model_input_ids) > max_length:
             raise RuntimeError(
@@ -317,14 +344,18 @@ def embed_long_text(
             device=device,
         )
 
+        model_inputs = {
+            "input_ids": input_ids_tensor,
+            "attention_mask": attention_mask,
+            "output_hidden_states": False,
+            "return_dict": True,
+        }
+
+        if "use_cache" in model.forward.__code__.co_varnames:
+            model_inputs["use_cache"] = False
+
         with torch.inference_mode():
-            model_output = model(
-                input_ids=input_ids_tensor,
-                attention_mask=attention_mask,
-                output_hidden_states=False,
-                return_dict=True,
-                use_cache=False,
-            )
+            model_output = model(**model_inputs)
 
         embedding = extract_embedding_from_output(
             output=model_output,
@@ -341,9 +372,6 @@ def embed_long_text(
         del attention_mask
         del model_output
         del embedding
-
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
 
     if not chunk_embeddings:
         raise ValueError("No chunks were produced for text.")
@@ -366,7 +394,8 @@ def embed_visual_input(
 ) -> torch.Tensor:
     if processor is None:
         raise ValueError(
-            "An AutoProcessor-compatible processor is required for visual embedding."
+            "An AutoProcessor-compatible processor is required "
+            "for visual embedding."
         )
 
     with Image.open(image_path) as image:
@@ -400,9 +429,6 @@ def embed_visual_input(
 
     del inputs
 
-    if torch.cuda.is_available():
-        torch.cuda.empty_cache()
-
     return embedding
 
 def embed_multimodal_input(
@@ -417,7 +443,8 @@ def embed_multimodal_input(
 ) -> tuple[torch.Tensor, int | None]:
     if processor is None:
         raise ValueError(
-            "An AutoProcessor-compatible processor is required for multimodal embedding."
+            "An AutoProcessor-compatible processor is required "
+            "for multimodal embedding."
         )
 
     processor_kwargs = {
@@ -469,11 +496,17 @@ def embed_multimodal_input(
         )
 
     with torch.inference_mode():
-        if input_type == "language" and hasattr(model, "get_text_features"):
+        if (
+            input_type == "language"
+            and hasattr(model, "get_text_features")
+        ):
             embedding = model.get_text_features(**inputs)
             embedding = embedding.squeeze(0)
 
-        elif input_type == "visual" and hasattr(model, "get_image_features"):
+        elif (
+            input_type == "visual"
+            and hasattr(model, "get_image_features")
+        ):
             embedding = model.get_image_features(**inputs)
             embedding = embedding.squeeze(0)
 
@@ -497,9 +530,6 @@ def embed_multimodal_input(
 
     del inputs
 
-    if torch.cuda.is_available():
-        torch.cuda.empty_cache()
-
     return embedding, n_tokens
 
 def read_text_file(path):
@@ -507,19 +537,23 @@ def read_text_file(path):
         return f.read()
 
 def main():
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(
+        description="Embed language, visual, or multimodal stimuli"
+    )
     parser.add_argument(
         "--stimuli_dir",
         required=True,
         help=(
-            "Path to a directory containing either text files or image files. Each execution must process only one input type."
+            "Path to a directory containing either text files or image files. "
+            "Each execution must process only one input type."
         ),
     )
     parser.add_argument(
         "--output",
         required=True,
         help=(
-            "Path to the output Parquet file containing the embeddings."
+            "Path to the output Parquet file containing one embedding "
+            "per stimulus."
         ),
     )
     parser.add_argument(
@@ -542,19 +576,28 @@ def main():
     parser.add_argument(
         "--excluded_stimuli",
         default=None,
-        help="Path to a text file containing one stimulus ID per line. Files whose stem matches one of these IDs are excluded."
+        help=(
+            "Path to a text file containing one stimulus ID per line. "
+            "Files whose stem matches one of these IDs are excluded."
+        ),
     )
     parser.add_argument(
         "--chunk_max_length",
         type=int,
         default=None,
-        help="Maximum language-model input length per chunk. Default: inferred, usually 2048."
+        help=(
+            "Maximum language-model input length per chunk. "
+            "Default: inferred, usually 2048."
+        ),
     )
     parser.add_argument(
         "--chunk_overlap",
         type=int,
         default=256,
-        help="Number of overlapping text tokens between adjacent chunks. Used for language-only models."
+        help=(
+            "Number of overlapping text tokens between adjacent chunks. "
+            "Used for language-only models."
+        ),
     )
     args = parser.parse_args()
 
@@ -584,18 +627,18 @@ def main():
     items = []
 
     for filepath in input_files:
-        stimulus = filepath.stem
+        concept = filepath.stem
 
-        if stimulus in excluded_stimuli:
+        if concept in excluded_stimuli:
             print(
-                f"Skipping excluded stimulus: {stimulus}",
+                f"Skipping excluded stimulus: {concept}",
                 flush=True,
             )
             continue
 
         items.append(
             {
-                "stimulus": stimulus,
+                "concept": concept,
                 "filepath": filepath,
             }
         )
@@ -603,24 +646,6 @@ def main():
     if not items:
         raise ValueError(
             f"No valid {input_type} stimuli remained after exclusions."
-        )
-
-    concepts = [
-        item["stimulus"]
-        for item in items
-    ]
-
-    if len(concepts) != len(set(concepts)):
-        duplicated_concepts = sorted(
-            {
-                concept
-                for concept in concepts
-                if concepts.count(concept) > 1
-            }
-        )
-
-        raise ValueError(
-            f"Concept names must be unique because they are used as both the similarity-matrix index and columns. Duplicated concepts: {duplicated_concepts}"
         )
 
     tokenizer = None
@@ -689,18 +714,23 @@ def main():
     if input_type == "language":
         if args.chunk_overlap >= max_length:
             raise ValueError(
-                "--chunk_overlap must be smaller than the chunk maximum length. Got overlap={args.chunk_overlap}, max_length={max_length}."
+                "--chunk_overlap must be smaller than the chunk maximum "
+                f"length. Got overlap={args.chunk_overlap}, "
+                f"max_length={max_length}."
             )
 
         print(
-            f"Using chunk_max_length={max_length}, chunk_overlap={args.chunk_overlap}",
+            f"Using chunk_max_length={max_length}, "
+            f"chunk_overlap={args.chunk_overlap}",
             flush=True,
         )
 
+    concepts = []
     embeddings = []
+    embedding_dimension = None
 
     for item in items:
-        stimulus = item["stimulus"]
+        concept = item["concept"]
         filepath = item["filepath"]
 
         if args.modality == "language":
@@ -749,18 +779,32 @@ def main():
 
         embedding = embedding.reshape(-1).float()
 
+        if embedding_dimension is None:
+            embedding_dimension = embedding.numel()
+
+        elif embedding.numel() != embedding_dimension:
+            raise ValueError(
+                f"Inconsistent embedding dimension for {concept}: "
+                f"expected {embedding_dimension}, "
+                f"got {embedding.numel()}."
+            )
+
         if not torch.isfinite(embedding).all():
             raise ValueError(
-                f"Embedding for concept {stimulus!r} contains NaN or infinite values."
+                f"Embedding for {concept} contains NaN or infinite values."
             )
 
         print(
-            f"{stimulus}: model_modality={args.modality}, input_type={input_type}, embedding_dim={embedding.numel()}, n_tokens={n_tokens}, n_chunks={n_chunks}",
+            f"{concept}: model_modality={args.modality}, "
+            f"input_type={input_type}, "
+            f"n_tokens={n_tokens}, n_chunks={n_chunks}, "
+            f"embedding_dimension={embedding.numel()}",
             flush=True,
         )
 
+        concepts.append(concept)
         embeddings.append(
-            embedding.detach().cpu()
+            embedding.detach().cpu().numpy().astype("float32")
         )
 
         del embedding
@@ -768,19 +812,46 @@ def main():
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
 
+    if len(concepts) != len(set(concepts)):
+        duplicated_concepts = sorted(
+            {
+                concept
+                for concept in concepts
+                if concepts.count(concept) > 1
+            }
+        )
+
+        raise ValueError(
+            f"Duplicate concept names found: {duplicated_concepts}"
+        )
+
+    embeddings_df = pd.DataFrame(
+        embeddings,
+        index=pd.Index(
+            concepts,
+            name="concept",
+        ),
+        columns=[
+            f"embedding_{i}"
+            for i in range(embedding_dimension)
+        ],
+        dtype="float32",
+    )
+
     output_path = Path(args.output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    embeddings_matrix = torch.stack(embeddings).numpy()
-
-    embedding_df = pd.DataFrame(
-        embeddings_matrix,
-        index=concepts,
-        columns=[str(i) for i in range(embeddings_matrix.shape[1])]
+    embeddings_df.to_parquet(
+        output_path,
+        engine="pyarrow",
+        index=True,
     )
-    embedding_df.to_parquet(output_path, engine="pyarrow", index=True)
-    
-    print(f"Successfully saved embeddings to {output_path}", flush=True)
+
+    print(
+        f"Wrote {len(embeddings_df)} embeddings with "
+        f"{embedding_dimension} dimensions to {output_path}",
+        flush=True,
+    )
 
 if __name__ == "__main__":
     main()
