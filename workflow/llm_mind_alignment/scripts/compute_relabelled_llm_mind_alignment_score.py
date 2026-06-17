@@ -42,7 +42,15 @@ def compute_alignment_for_one_shuffle(
             }
         )
 
-    return pd.DataFrame(rows)
+    return pd.DataFrame(
+        rows,
+        columns=[
+            "concept",
+            "common_neighbours",
+            "alignment_score",
+            "alignment_score_percentage",
+        ],
+    )
 
 def main():
     parser = argparse.ArgumentParser()
@@ -53,6 +61,11 @@ def main():
     parser.add_argument("--relabelled_alignment_score", type=str, required=True)
     args = parser.parse_args()
 
+    if args.number_of_neighbours <= 0:
+        raise ValueError(
+            "--number_of_neighbours must be a positive integer"
+        )
+
     relabelled_llm_nearest_neighbours_df = pd.read_parquet(
         args.relabelled_llm_nearest_neighbours,
         engine="pyarrow",
@@ -62,6 +75,29 @@ def main():
         args.isc_nearest_neighbours,
         engine="pyarrow",
     )
+
+    required_columns = {"concept", "neighbour"}
+
+    missing_relabelled_columns = (
+        required_columns
+        - set(relabelled_llm_nearest_neighbours_df.columns)
+    )
+    missing_isc_columns = (
+        required_columns
+        - set(isc_nearest_neighbours_df.columns)
+    )
+
+    if missing_relabelled_columns:
+        raise ValueError(
+            "The relabelled nearest-neighbours dataframe is missing columns: "
+            f"{sorted(missing_relabelled_columns)}"
+        )
+
+    if missing_isc_columns:
+        raise ValueError(
+            "The ISC nearest-neighbours dataframe is missing columns: "
+            f"{sorted(missing_isc_columns)}"
+        )
 
     if "shuffle_id" in relabelled_llm_nearest_neighbours_df.columns:
         grouped = relabelled_llm_nearest_neighbours_df.groupby("shuffle_id")
@@ -74,9 +110,21 @@ def main():
             f"Index levels are: {relabelled_llm_nearest_neighbours_df.index.names}."
         )
 
+    output_columns = [
+        "shuffle_id",
+        "model",
+        "concept",
+        "common_neighbours",
+        "alignment_score",
+        "alignment_score_percentage",
+    ]
+
     all_alignment_scores = []
 
     for shuffle_id, shuffle_df in grouped:
+        if "shuffle_id" in shuffle_df.columns:
+            shuffle_df = shuffle_df.drop(columns="shuffle_id")
+
         if "shuffle_id" in shuffle_df.index.names:
             shuffle_df = shuffle_df.reset_index(level="shuffle_id", drop=True)
 
@@ -89,20 +137,21 @@ def main():
         alignment_score_df["shuffle_id"] = shuffle_id
         alignment_score_df["model"] = args.model
 
+        alignment_score_df = alignment_score_df[
+            output_columns
+        ]
+
         all_alignment_scores.append(alignment_score_df)
 
-    big_alignment_score_df = pd.concat(all_alignment_scores, ignore_index=True)
-
-    big_alignment_score_df = big_alignment_score_df[
-        [
-            "shuffle_id",
-            "model",
-            "concept",
-            "common_neighbours",
-            "alignment_score",
-            "alignment_score_percentage",
-        ]
-    ]
+    if all_alignment_scores:
+        big_alignment_score_df = pd.concat(
+            all_alignment_scores,
+            ignore_index=True,
+        )
+    else:
+        big_alignment_score_df = pd.DataFrame(
+            columns=output_columns,
+        )
 
     output_path = Path(args.relabelled_alignment_score)
     output_path.parent.mkdir(parents=True, exist_ok=True)

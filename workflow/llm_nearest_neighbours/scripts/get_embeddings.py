@@ -880,12 +880,11 @@ def main():
     embeddings_df.to_parquet(
         output_path,
         engine="pyarrow",
-        index=True,
+        index=False,
     )
     
     print(
-        f"Wrote {len(embeddings_df)} embeddings with "
-        f"{embedding_dimension} dimensions to {output_path}",
+        f"Wrote {len(embeddings_df)} embeddings with {embedding_dimension} dimensions to {output_path}",
         flush=True,
     )
 

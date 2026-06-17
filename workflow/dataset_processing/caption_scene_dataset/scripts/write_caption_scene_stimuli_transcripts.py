@@ -27,8 +27,7 @@ def main():
 
     if "stimulus_id" not in manifest.columns:
         raise ValueError(
-            f"Manifest is missing column: stimulus_id. "
-            f"Available columns are: {list(manifest.columns)}"
+            f"Manifest is missing column: stimulus_id. Available columns are: {list(manifest.columns)}"
         )
 
     manifest_stimuli = set(
@@ -53,8 +52,7 @@ def main():
         if stimulus_id not in manifest_stimuli:
             continue
         
-        # change ouput_caption to output_dir / f"{stimulus_id}.txt"
-        output_caption = output_dir / f"{stimulus_id}_transcript.txt"
+        output_caption = output_dir / f"{stimulus_id}.txt"
         output_caption.write_text(caption + "\n", encoding="utf-8")
 
 if __name__ == "__main__":

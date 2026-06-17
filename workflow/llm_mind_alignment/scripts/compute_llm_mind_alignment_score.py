@@ -1,4 +1,3 @@
-import numpy as np
 import pandas as pd
 
 import argparse
@@ -28,9 +27,31 @@ def main():
     nearest_neighbours_2 = args.nearest_neighbours_2
     alignment_score = args.alignment_score
 
+    if number_of_neighbours is None or number_of_neighbours <= 0:
+        raise ValueError(
+            "--number_of_neighbours must be a positive integer"
+        )
+
     # load the dataframes
     nearest_neighbours_df_1 = pd.read_parquet(nearest_neighbours_1, engine = "pyarrow")
     nearest_neighbours_df_2 = pd.read_parquet(nearest_neighbours_2, engine = "pyarrow")
+
+    required_columns = {"concept", "neighbour"}
+
+    missing_columns_1 = required_columns - set(nearest_neighbours_df_1.columns)
+    missing_columns_2 = required_columns - set(nearest_neighbours_df_2.columns)
+
+    if missing_columns_1:
+        raise ValueError(
+            f"The first nearest-neighbours dataframe is missing columns: "
+            f"{sorted(missing_columns_1)}"
+        )
+
+    if missing_columns_2:
+        raise ValueError(
+            f"The second nearest-neighbours dataframe is missing columns: "
+            f"{sorted(missing_columns_2)}"
+        )
 
     # create two dictionaries to store the dataframes of nearest neighbours
     nearest_neighbours_dict_1 = {
@@ -43,7 +64,10 @@ def main():
     }
 
     # get the set of concepts for which the nearest neighbours in both models have been computed
-    concepts = sorted(set(nearest_neighbours_df_1["concept"]) & set(nearest_neighbours_df_2["concept"]))
+    concepts = sorted(
+        set(nearest_neighbours_df_1["concept"])
+        & set(nearest_neighbours_df_2["concept"])
+    )
     rows = []
 
     # concept by concept, count how many nearest neighbours are in common between the two models
@@ -51,26 +75,34 @@ def main():
         neighbours_1 = set(nearest_neighbours_dict_1[c]["neighbour"])
         neighbours_2 = set(nearest_neighbours_dict_2[c]["neighbour"])
 
-        try:
-            common_neighbours = len(neighbours_1 & neighbours_2)
-#            alignment = nearest_neighbours_dict_1[c]["neighbour"].isin(nearest_neighbours_dict_2[c]["neighbour"]).value_counts().get(True, 0)
-        except KeyError:
-            common_neighbours = np.nan
+        common_neighbours = len(neighbours_1 & neighbours_2)
 
         rows.append({
             "concept": c, 
             "common_neighbours": common_neighbours, 
-            "alignment_score": common_neighbours/number_of_neighbours, 
-            "alignment_score_percentage": common_neighbours/number_of_neighbours*100
+            "alignment_score": common_neighbours / number_of_neighbours, 
+            "alignment_score_percentage": common_neighbours / number_of_neighbours * 100
         })    
 
-    # create a pandas datafranme to store alignment scores results
-    alignment_score_df = pd.DataFrame(rows).set_index("concept")
-    alignment_score_df.index.name = "concept"
-#    alignment_score_df = alignment_score_df.sort_index()
+    # create a pandas dataframe to store alignment scores results
+    alignment_score_df = pd.DataFrame(
+        rows,
+        columns = [
+            "concept",
+            "common_neighbours",
+            "alignment_score",
+            "alignment_score_percentage",
+        ],
+    )
 
-    # save the nearest neighbours to every concept as a parquet file
-    alignment_score_df.to_parquet(alignment_score, engine = "pyarrow", index = True)
+#    alignment_score_df = alignment_score_df.sort_values("concept").reset_index(drop = True)
+
+    # save the alignment scores as a parquet file
+    alignment_score_df.to_parquet(
+        alignment_score,
+        engine = "pyarrow",
+        index = False,
+    )
 
 #    # print the alignment score dataframe
 #    with pd.option_context("display.max_rows", None, "display.max_columns", None):
