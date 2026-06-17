@@ -86,7 +86,7 @@ def main():
 
     output_path = Path(args.relabelled_nearest_neighbours)
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    result.to_parquet(output_path, engine="pyarrow", index=False)
+    result.to_parquet(output_path, engine="pyarrow", index=True)
 
 if __name__ == "__main__":
     main()

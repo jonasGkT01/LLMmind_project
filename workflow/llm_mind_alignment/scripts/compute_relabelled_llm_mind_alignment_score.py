@@ -66,15 +66,8 @@ def main():
             "--number_of_neighbours must be a positive integer"
         )
 
-    relabelled_llm_nearest_neighbours_df = pd.read_parquet(
-        args.relabelled_llm_nearest_neighbours,
-        engine="pyarrow",
-    )
-
-    isc_nearest_neighbours_df = pd.read_parquet(
-        args.isc_nearest_neighbours,
-        engine="pyarrow",
-    )
+    relabelled_llm_nearest_neighbours_df = pd.read_parquet(args.relabelled_llm_nearest_neighbours, engine="pyarrow")
+    isc_nearest_neighbours_df = pd.read_parquet(args.isc_nearest_neighbours, engine="pyarrow")
 
     required_columns = {"concept", "neighbour"}
 
@@ -89,14 +82,12 @@ def main():
 
     if missing_relabelled_columns:
         raise ValueError(
-            "The relabelled nearest-neighbours dataframe is missing columns: "
-            f"{sorted(missing_relabelled_columns)}"
+            f"The relabelled nearest-neighbours dataframe is missing columns: {sorted(missing_relabelled_columns)}"
         )
 
     if missing_isc_columns:
         raise ValueError(
-            "The ISC nearest-neighbours dataframe is missing columns: "
-            f"{sorted(missing_isc_columns)}"
+            f"The ISC nearest-neighbours dataframe is missing columns: {sorted(missing_isc_columns)}"
         )
 
     if "shuffle_id" in relabelled_llm_nearest_neighbours_df.columns:
@@ -105,9 +96,16 @@ def main():
         grouped = relabelled_llm_nearest_neighbours_df.groupby(level="shuffle_id")
     else:
         raise ValueError(
-            "Expected 'shuffle_id' either as a column or as an index level. "
-            f"Columns are: {list(relabelled_llm_nearest_neighbours_df.columns)}. "
-            f"Index levels are: {relabelled_llm_nearest_neighbours_df.index.names}."
+            f"Expected 'shuffle_id' either as a column or as an index level. {sorted(missing_isc_columns)}"
+        )
+
+    if "shuffle_id" in relabelled_llm_nearest_neighbours_df.columns:
+        grouped = relabelled_llm_nearest_neighbours_df.groupby("shuffle_id")
+    elif "shuffle_id" in relabelled_llm_nearest_neighbours_df.index.names:
+        grouped = relabelled_llm_nearest_neighbours_df.groupby(level="shuffle_id")
+    else:
+        raise ValueError(
+            f"Expected 'shuffle_id' either as a column or as an index level. Columns are: {list(relabelled_llm_nearest_neighbours_df.columns)}. Index levels are: {relabelled_llm_nearest_neighbours_df.index.names}."
         )
 
     output_columns = [
@@ -156,11 +154,7 @@ def main():
     output_path = Path(args.relabelled_alignment_score)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    big_alignment_score_df.to_parquet(
-        output_path,
-        engine="pyarrow",
-        index=False,
-    )
+    big_alignment_score_df.to_parquet(output_path, engine="pyarrow", index=True)
 
 if __name__ == "__main__":
     main()

@@ -98,7 +98,7 @@ def main():
     )
 
     # save the pandas dataframe as a parquet file
-    cosine_result_df.to_parquet(isc_cosine_similarity_dataframe, engine="pyarrow", index=False)
+    cosine_result_df.to_parquet(isc_cosine_similarity_dataframe, engine="pyarrow", index=True)
 
 #    # print the cosine similarity dataframe
 #    with pd.option_context("display.max_rows", None, "display.max_columns", None):
@@ -116,7 +116,7 @@ def main():
     )
 
     # save the pandas dataframe as a parquet file
-    pearson_result_df.to_parquet(isc_pearson_similarity_dataframe, engine="pyarrow", index=False)
+    pearson_result_df.to_parquet(isc_pearson_similarity_dataframe, engine="pyarrow", index=True)
 
 #    # print the Pearson similarity dataframe
 #    with pd.option_context("display.max_rows", None, "display.max_columns", None):

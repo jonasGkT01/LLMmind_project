@@ -31,11 +31,11 @@ def isc_npys_to_dataframe(input_isc_npys: list[str]) -> pd.DataFrame:
         isc = load_isc_value(path)
 
         records.append({
-            "task": task,
+            "concept": task,
             "isc": isc,
         })
 
-    df = pd.DataFrame(records).set_index("task").sort_index()
+    df = pd.DataFrame(records).set_index("concept")
     return df
 
 def main() -> None:
@@ -44,18 +44,18 @@ def main() -> None:
                         type=str,
                         nargs="+",
                         required=True,
-                        help="List of ISC numpy files, one per task",)
+                        help="List of ISC numpy files, one per task")
     parser.add_argument("--isc_dataframe",
                         type=str,
                         required=True,
-                        help="Path to output parquet dataframe",)
+                        help="Path to output parquet dataframe")
     args = parser.parse_args()
 
     df = isc_npys_to_dataframe(args.isc_npys)
 
     output_path = Path(args.isc_dataframe)
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    df.to_parquet(output_path, engine="pyarrow", index=False)
+    df.to_parquet(output_path, engine="pyarrow", index=True)
 
 if __name__ == "__main__":
     main()

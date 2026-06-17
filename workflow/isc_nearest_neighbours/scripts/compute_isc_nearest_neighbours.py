@@ -64,7 +64,7 @@ def main():
 #    cosine_nearest_neighbours_df = cosine_nearest_neighbours_df.sort_index()
     
     # save the nearest neighbours to primary concept as a parquet file
-    cosine_nearest_neighbours_df.to_parquet(isc_cosine_nearest_neighbours, engine = "pyarrow", index = False)
+    cosine_nearest_neighbours_df.to_parquet(isc_cosine_nearest_neighbours, engine = "pyarrow", index = True)
     
 #    # print the cosine nearest neighbours dataframe
 #    with pd.option_context("display.max_rows", None, "display.max_columns", None):
@@ -105,7 +105,7 @@ def main():
 #    pearson_nearest_neighbours_df = pearson_nearest_neighbours_df.sort_index()
     
     # save the nearest neighbours to primary concept as a parquet file
-    pearson_nearest_neighbours_df.to_parquet(isc_pearson_nearest_neighbours, engine = "pyarrow", index = False)
+    pearson_nearest_neighbours_df.to_parquet(isc_pearson_nearest_neighbours, engine = "pyarrow", index = True)
 
 if __name__ == "__main__":
     main()

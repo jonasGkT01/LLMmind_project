@@ -117,8 +117,7 @@ def get_input_type_and_files(stimuli_dir):
 
     if text_files and image_files:
         raise ValueError(
-            f"Stimuli directory contains both text and image files: "
-            f"{stimuli_dir}. Each execution must process only one input type."
+            f"Stimuli directory contains both text and image files: {stimuli_dir}. Each execution must process only one input type."
         )
 
     if text_files:
@@ -128,8 +127,7 @@ def get_input_type_and_files(stimuli_dir):
         return "visual", image_files
 
     raise ValueError(
-        f"No supported input files found in {stimuli_dir}. "
-        "Expected .txt, .jpg, .jpeg, or .png files."
+        f"No supported input files found in {stimuli_dir}. Expected .txt, .jpg, .jpeg, or .png files."
     )
 
 def model_input_device(model):
@@ -253,8 +251,7 @@ def extract_embedding_from_output(
                 return value.squeeze(0)
 
     raise ValueError(
-        "Could not extract an embedding from the model output. "
-        "This model may require a model-specific embedding procedure."
+        "Could not extract an embedding from the model output. This model may require a model-specific embedding procedure."
     )
 
 def embed_long_text(
@@ -317,16 +314,14 @@ def embed_long_text(
 
     if chunk_token_length <= 0:
         raise ValueError(
-            f"max_length={max_length} is too small after accounting "
-            f"for {special_tokens_count} special tokens."
+            f"max_length={max_length} is too small after accounting for {special_tokens_count} special tokens."
         )
 
     step = chunk_token_length - overlap
 
     if step <= 0:
         raise ValueError(
-            "overlap is too large after accounting for special tokens. "
-            f"chunk_token_length={chunk_token_length}, overlap={overlap}"
+            f"overlap is too large after accounting for special tokens. chunk_token_length={chunk_token_length}, overlap={overlap}"
         )
 
     chunk_embeddings = []
@@ -350,8 +345,7 @@ def embed_long_text(
 
         if len(model_input_ids) > max_length:
             raise RuntimeError(
-                f"Chunk length {len(model_input_ids)} exceeds "
-                f"max_length={max_length}."
+                f"Chunk length {len(model_input_ids)} exceeds max_length={max_length}."
             )
 
         input_ids_tensor = torch.tensor(
@@ -430,8 +424,7 @@ def embed_visual_input(
 ) -> torch.Tensor:
     if processor is None:
         raise ValueError(
-            "An AutoProcessor-compatible processor is required "
-            "for visual embedding."
+            "An AutoProcessor-compatible processor is required for visual embedding."
         )
 
     with Image.open(image_path) as image:
@@ -479,8 +472,7 @@ def embed_multimodal_input(
 ) -> tuple[torch.Tensor, int | None]:
     if processor is None:
         raise ValueError(
-            "An AutoProcessor-compatible processor is required "
-            "for multimodal embedding."
+            "An AutoProcessor-compatible processor is required for multimodal embedding."
         )
 
     processor_kwargs = {
@@ -573,73 +565,46 @@ def read_text_file(path):
         return f.read()
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Embed language, visual, or multimodal stimuli"
-    )
+    parser = argparse.ArgumentParser()
     parser.add_argument(
         "--stimuli_dir",
         required=True,
-        help=(
-            "Path to a directory containing either text files or image files. "
-            "Each execution must process only one input type."
-        ),
-    )
+        help="Path to a directory containing either text files or image files. Each execution must process only one input type")
     parser.add_argument(
         "--output",
         required=True,
-        help=(
-            "Path to the output Parquet file containing one embedding "
-            "per stimulus."
-        ),
-    )
+        help="Path to the output Parquet file containing one embedding per stimulus")
     parser.add_argument(
         "--modality",
         required=True,
         choices=["language", "visual", "multimodal"],
-        help="Modality in which the model is expected to operate.",
-    )
+        help="Modality in which the model is expected to operate")
     parser.add_argument(
         "--model_path",
         required=True,
-        help="Path or Hugging Face identifier of the model.",
-    )
+        help="Path or Hugging Face identifier of the model")
     parser.add_argument(
         "--quantization_method",
         choices=["4bit", "8bit"],
         default=None,
-        help="Optional model quantization method.",
-    )
+        help="Optional model quantization method")
     parser.add_argument(
         "--excluded_stimuli",
         default=None,
-        help=(
-            "Path to a text file containing one stimulus ID per line. "
-            "Files whose stem matches one of these IDs are excluded."
-        ),
-    )
+        help="Path to a text file containing one stimulus ID per line. Files whose stem matches one of these IDs are excluded")
     parser.add_argument(
         "--chunk_max_length",
         type=int,
         default=None,
-        help=(
-            "Maximum language-model input length per chunk. "
-            "Default: inferred, usually 2048."
-        ),
-    )
+        help="Maximum language-model input length per chunk. Default: inferred, usually 2048")
     parser.add_argument(
         "--chunk_overlap",
         type=int,
         default=256,
-        help=(
-            "Number of overlapping text tokens between adjacent chunks. "
-            "Used for language-only models."
-        ),
-    )
+        help="Number of overlapping text tokens between adjacent chunks. Used for language-only models")
     args = parser.parse_args()
 
-    input_type, input_files = get_input_type_and_files(
-        args.stimuli_dir
-    )
+    input_type, input_files = get_input_type_and_files(args.stimuli_dir)
 
     if args.modality == "language" and input_type != "language":
         raise ValueError(
@@ -651,14 +616,9 @@ def main():
             "A visual-only model cannot process language inputs."
         )
 
-    excluded_stimuli = load_excluded_stimuli(
-        args.excluded_stimuli
-    )
+    excluded_stimuli = load_excluded_stimuli(args.excluded_stimuli)
 
-    print(
-        f"Loaded {len(excluded_stimuli)} excluded stimuli",
-        flush=True,
-    )
+    print(f"Loaded {len(excluded_stimuli)} excluded stimuli")
 
     items = []
 
@@ -666,10 +626,7 @@ def main():
         concept = filepath.stem
 
         if concept in excluded_stimuli:
-            print(
-                f"Skipping excluded stimulus: {concept}",
-                flush=True,
-            )
+            print(f"Skipping excluded stimulus: {concept}")
             continue
 
         items.append(
@@ -750,16 +707,10 @@ def main():
     if input_type == "language":
         if args.chunk_overlap >= max_length:
             raise ValueError(
-                "--chunk_overlap must be smaller than the chunk maximum "
-                f"length. Got overlap={args.chunk_overlap}, "
-                f"max_length={max_length}."
+                f"--chunk_overlap must be smaller than the chunk maximum length. Got overlap={args.chunk_overlap}, max_length={max_length}."
             )
 
-        print(
-            f"Using chunk_max_length={max_length}, "
-            f"chunk_overlap={args.chunk_overlap}",
-            flush=True,
-        )
+        print(f"Using chunk_max_length={max_length}, chunk_overlap={args.chunk_overlap}")
 
     concepts = []
     embeddings = []
@@ -820,23 +771,13 @@ def main():
 
         elif embedding.numel() != embedding_dimension:
             raise ValueError(
-                f"Inconsistent embedding dimension for {concept}: "
-                f"expected {embedding_dimension}, "
-                f"got {embedding.numel()}."
+                f"Inconsistent embedding dimension for {concept}: expected {embedding_dimension}, got {embedding.numel()}."
             )
 
         if not torch.isfinite(embedding).all():
-            raise ValueError(
-                f"Embedding for {concept} contains NaN or infinite values."
-            )
+            raise ValueError(f"Embedding for {concept} contains NaN or infinite values.")
 
-        print(
-            f"{concept}: model_modality={args.modality}, "
-            f"input_type={input_type}, "
-            f"n_tokens={n_tokens}, n_chunks={n_chunks}, "
-            f"embedding_dimension={embedding.numel()}",
-            flush=True,
-        )
+        print(f"{concept}: model_modality={args.modality}, input_type={input_type}, n_tokens={n_tokens}, n_chunks={n_chunks}, embedding_dimension={embedding.numel()}")
 
         concepts.append(concept)
         embeddings.append(
@@ -877,16 +818,9 @@ def main():
     output_path = Path(args.output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     
-    embeddings_df.to_parquet(
-        output_path,
-        engine="pyarrow",
-        index=False,
-    )
+    embeddings_df.to_parquet(output_path, engine="pyarrow", index=True)
     
-    print(
-        f"Wrote {len(embeddings_df)} embeddings with {embedding_dimension} dimensions to {output_path}",
-        flush=True,
-    )
+    print(f"Wrote {len(embeddings_df)} embeddings with {embedding_dimension} dimensions to {output_path}")
 
 if __name__ == "__main__":
     main()

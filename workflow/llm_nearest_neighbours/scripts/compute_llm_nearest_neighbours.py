@@ -58,7 +58,7 @@ def main():
 
     output_path = Path(args.nearest_neighbours)
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    nearest_neighbours_df.to_parquet(output_path, engine="pyarrow", index=False)
+    nearest_neighbours_df.to_parquet(output_path, engine="pyarrow", index=True)
 
 if __name__ == "__main__":
     main()

@@ -43,14 +43,12 @@ def main():
 
     if missing_columns_1:
         raise ValueError(
-            f"The first nearest-neighbours dataframe is missing columns: "
-            f"{sorted(missing_columns_1)}"
+            f"The first nearest-neighbours dataframe is missing columns: {sorted(missing_columns_1)}"
         )
 
     if missing_columns_2:
         raise ValueError(
-            f"The second nearest-neighbours dataframe is missing columns: "
-            f"{sorted(missing_columns_2)}"
+            f"The second nearest-neighbours dataframe is missing columns: {sorted(missing_columns_2)}"
         )
 
     # create two dictionaries to store the dataframes of nearest neighbours
@@ -98,11 +96,7 @@ def main():
 #    alignment_score_df = alignment_score_df.sort_values("concept").reset_index(drop = True)
 
     # save the alignment scores as a parquet file
-    alignment_score_df.to_parquet(
-        alignment_score,
-        engine = "pyarrow",
-        index = False,
-    )
+    alignment_score_df.to_parquet(alignment_score, engine = "pyarrow",index = True)
 
 #    # print the alignment score dataframe
 #    with pd.option_context("display.max_rows", None, "display.max_columns", None):

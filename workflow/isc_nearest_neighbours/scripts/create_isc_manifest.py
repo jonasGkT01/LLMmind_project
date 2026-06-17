@@ -40,7 +40,7 @@ def main():
 
     output = Path(args.output_manifest)
     output.parent.mkdir(parents=True, exist_ok=True)
-    df.to_csv(output, sep="\t", index=False)
+    df.to_csv(output, sep="\t", index=True)
 
 if __name__ == "__main__":
     main()
