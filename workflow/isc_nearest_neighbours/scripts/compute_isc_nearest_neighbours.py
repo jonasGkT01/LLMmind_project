@@ -32,10 +32,12 @@ def main():
     # load the dataframe
     cosine_similarity_df = pd.read_parquet(isc_cosine_similarity_dataframe, engine="pyarrow")
 
-    X_cosine = cosine_similarity_df.values
-    if X_cosine.shape[1] < number_of_neighbours + 1:
+    X_cosine = cosine_similarity_df.to_numpy(copy=True)
+    np.fill_diagonal(X_cosine, -np.inf)
+    
+    if X_cosine.shape[1] - 1 < number_of_neighbours:
         raise ValueError(
-            f"Requested number of neighbours {number_of_neighbours} is too large for the number of concepts {X_cosine.shape[1]}."
+            f"Requested number of neighbours {number_of_neighbours} is too large for the number of concepts {X_cosine.shape[1] - 1}."
         )
     
     concepts = cosine_similarity_df.index.to_numpy()
@@ -62,7 +64,7 @@ def main():
 #    cosine_nearest_neighbours_df = cosine_nearest_neighbours_df.sort_index()
     
     # save the nearest neighbours to primary concept as a parquet file
-    cosine_nearest_neighbours_df.to_parquet(isc_cosine_nearest_neighbours, engine = "pyarrow", index = True)
+    cosine_nearest_neighbours_df.to_parquet(isc_cosine_nearest_neighbours, engine = "pyarrow", index = False)
     
 #    # print the cosine nearest neighbours dataframe
 #    with pd.option_context("display.max_rows", None, "display.max_columns", None):
@@ -72,10 +74,11 @@ def main():
     # load the dataframe
     pearson_similarity_df = pd.read_parquet(isc_pearson_similarity_dataframe, engine="pyarrow")
 
-    X_pearson = pearson_similarity_df.values
-    if X_pearson.shape[1] < number_of_neighbours + 1:
+    X_pearson = pearson_similarity_df.to_numpy(copy=True)
+    np.fill_diagonal(X_pearson, -np.inf)
+    if X_pearson.shape[1] - 1 < number_of_neighbours:
         raise ValueError(
-            f"Requested number of neighbours {number_of_neighbours} is too large for the number of concepts {X_pearson.shape[1]}."
+            f"Requested number of neighbours {number_of_neighbours} is too large for the number of concepts {X_pearson.shape[1] - 1}."
         )
 
     concepts = pearson_similarity_df.index.to_numpy()
@@ -102,7 +105,7 @@ def main():
 #    pearson_nearest_neighbours_df = pearson_nearest_neighbours_df.sort_index()
     
     # save the nearest neighbours to primary concept as a parquet file
-    pearson_nearest_neighbours_df.to_parquet(isc_pearson_nearest_neighbours, engine = "pyarrow", index = True)
+    pearson_nearest_neighbours_df.to_parquet(isc_pearson_nearest_neighbours, engine = "pyarrow", index = False)
 
 if __name__ == "__main__":
     main()

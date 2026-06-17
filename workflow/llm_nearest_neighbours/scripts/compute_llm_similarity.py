@@ -79,9 +79,6 @@ def main():
 
     cosine_similarity = X @ X.T
 
-    # remove self-similarities
-    np.fill_diagonal(cosine_similarity, -np.inf)
-
     cosine_similarity_df = pd.DataFrame(
         cosine_similarity, 
         index = embedding_df.index, 
@@ -101,9 +98,6 @@ def main():
     X = pearson_normalize(embedding_df[embedding_cols].to_numpy(dtype=np.float64))
 
     pearson_similarity = X @ X.T
-
-    # remove self-similarities
-    np.fill_diagonal(pearson_similarity, -np.inf)
 
     pearson_similarity_df = pd.DataFrame(
         pearson_similarity, 

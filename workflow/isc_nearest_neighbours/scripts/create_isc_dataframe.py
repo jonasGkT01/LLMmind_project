@@ -55,7 +55,7 @@ def main() -> None:
 
     output_path = Path(args.isc_dataframe)
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    df.to_parquet(output_path, engine="pyarrow", index=True)
+    df.to_parquet(output_path, engine="pyarrow", index=False)
 
 if __name__ == "__main__":
     main()

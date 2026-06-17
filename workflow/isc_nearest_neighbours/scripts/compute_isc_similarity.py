@@ -91,18 +91,14 @@ def main():
     X = normalize_l2(embedding_matrix)
     cosine_result = X @ X.T
 
-    # remove cosine self-similarities
-    np.fill_diagonal(cosine_result, -np.inf)
-
     cosine_result_df = pd.DataFrame(
         cosine_result,
         index=embedding_df.index,
         columns=embedding_df.index
     )
-#    cosine_result_df = cosine_result_df.sort_index()
 
     # save the pandas dataframe as a parquet file
-    cosine_result_df.to_parquet(isc_cosine_similarity_dataframe, engine="pyarrow", index=True)
+    cosine_result_df.to_parquet(isc_cosine_similarity_dataframe, engine="pyarrow", index=False)
 
 #    # print the cosine similarity dataframe
 #    with pd.option_context("display.max_rows", None, "display.max_columns", None):
@@ -113,18 +109,14 @@ def main():
     X = pearson_normalize(embedding_matrix)
     pearson_result = X @ X.T
 
-    # remove Pearson self-similarities
-    np.fill_diagonal(pearson_result, -np.inf)
-
     pearson_result_df = pd.DataFrame(
         pearson_result,
         index=embedding_df.index,
         columns=embedding_df.index
     )
-#    pearson_result_df = pearson_result_df.sort_index()
 
     # save the pandas dataframe as a parquet file
-    pearson_result_df.to_parquet(isc_pearson_similarity_dataframe, engine="pyarrow", index=True)
+    pearson_result_df.to_parquet(isc_pearson_similarity_dataframe, engine="pyarrow", index=False)
 
 #    # print the Pearson similarity dataframe
 #    with pd.option_context("display.max_rows", None, "display.max_columns", None):

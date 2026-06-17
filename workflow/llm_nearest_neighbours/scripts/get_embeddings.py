@@ -294,9 +294,24 @@ def embed_long_text(
     if n_tokens == 0:
         raise ValueError("Empty text after tokenization.")
 
-    special_tokens_count = tokenizer.num_special_tokens_to_add(
-        pair=False
+    bos_token_id = getattr(tokenizer, "bos_token_id", None)
+    eos_token_id = getattr(tokenizer, "eos_token_id", None)
+
+    add_bos_token = bool(
+        getattr(tokenizer, "add_bos_token", bos_token_id is not None)
     )
+
+    add_eos_token = bool(
+        getattr(tokenizer, "add_eos_token", False)
+    )
+
+    special_tokens_count = 0
+
+    if add_bos_token and bos_token_id is not None:
+        special_tokens_count += 1
+
+    if add_eos_token and eos_token_id is not None:
+        special_tokens_count += 1
 
     chunk_token_length = max_length - special_tokens_count
 
@@ -323,9 +338,15 @@ def embed_long_text(
         if not chunk_ids:
             continue
 
-        model_input_ids = tokenizer.build_inputs_with_special_tokens(
-            chunk_ids
-        )
+        model_input_ids = []
+
+        if add_bos_token and bos_token_id is not None:
+            model_input_ids.append(bos_token_id)
+
+        model_input_ids.extend(chunk_ids)
+
+        if add_eos_token and eos_token_id is not None:
+            model_input_ids.append(eos_token_id)
 
         if len(model_input_ids) > max_length:
             raise RuntimeError(
@@ -351,11 +372,16 @@ def embed_long_text(
             "return_dict": True,
         }
 
-        if "use_cache" in model.forward.__code__.co_varnames:
-            model_inputs["use_cache"] = False
-
         with torch.inference_mode():
-            model_output = model(**model_inputs)
+            try:
+                model_output = model(
+                    **model_inputs,
+                    use_cache=False,
+                )
+            except TypeError:
+                model_output = model(
+                    **model_inputs,
+                )
 
         embedding = extract_embedding_from_output(
             output=model_output,
@@ -373,16 +399,26 @@ def embed_long_text(
         del model_output
         del embedding
 
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
     if not chunk_embeddings:
         raise ValueError("No chunks were produced for text.")
 
-    chunks = torch.stack(chunk_embeddings, dim=0).float()
+    chunks = torch.stack(
+        chunk_embeddings,
+        dim=0,
+    ).float()
+
     weights = torch.tensor(
         chunk_lengths,
         dtype=torch.float32,
     ).unsqueeze(1)
 
-    final_embedding = (chunks * weights).sum(dim=0) / weights.sum()
+    final_embedding = (
+        (chunks * weights).sum(dim=0)
+        / weights.sum()
+    )
 
     return final_embedding, n_tokens, len(chunk_embeddings)
 
@@ -832,21 +868,21 @@ def main():
             name="concept",
         ),
         columns=[
-            f"embedding_{i}"
+            i
             for i in range(embedding_dimension)
         ],
         dtype="float32",
     )
-
+    
     output_path = Path(args.output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
-
+    
     embeddings_df.to_parquet(
         output_path,
         engine="pyarrow",
         index=True,
     )
-
+    
     print(
         f"Wrote {len(embeddings_df)} embeddings with "
         f"{embedding_dimension} dimensions to {output_path}",
