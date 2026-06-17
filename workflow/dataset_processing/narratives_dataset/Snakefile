@@ -300,22 +300,21 @@ rule compute_narratives_isc:
 rule rename_narratives_stimuli_transcipts:
     output:
         touch(NARRATIVES_STIMULI_READY),
-        input_stimuli_dir=directory("resources/datasets/narratives_dataset/stimuli/transcripts"),
-        ouput_stimuli_dir=directory(config["narratives"]["stimuli_dir"]["language"])
+        output_stimuli_dir=directory(config["narratives"]["stimuli_dir"]["language"])
     shell:
         """
-            input_stimuli_dir="{output.input_stimuli_dir:q}"
-            output_stimuli_dir="{output.ouput_stimuli_dir:q}"
+            input_stimuli_dir="resources/datasets/narratives_dataset/stimuli/transcripts"
+            output_stimuli_dir="{output.output_stimuli_dir:q}"
 
             mkdir -p "$output_stimuli_dir"
 
-            for file in "$input_stimuli_dir"/*_trasncript.txt; do
+            for file in "$input_stimuli_dir"/*_transcript.txt; do
                 [ -e "$file" ] || continue
 
                 filename=$(basename "$file")
-                new_filename="${{filename%_trasncript.txt}}.txt"
+                new_filename="${{filename%_transcript.txt}}.txt"
 
-                mv -- "$file" "$output_stimuli_dir/$new_filename"
+                cp -- "$file" "$output_stimuli_dir/$new_filename"
             done
         """
 

@@ -111,8 +111,7 @@ def get_input_type_and_files(stimuli_dir):
 
     if text_files and image_files:
         raise ValueError(
-            f"Stimuli directory contains both text and image files: "
-            f"{stimuli_dir}. Each execution must process only one input type."
+            f"Stimuli directory contains both text and image files: {stimuli_dir}. Each execution must process only one input type."
         )
 
     if text_files:
@@ -122,8 +121,7 @@ def get_input_type_and_files(stimuli_dir):
         return "visual", image_files
 
     raise ValueError(
-        f"No supported input files found in {stimuli_dir}. "
-        "Expected .txt, .jpg, .jpeg, or .png files."
+        f"No supported input files found in {stimuli_dir}. Expected .txt, .jpg, .jpeg, or .png files."
     )
 
 def model_input_device(model):
@@ -231,8 +229,7 @@ def extract_embedding_from_output(
                 return value.squeeze(0)
 
     raise ValueError(
-        "Could not extract an embedding from the model output. "
-        "This model may require a model-specific embedding procedure."
+        "Could not extract an embedding from the model output. This model may require a model-specific embedding procedure."
     )
 
 def embed_long_text(
@@ -286,8 +283,7 @@ def embed_long_text(
 
     if step <= 0:
         raise ValueError(
-            "overlap is too large after accounting for special tokens. "
-            f"chunk_token_length={chunk_token_length}, overlap={overlap}"
+            f"overlap is too large after accounting for special tokens. chunk_token_length={chunk_token_length}, overlap={overlap}"
         )
 
     chunk_embeddings = []
@@ -370,8 +366,7 @@ def embed_visual_input(
 ) -> torch.Tensor:
     if processor is None:
         raise ValueError(
-            "An AutoProcessor-compatible processor is required "
-            "for visual embedding."
+            "An AutoProcessor-compatible processor is required for visual embedding."
         )
 
     with Image.open(image_path) as image:
@@ -422,8 +417,7 @@ def embed_multimodal_input(
 ) -> tuple[torch.Tensor, int | None]:
     if processor is None:
         raise ValueError(
-            "An AutoProcessor-compatible processor is required "
-            "for multimodal embedding."
+            "An AutoProcessor-compatible processor is required for multimodal embedding."
         )
 
     processor_kwargs = {
@@ -512,106 +506,20 @@ def read_text_file(path):
     with Path(path).open("r", encoding="utf-8") as f:
         return f.read()
 
-def compute_cosine_similarity_matrix(
-    embeddings: list[torch.Tensor],
-    concepts: list[str],
-) -> pd.DataFrame:
-    if not embeddings:
-        raise ValueError(
-            "Cannot compute a similarity matrix without embeddings."
-        )
-
-    embedding_shapes = {
-        tuple(embedding.shape)
-        for embedding in embeddings
-    }
-
-    if len(embedding_shapes) != 1:
-        raise ValueError(
-            "All embeddings must have the same shape. "
-            f"Found shapes: {sorted(embedding_shapes)}"
-        )
-
-    embedding_matrix = torch.stack(
-        embeddings,
-        dim=0,
-    ).float()
-
-    if embedding_matrix.ndim != 2:
-        raise ValueError(
-            "Expected one one-dimensional embedding per concept, "
-            f"but the stacked embedding matrix has shape "
-            f"{tuple(embedding_matrix.shape)}."
-        )
-
-    if not torch.isfinite(embedding_matrix).all():
-        raise ValueError(
-            "The embedding matrix contains NaN or infinite values."
-        )
-
-    norms = torch.linalg.vector_norm(
-        embedding_matrix,
-        ord=2,
-        dim=1,
-        keepdim=True,
-    )
-
-    zero_norm_indices = torch.where(
-        norms.squeeze(1) == 0
-    )[0].tolist()
-
-    if zero_norm_indices:
-        zero_norm_concepts = [
-            concepts[index]
-            for index in zero_norm_indices
-        ]
-
-        raise ValueError(
-            "Cannot compute cosine similarity because the following "
-            f"concepts have zero-norm embeddings: {zero_norm_concepts}"
-        )
-
-    normalized_embeddings = embedding_matrix / norms
-
-    similarity_matrix = (
-        normalized_embeddings
-        @ normalized_embeddings.T
-    )
-
-    similarity_matrix = similarity_matrix.clamp(
-        min=-1.0,
-        max=1.0,
-    )
-
-    similarity_matrix.fill_diagonal_(1.0)
-
-    return pd.DataFrame(
-        similarity_matrix.numpy().astype("float32"),
-        index=concepts,
-        columns=concepts,
-    )
-
 def main():
-    parser = argparse.ArgumentParser(
-        description=(
-            "Embed language, visual, or multimodal concepts and write "
-            "their pairwise cosine-similarity matrix."
-        )
-    )
+    parser = argparse.ArgumentParser()
     parser.add_argument(
         "--stimuli_dir",
         required=True,
         help=(
-            "Path to a directory containing either text files or image files. "
-            "Each execution must process only one input type."
+            "Path to a directory containing either text files or image files. Each execution must process only one input type."
         ),
     )
     parser.add_argument(
         "--output",
         required=True,
         help=(
-            "Path to the output Parquet file containing the square "
-            "cosine-similarity matrix."
+            "Path to the output Parquet file containing the embeddings."
         ),
     )
     parser.add_argument(
@@ -634,28 +542,19 @@ def main():
     parser.add_argument(
         "--excluded_stimuli",
         default=None,
-        help=(
-            "Path to a text file containing one stimulus ID per line. "
-            "Files whose stem matches one of these IDs are excluded."
-        ),
+        help="Path to a text file containing one stimulus ID per line. Files whose stem matches one of these IDs are excluded."
     )
     parser.add_argument(
         "--chunk_max_length",
         type=int,
         default=None,
-        help=(
-            "Maximum language-model input length per chunk. "
-            "Default: inferred, usually 2048."
-        ),
+        help="Maximum language-model input length per chunk. Default: inferred, usually 2048."
     )
     parser.add_argument(
         "--chunk_overlap",
         type=int,
         default=256,
-        help=(
-            "Number of overlapping text tokens between adjacent chunks. "
-            "Used for language-only models."
-        ),
+        help="Number of overlapping text tokens between adjacent chunks. Used for language-only models."
     )
     args = parser.parse_args()
 
@@ -721,9 +620,7 @@ def main():
         )
 
         raise ValueError(
-            "Concept names must be unique because they are used as both "
-            "the similarity-matrix index and columns. "
-            f"Duplicated concepts: {duplicated_concepts}"
+            f"Concept names must be unique because they are used as both the similarity-matrix index and columns. Duplicated concepts: {duplicated_concepts}"
         )
 
     tokenizer = None
@@ -792,14 +689,11 @@ def main():
     if input_type == "language":
         if args.chunk_overlap >= max_length:
             raise ValueError(
-                "--chunk_overlap must be smaller than the chunk maximum "
-                f"length. Got overlap={args.chunk_overlap}, "
-                f"max_length={max_length}."
+                "--chunk_overlap must be smaller than the chunk maximum length. Got overlap={args.chunk_overlap}, max_length={max_length}."
             )
 
         print(
-            f"Using chunk_max_length={max_length}, "
-            f"chunk_overlap={args.chunk_overlap}",
+            f"Using chunk_max_length={max_length}, chunk_overlap={args.chunk_overlap}",
             flush=True,
         )
 
@@ -857,15 +751,11 @@ def main():
 
         if not torch.isfinite(embedding).all():
             raise ValueError(
-                f"Embedding for concept {stimulus!r} contains "
-                "NaN or infinite values."
+                f"Embedding for concept {stimulus!r} contains NaN or infinite values."
             )
 
         print(
-            f"{stimulus}: model_modality={args.modality}, "
-            f"input_type={input_type}, "
-            f"embedding_dim={embedding.numel()}, "
-            f"n_tokens={n_tokens}, n_chunks={n_chunks}",
+            f"{stimulus}: model_modality={args.modality}, input_type={input_type}, embedding_dim={embedding.numel()}, n_tokens={n_tokens}, n_chunks={n_chunks}",
             flush=True,
         )
 
@@ -878,36 +768,19 @@ def main():
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
 
-    similarity_df = compute_cosine_similarity_matrix(
-        embeddings=embeddings,
-        concepts=concepts,
-    )
-
-    if similarity_df.shape[0] != similarity_df.shape[1]:
-        raise RuntimeError(
-            "The generated similarity matrix is not square. "
-            f"Got shape {similarity_df.shape}."
-        )
-
-    if list(similarity_df.index) != list(similarity_df.columns):
-        raise RuntimeError(
-            "The generated similarity-matrix index and columns "
-            "do not match exactly."
-        )
-
     output_path = Path(args.output)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    similarity_df.to_parquet(
-        output_path,
-        engine="pyarrow",
-        index=True,
-    )
+    embeddings_matrix = torch.stack(embeddings).numpy()
 
-    print(
-        f"Wrote a {similarity_df.shape[0]} x {similarity_df.shape[1]} cosine-similarity matrix to {output_path}",
-        flush=True,
+    embedding_df = pd.DataFrame(
+        embeddings_matrix,
+        index=concepts,
+        columns=[str(i) for i in range(embeddings_matrix.shape[1])]
     )
+    embedding_df.to_parquet(output_path, engine="pyarrow", index=True)
+    
+    print(f"Successfully saved embeddings to {output_path}", flush=True)
 
 if __name__ == "__main__":
     main()

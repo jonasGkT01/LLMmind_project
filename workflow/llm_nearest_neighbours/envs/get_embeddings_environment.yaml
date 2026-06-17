@@ -1,5 +1,6 @@
 channels:
   - conda-forge
+  - main
   - nodefaults
 dependencies:
   - python=3.12
@@ -12,7 +13,7 @@ dependencies:
   - tqdm
   - datasets
   - scikit-learn
-  - PIL
+  - pillow
   - transformers
   - accelerate
   - sentencepiece
