@@ -1,6 +1,7 @@
 import argparse
 import re
 from pathlib import Path
+from xml.parsers.expat import model
 
 import numpy as np
 import pandas as pd
@@ -121,9 +122,9 @@ def compute_hypergeometric_statistics(
     expected_common_neighbours = (k * k) / population_size
     expected_alignment_score = k / population_size
 
-    valid_alignment_scores = observed_df["alignment_score"].dropna()
+    common_neighbours = observed_df["common_neighbours"]
 
-    if valid_alignment_scores.empty:
+    if common_neighbours.empty:
         return {
             "number_of_concepts": number_of_concepts,
             "hypergeom_population_size": population_size,
@@ -136,19 +137,15 @@ def compute_hypergeometric_statistics(
             "min_hypergeom_p_value_across_concepts": np.nan,
         }
 
-    observed_common_neighbours = valid_alignment_scores * k
-    observed_common_neighbours = observed_common_neighbours.round().astype(int)
-    observed_common_neighbours = observed_common_neighbours.clip(
-        lower=0,
-        upper=k,
-    )
 
     p_values = hypergeom.sf(
-        observed_common_neighbours - 1,
+        common_neighbours - 1,
         population_size,
         k,
         k,
     )
+
+#    print(list(zip(observed_df["concept"], common_neighbours, p_values)))
 
     valid_p_values = np.asarray(p_values, dtype=float)
     valid_p_values = valid_p_values[np.isfinite(valid_p_values)]
@@ -162,13 +159,15 @@ def compute_hypergeometric_statistics(
         median_p_value = float(np.median(valid_p_values))
         min_p_value = float(np.min(valid_p_values))
 
+#    print(f"Hypergeometric stats: expected common neighbours = {expected_common_neighbours}, expected alignment score = {expected_alignment_score}, mean observed common neighbours = {common_neighbours.mean()}, mean p-value across concepts = {mean_p_value}, median p-value across concepts = {median_p_value}, min p-value across concepts = {min_p_value}")
+
     return {
         "number_of_concepts": number_of_concepts,
         "hypergeom_population_size": population_size,
         "number_of_neighbours": k,
         "hypergeom_expected_common_neighbours": expected_common_neighbours,
         "hypergeom_expected_alignment_score": expected_alignment_score,
-        "mean_observed_common_neighbours": observed_common_neighbours.mean(),
+        "mean_observed_common_neighbours": common_neighbours.mean(),
         "mean_hypergeom_p_value_across_concepts": mean_p_value,
         "median_hypergeom_p_value_across_concepts": median_p_value,
         "min_hypergeom_p_value_across_concepts": min_p_value,
@@ -238,6 +237,8 @@ def main() -> None:
     summary_rows = []
 
     for model in args.models:
+        print(f"Processing model: {model}")
+
         if model not in observed_paths_by_model:
             raise ValueError(
                 f"Missing observed alignment score for model {model}"
@@ -313,6 +314,7 @@ def main() -> None:
             "model": model,
             "observed_average_number_of_common_neighbours": observed_average_alignment * args.number_of_neighbours,
             "observed_average_alignment_score": observed_average_alignment,
+            "empirical_null_mean_common_neighbours": empirical_null_mean * args.number_of_neighbours,
             "empirical_null_mean_alignment_score": empirical_null_mean,
             "empirical_enrichment_observed_over_null": empirical_enrichment,
             "empirical_upper_tail_p_value": empirical_p_value_upper,

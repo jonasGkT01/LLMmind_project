@@ -90,45 +90,88 @@ rule compute_relabelled_llm_mind_alignment_score:
                 --relabelled_alignment_score {output.relabelled_alignment_score:q}
         """
 
-rule aggregate_all_alignment_scores:
+rule compute_empirical_p_value:
     input:
-        observed_alignment_scores=lambda wc: [
-            f"results/alignment_score/{wc.stimuli_type}_models/{wc.dataset}/{wc.similarity_type}_alignment_scores/{pair['model']}_brain_{wc.similarity_type}_alignment_score_{wc.number_of_neighbours}NN.parquet"
-            for pair in PAIRINGS
-            if pair["dataset"] == wc.dataset
-            and pair["stimuli_type"] == wc.stimuli_type
-            and pair["number_of_neighbours"] == int(wc.number_of_neighbours)
-        ],
-        relabelled_alignment_scores=lambda wc: [
-            f"results/alignment_score/{wc.stimuli_type}_models/{wc.dataset}/{wc.similarity_type}_alignment_scores/{pair['model']}_brain_relabelled_{wc.similarity_type}_alignment_score_{wc.number_of_neighbours}NN.parquet"
-            for pair in PAIRINGS
-            if pair["dataset"] == wc.dataset
-            and pair["stimuli_type"] == wc.stimuli_type
-            and pair["number_of_neighbours"] == int(wc.number_of_neighbours)
-        ]
+        observed_alignment_score="results/alignment_score/{stimuli_type}_models/{dataset}/{similarity_type}_alignment_scores/{model}_brain_{similarity_type}_alignment_score_{number_of_neighbours}NN.parquet",
+        relabelled_alignment_score="results/alignment_score/{stimuli_type}_models/{dataset}/{similarity_type}_alignment_scores/{model}_brain_relabelled_{similarity_type}_alignment_score_{number_of_neighbours}NN.parquet"
     output:
-        summary="results/alignment_summary/{stimuli_type}_models/{dataset}/parquet_summary/{similarity_type}_alignment_summary_{number_of_neighbours}NN_all_models.parquet",
-        tsv="results/alignment_summary/{stimuli_type}_models/{dataset}/tsv_summary/{similarity_type}_alignment_summary_{number_of_neighbours}NN_all_models.tsv"
-    params:
-        models=lambda wc: [
-            pair["model"]
-            for pair in PAIRINGS
-            if pair["dataset"] == wc.dataset
-            and pair["stimuli_type"] == wc.stimuli_type
-            and pair["number_of_neighbours"] == int(wc.number_of_neighbours)
-        ],
-        number_of_neighbours=lambda wc: wc.number_of_neighbours,
-        number_of_relabelings=config["number_of_relabellings"]
-    conda:
-        "envs/aggregate_all_alignment_scores_environment.yaml"
+        empirical_p_value="results/alignment_score/{stimuli_type}_models/{dataset}/{similarity_type}_alignment_scores/{model}_brain_empirical_{similarity_type}_alignment_score_{number_of_neighbours}NN.p_value.tsv"
     shell:
         r"""
-            python3 workflow/llm_mind_alignment/scripts/aggregate_all_alignment_scores.py \
-                --observed_alignment_scores {input.observed_alignment_scores:q} \
-                --relabelled_alignment_scores {input.relabelled_alignment_scores:q} \
-                --summary {output.summary:q} \
-                --tsv {output.tsv:q} \
-                --models {params.models:q} \
-                --number_of_neighbours {params.number_of_neighbours} \
-                --number_of_relabelings {params.number_of_relabelings}
+            python3 workflow/llm_mind_alignment/scripts/compute_empirical_p_value.py \
+                --observed_alignment_score {input.observed_alignment_score:q} \
+                --relabelled_alignment_score {input.relabelled_alignment_score:q} > {output}
         """
+
+rule compute_hypergeometric_p_value:
+    input:
+        observed_alignment_score="results/alignment_score/{stimuli_type}_models/{dataset}/{similarity_type}_alignment_scores/{model}_brain_{similarity_type}_alignment_score_{number_of_neighbours}NN.parquet"
+    output:
+        hypergeometric_p_value="results/alignment_score/{stimuli_type}_models/{dataset}/{similarity_type}_alignment_scores/{model}_brain_hypergeometric_{similarity_type}_alignment_score_{number_of_neighbours}NN.p_value.tsv"
+    params:
+        number_of_neighbours=lambda wc: wc.number_of_neighbours
+    shell:
+        r"""
+            python3 workflow/llm_mind_alignment/scripts/compute_hypergeometric_p_value.py \
+                --observed_alignment_score {input.observed_alignment_score:q} \
+                --number_of_neighbours {params.number_of_neighbours} > {output}
+        """
+
+rule reduce:
+    input:
+        [
+            f"results/alignment_score/{pairs['stimuli_type']}_models/{pairs['dataset']}/{similarity_type}_alignment_scores/{pairs['model']}_brain_{method}_{similarity_type}_alignment_score_{pairs['number_of_neighbours']}NN.p_value.tsv"
+            for pairs in PAIRINGS
+            for similarity_type in SIMILARITY_TYPES
+            for method in ["empirical", "hypergeometric"]
+        ]
+    output:
+        tsv_summary="results/alignment_score/summary.tsv"
+    shell:
+        r"""
+            #matrix_reduce -t "results/alignment_score/*_models/*/*_alignment_scores/*_brain_*_*_alignment_score_*NN.p_value.tsv" > {output}
+            echo done > {output}
+        """
+
+#rule aggregate_all_alignment_scores:
+#    input:
+#        observed_alignment_scores=lambda wc: [
+#            f"results/alignment_score/{wc.stimuli_type}_models/{wc.dataset}/{wc.similarity_type}_alignment_scores/{pair['model']}_brain_{wc.similarity_type}_alignment_score_{wc.number_of_neighbours}NN.parquet"
+#            for pair in PAIRINGS
+#            if pair["dataset"] == wc.dataset
+#            and pair["stimuli_type"] == wc.stimuli_type
+#            and pair["number_of_neighbours"] == int(wc.number_of_neighbours)
+#        ],
+#        relabelled_alignment_scores=lambda wc: [
+#            f"results/alignment_score/{wc.stimuli_type}_models/{wc.dataset}/{wc.similarity_type}_alignment_scores/{pair['model']}_brain_relabelled_{wc.similarity_type}_alignment_score_{wc.number_of_neighbours}NN.parquet"
+#            for pair in PAIRINGS
+#            if pair["dataset"] == wc.dataset
+#            and pair["stimuli_type"] == wc.stimuli_type
+#            and pair["number_of_neighbours"] == int(wc.number_of_neighbours)
+#        ]
+#    output:
+#        summary="results/alignment_summary/{stimuli_type}_models/{dataset}/parquet_summary/{similarity_type}_alignment_summary_{number_of_neighbours}NN_all_models.parquet",
+#        tsv="results/alignment_summary/{stimuli_type}_models/{dataset}/tsv_summary/{similarity_type}_alignment_summary_{number_of_neighbours}NN_all_models.tsv"
+#    params:
+#        models=lambda wc: [
+#            pair["model"]
+#            for pair in PAIRINGS
+#            if pair["dataset"] == wc.dataset
+#            and pair["stimuli_type"] == wc.stimuli_type
+#            and pair["number_of_neighbours"] == int(wc.number_of_neighbours)
+#        ],
+#        number_of_neighbours=lambda wc: wc.number_of_neighbours,
+#        number_of_relabelings=config["number_of_relabellings"]
+#    conda:
+#        "envs/aggregate_all_alignment_scores_environment.yaml"
+#    shell:
+#        r"""
+#            python3 workflow/llm_mind_alignment/scripts/aggregate_all_alignment_scores.py \
+#                --observed_alignment_scores {input.observed_alignment_scores:q} \
+#                --relabelled_alignment_scores {input.relabelled_alignment_scores:q} \
+#                --summary {output.summary:q} \
+#                --tsv {output.tsv:q} \
+#                --models {params.models:q} \
+#                --number_of_neighbours {params.number_of_neighbours} \
+#                --number_of_relabelings {params.number_of_relabelings}
+#        """

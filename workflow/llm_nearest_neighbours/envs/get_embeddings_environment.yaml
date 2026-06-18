@@ -17,5 +17,6 @@ dependencies:
   - transformers
   - accelerate
   - sentencepiece
+  - tiktoken
   - protobuf
   - bitsandbytes
