@@ -1,0 +1,9 @@
+name: /home/molinerislab/LLMmind/LLMmind_project/workflow/envs/LLMmind_project
+channels:
+  - conda-forge
+dependencies:
+  - snakemake=9.21.0
+  - scipy=1.17.1
+  - pyarrow=24.0.0
+  - pandas=2.3.3
+prefix: /home/molinerislab/LLMmind/LLMmind_project/workflow/envs/LLMmind_project
