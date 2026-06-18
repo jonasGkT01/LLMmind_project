@@ -470,16 +470,8 @@ def embed_multimodal_input(
     max_length,
     input_type,
 ) -> tuple[torch.Tensor, int | None]:
-    if processor is None:
-        raise ValueError(
-            "An AutoProcessor-compatible processor is required for multimodal embedding."
-        )
-
-    processor_kwargs = {
-        "return_tensors": "pt",
-    }
-
     image = None
+    n_tokens = None
 
     if input_type == "language":
         if text is None:
@@ -487,9 +479,25 @@ def embed_multimodal_input(
                 "A text input is required when input_type is language."
             )
 
-        processor_kwargs["text"] = text
-        processor_kwargs["truncation"] = True
-        processor_kwargs["max_length"] = max_length
+        if tokenizer is None:
+            raise ValueError(
+                "A tokenizer is required to process language inputs with a multimodal model."
+            )
+
+        n_tokens = len(
+            tokenizer.encode(
+                text,
+                add_special_tokens=False,
+            )
+        )
+
+        inputs = tokenizer(
+            text,
+            return_tensors="pt",
+            truncation=True,
+            max_length=max_length,
+            padding=False,
+        )
 
     elif input_type == "visual":
         if image_path is None:
@@ -497,31 +505,29 @@ def embed_multimodal_input(
                 "An image input is required when input_type is visual."
             )
 
-        image = Image.open(image_path).convert("RGB")
-        processor_kwargs["images"] = image
+        if processor is None:
+            raise ValueError(
+                "An AutoProcessor-compatible processor is required to process visual inputs with a multimodal model."
+            )
+
+        try:
+            image = Image.open(image_path).convert("RGB")
+
+            inputs = processor(
+                images=image,
+                return_tensors="pt",
+            )
+
+        finally:
+            if image is not None:
+                image.close()
 
     else:
         raise ValueError(
             f"Unsupported input type for multimodal model: {input_type}"
         )
 
-    try:
-        inputs = processor(**processor_kwargs)
-    finally:
-        if image is not None:
-            image.close()
-
     inputs = move_inputs_to_device(inputs, device)
-
-    n_tokens = None
-
-    if input_type == "language" and tokenizer is not None:
-        n_tokens = len(
-            tokenizer.encode(
-                text,
-                add_special_tokens=False,
-            )
-        )
 
     with torch.inference_mode():
         if (
@@ -539,10 +545,15 @@ def embed_multimodal_input(
             embedding = embedding.squeeze(0)
 
         else:
-            model_output = model(
-                **inputs,
-                return_dict=True,
-            )
+            try:
+                model_output = model(
+                    **inputs,
+                    return_dict=True,
+                )
+            except TypeError:
+                model_output = model(
+                    **inputs,
+                )
 
             attention_mask = inputs.get("attention_mask")
 
@@ -651,7 +662,10 @@ def main():
         )
 
         if tokenizer.pad_token is None:
-            tokenizer.pad_token = tokenizer.eos_token
+            if tokenizer.eos_token is not None:
+                tokenizer.pad_token = tokenizer.eos_token
+            elif tokenizer.unk_token is not None:
+                tokenizer.pad_token = tokenizer.unk_token
 
     else:
         processor = AutoProcessor.from_pretrained(
@@ -661,8 +675,26 @@ def main():
 
         tokenizer = getattr(processor, "tokenizer", None)
 
+        if (
+            args.modality == "multimodal"
+            and input_type == "language"
+            and tokenizer is None
+        ):
+            try:
+                tokenizer = AutoTokenizer.from_pretrained(
+                    args.model_path,
+                    trust_remote_code=True,
+                )
+            except Exception as exc:
+                raise ValueError(
+                    f"The multimodal model processor does not contain a tokenizer, and a tokenizer could not be loaded separately from {args.model_path}."
+                ) from exc
+
         if tokenizer is not None and tokenizer.pad_token is None:
-            tokenizer.pad_token = tokenizer.eos_token
+            if tokenizer.eos_token is not None:
+                tokenizer.pad_token = tokenizer.eos_token
+            elif tokenizer.unk_token is not None:
+                tokenizer.pad_token = tokenizer.unk_token
 
     quantization_config = None
 

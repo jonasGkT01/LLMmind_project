@@ -18,18 +18,15 @@ def pairings():
         for number_of_neighbours in nn:
             for stimuli_type in list(config[dataset]["stimuli_dir"].keys()):
                 for model in MODEL_KEYS:
-                    if config["models"][model]["modality"] not in [stimuli_type, "multimodal"]:
-                        continue
-                    
-                    pairs.append(
-                        {
-                            "dataset": dataset,
-                            "number_of_neighbours": number_of_neighbours,
-                            "stimuli_type": stimuli_type,
-                            "model": model,
-                            "modality": config["models"][model]["modality"]
-                        }
-                    )
+                    if config["models"][model]["modality"] in [stimuli_type, "multimodal"]:
+                        pairs.append(
+                            {
+                                "dataset": dataset,
+                                "number_of_neighbours": number_of_neighbours,
+                                "stimuli_type": stimuli_type,
+                                "model": model
+                            }
+                        )
 
     return pairs
 
@@ -83,8 +80,8 @@ rule get_embeddings:
             python3 workflow/llm_nearest_neighbours/scripts/get_embeddings.py \
                 --stimuli_dir {input.stimuli_dir:q} \
                 --output {output:q} \
-                --modality {params.modality:q} \
                 --model_path {input.model:q} \
+                --modality {params.modality:q} \
                 {params.quantization_arg} \
                 --excluded_stimuli {input.excluded_stimuli:q}
         """

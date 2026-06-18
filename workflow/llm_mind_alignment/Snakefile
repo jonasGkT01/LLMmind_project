@@ -16,18 +16,15 @@ def pairings():
         for number_of_neighbours in nn:
             for stimuli_type in list(config[dataset]["stimuli_dir"].keys()):
                 for model in MODEL_KEYS:
-                    if config["models"][model]["modality"] not in [stimuli_type, "multimodal"]:
-                        continue
-                    
-                    pairs.append(
-                        {
-                            "dataset": dataset,
-                            "number_of_neighbours": number_of_neighbours,
-                            "stimuli_type": stimuli_type,
-                            "model": model,
-                            "modality": config["models"][model]["modality"]
-                        }
-                    )
+                    if config["models"][model]["modality"] in [stimuli_type, "multimodal"]:
+                        pairs.append(
+                            {
+                                "dataset": dataset,
+                                "number_of_neighbours": number_of_neighbours,
+                                "stimuli_type": stimuli_type,
+                                "model": model
+                            }
+                        )
 
     return pairs
 
@@ -96,18 +93,30 @@ rule compute_relabelled_llm_mind_alignment_score:
 rule aggregate_all_alignment_scores:
     input:
         observed_alignment_scores=lambda wc: [
-            f"results/alignment_score/{wc.stimuli_type}_models/{wc.dataset}/{wc.similarity_type}_alignment_scores/{model}_brain_{wc.similarity_type}_alignment_score_{wc.number_of_neighbours}NN.parquet"
-            for model in MODEL_KEYS
+            f"results/alignment_score/{wc.stimuli_type}_models/{wc.dataset}/{wc.similarity_type}_alignment_scores/{pair['model']}_brain_{wc.similarity_type}_alignment_score_{wc.number_of_neighbours}NN.parquet"
+            for pair in PAIRINGS
+            if pair["dataset"] == wc.dataset
+            and pair["stimuli_type"] == wc.stimuli_type
+            and pair["number_of_neighbours"] == int(wc.number_of_neighbours)
         ],
         relabelled_alignment_scores=lambda wc: [
-            f"results/alignment_score/{wc.stimuli_type}_models/{wc.dataset}/{wc.similarity_type}_alignment_scores/{model}_brain_relabelled_{wc.similarity_type}_alignment_score_{wc.number_of_neighbours}NN.parquet"
-            for model in MODEL_KEYS
+            f"results/alignment_score/{wc.stimuli_type}_models/{wc.dataset}/{wc.similarity_type}_alignment_scores/{pair['model']}_brain_relabelled_{wc.similarity_type}_alignment_score_{wc.number_of_neighbours}NN.parquet"
+            for pair in PAIRINGS
+            if pair["dataset"] == wc.dataset
+            and pair["stimuli_type"] == wc.stimuli_type
+            and pair["number_of_neighbours"] == int(wc.number_of_neighbours)
         ]
     output:
         summary="results/alignment_summary/{stimuli_type}_models/{dataset}/parquet_summary/{similarity_type}_alignment_summary_{number_of_neighbours}NN_all_models.parquet",
         tsv="results/alignment_summary/{stimuli_type}_models/{dataset}/tsv_summary/{similarity_type}_alignment_summary_{number_of_neighbours}NN_all_models.tsv"
     params:
-        models=MODEL_KEYS,
+        models=lambda wc: [
+            pair["model"]
+            for pair in PAIRINGS
+            if pair["dataset"] == wc.dataset
+            and pair["stimuli_type"] == wc.stimuli_type
+            and pair["number_of_neighbours"] == int(wc.number_of_neighbours)
+        ],
         number_of_neighbours=lambda wc: wc.number_of_neighbours,
         number_of_relabelings=config["number_of_relabellings"]
     conda:
