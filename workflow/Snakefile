@@ -47,13 +47,14 @@ rule all:
             for pair in PAIRINGS
             for similarity_type in SIMILARITY_TYPES
         ],
-        [
-            f"results/alignment_summary/{pair['stimuli_type']}_models/{pair['dataset']}/parquet_summary/{similarity_type}_alignment_summary_{pair['number_of_neighbours']}NN_all_models.parquet"
-            for pair in PAIRINGS
-            for similarity_type in SIMILARITY_TYPES
-        ],
-        [
-            f"results/alignment_summary/{pair['stimuli_type']}_models/{pair['dataset']}/tsv_summary/{similarity_type}_alignment_summary_{pair['number_of_neighbours']}NN_all_models.tsv"
-            for pair in PAIRINGS
-            for similarity_type in SIMILARITY_TYPES
-        ]
+        "results/alignment_score/summary.tsv"
+#        [
+#            f"results/alignment_summary/{pair['stimuli_type']}_models/{pair['dataset']}/parquet_summary/{similarity_type}_alignment_summary_{pair['number_of_neighbours']}NN_all_models.parquet"
+#            for pair in PAIRINGS
+#            for similarity_type in SIMILARITY_TYPES
+#        ],
+#        [
+#            f"results/alignment_summary/{pair['stimuli_type']}_models/{pair['dataset']}/tsv_summary/{similarity_type}_alignment_summary_{pair['number_of_neighbours']}NN_all_models.tsv"
+#            for pair in PAIRINGS
+#            for similarity_type in SIMILARITY_TYPES
+#        ]
