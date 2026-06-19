@@ -129,8 +129,7 @@ rule reduce:
         tsv_summary="results/alignment_score/summary.tsv"
     shell:
         r"""
-            #matrix_reduce -t "results/alignment_score/*_models/*/*_alignment_scores/*_brain_*_*_alignment_score_*NN.p_value.tsv" > {output}
-            echo done > {output}
+            matrix_reduce -t "results/alignment_score/*_models/*/*_alignment_scores/*_brain_*_*_alignment_score_*NN.p_value.tsv" > {output}
         """
 
 #rule aggregate_all_alignment_scores:
