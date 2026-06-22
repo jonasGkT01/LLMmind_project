@@ -12,8 +12,7 @@ def compute_nearest_neighbours_from_array(
 ) -> pd.DataFrame:
     if X.shape[1] - 1 < number_of_neighbours:
         raise ValueError(
-            f"Requested {number_of_neighbours} neighbours, "
-            f"but only {X.shape[1] - 1} candidates are available."
+            f"Requested {number_of_neighbours} neighbours, but only {X.shape[1] - 1} candidates are available."
         )
 
     idx_part = np.argpartition(X, -number_of_neighbours, axis=1)[:, -number_of_neighbours:]

@@ -29,7 +29,7 @@ def main():
 
     if number_of_neighbours is None or number_of_neighbours <= 0:
         raise ValueError(
-            "--number_of_neighbours must be a positive integer"
+            "--number_of_neighbours must be a positive integer."
         )
 
     # load the dataframes
@@ -43,12 +43,12 @@ def main():
 
     if missing_columns_1:
         raise ValueError(
-            f"The first nearest-neighbours dataframe is missing columns: {sorted(missing_columns_1)}"
+            f"The first nearest-neighbours dataframe is missing columns: {sorted(missing_columns_1)}."
         )
 
     if missing_columns_2:
         raise ValueError(
-            f"The second nearest-neighbours dataframe is missing columns: {sorted(missing_columns_2)}"
+            f"The second nearest-neighbours dataframe is missing columns: {sorted(missing_columns_2)}."
         )
 
     # create two dictionaries to store the dataframes of nearest neighbours

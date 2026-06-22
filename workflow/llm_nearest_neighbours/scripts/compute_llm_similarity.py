@@ -20,8 +20,7 @@ def pearson_normalize(x):
     """
         Row-wise Pearson normalization.
     
-        Pearson correlation between two vectors is equivalent to cosine similarity
-        after subtracting each vector's mean.
+        Pearson correlation between two vectors is equivalent to cosine similarity after subtracting each vector's mean.
     """
     x = np.asarray(x, dtype=np.float64)
 
@@ -67,7 +66,7 @@ def main():
 
     if not embedding_cols:
         raise ValueError(
-            f"No embedding columns found. Columns are: {list(embedding_df.columns[:20])}"
+            f"No embedding columns found. Columns are: {list(embedding_df.columns[:20])}."
         )
 
     # Sort numerically so dimensions are in order.

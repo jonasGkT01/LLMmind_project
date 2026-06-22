@@ -25,13 +25,12 @@ def infer_alignment_column(df: pd.DataFrame) -> str:
         return numeric_columns[0]
 
     raise ValueError(
-        f"Could not infer alignment-score column. Available columns are: {list(df.columns)}"
+        f"Could not infer alignment-score column. Available columns are: {list(df.columns)}."
     )
 
 def infer_model_from_observed_path(path: str) -> str:
     """
-        Expected observed path:
-        {model}_brain_{similarity_type}_alignment_score_{number_of_neighbours}NN.parquet
+        Expected observed path: {model}_brain_{similarity_type}_alignment_score_{number_of_neighbours}NN.parquet
     """
     name = Path(path).name
 
@@ -47,8 +46,7 @@ def infer_model_from_observed_path(path: str) -> str:
 
 def infer_model_from_relabelled_big_path(path: str) -> str:
     """
-        Expected relabelled big path:
-        {model}_brain_relabelled_{similarity_type}_alignment_score_{number_of_neighbours}NN.parquet
+        Expected relabelled big path: {model}_brain_relabelled_{similarity_type}_alignment_score_{number_of_neighbours}NN.parquet
 
         Adjust the regex if your filename is different.
     """
@@ -61,7 +59,7 @@ def infer_model_from_relabelled_big_path(path: str) -> str:
 
     if match is None:
         raise ValueError(
-            f"Cannot infer model from relabelled big alignment path: {path}"
+            f"Cannot infer model from relabelled big alignment path: {path}."
         )
 
     return match.group(1)
@@ -114,9 +112,7 @@ def compute_hypergeometric_statistics(
 
     if k > population_size:
         raise ValueError(
-            f"Cannot compute hypergeometric statistics with "
-            f"{k} neighbours and only {number_of_concepts} concepts. "
-            f"The maximum number of neighbours is {population_size}."
+            f"Cannot compute hypergeometric statistics with {k} neighbours and only {number_of_concepts} concepts. The maximum number of neighbours is {population_size}."
         )
 
     expected_common_neighbours = (k * k) / population_size
@@ -241,12 +237,12 @@ def main() -> None:
 
         if model not in observed_paths_by_model:
             raise ValueError(
-                f"Missing observed alignment score for model {model}"
+                f"Missing observed alignment score for model {model}."
             )
 
         if model not in relabelled_paths_by_model:
             raise ValueError(
-                f"Missing relabelled alignment score for model {model}"
+                f"Missing relabelled alignment score for model {model}."
             )
 
         observed_path = observed_paths_by_model[model]
@@ -281,14 +277,7 @@ def main() -> None:
                 empirical_p_value_upper = np.nan
             else:
                 empirical_p_value_upper = (
-                    (
-                        np.sum(
-                            null_alignment_scores
-                            >= observed_average_alignment
-                        )
-                        + 1
-                    )
-                    / (len(null_alignment_scores) + 1)
+                    (np.sum(null_alignment_scores >= observed_average_alignment) + 1)/(len(null_alignment_scores) + 1)
                 )
 
         empirical_enrichment = safe_ratio(

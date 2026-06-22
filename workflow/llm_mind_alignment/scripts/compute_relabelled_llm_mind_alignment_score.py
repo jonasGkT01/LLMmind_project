@@ -18,10 +18,7 @@ def compute_alignment_for_one_shuffle(
         for concept, group in brain_nearest_neighbours_df.groupby("concept")
     }
 
-    concepts = sorted(
-        set(relabelled_nearest_neighbours_df["concept"])
-        & set(brain_nearest_neighbours_df["concept"])
-    )
+    concepts = sorted(set(relabelled_nearest_neighbours_df["concept"]) & set(brain_nearest_neighbours_df["concept"]))
 
     rows = []
 
@@ -36,9 +33,7 @@ def compute_alignment_for_one_shuffle(
                 "concept": concept,
                 "common_neighbours": common_neighbours,
                 "alignment_score": common_neighbours / number_of_neighbours,
-                "alignment_score_percentage": (
-                    common_neighbours / number_of_neighbours * 100
-                ),
+                "alignment_score_percentage": common_neighbours / number_of_neighbours * 100,
             }
         )
 
@@ -82,12 +77,12 @@ def main():
 
     if missing_relabelled_columns:
         raise ValueError(
-            f"The relabelled nearest-neighbours dataframe is missing columns: {sorted(missing_relabelled_columns)}"
+            f"The relabelled nearest-neighbours dataframe is missing columns: {sorted(missing_relabelled_columns)}."
         )
 
     if missing_isc_columns:
         raise ValueError(
-            f"The ISC nearest-neighbours dataframe is missing columns: {sorted(missing_isc_columns)}"
+            f"The ISC nearest-neighbours dataframe is missing columns: {sorted(missing_isc_columns)}."
         )
 
     if "shuffle_id" in relabelled_llm_nearest_neighbours_df.columns:
@@ -96,7 +91,7 @@ def main():
         grouped = relabelled_llm_nearest_neighbours_df.groupby(level="shuffle_id")
     else:
         raise ValueError(
-            f"Expected 'shuffle_id' either as a column or as an index level. {sorted(missing_isc_columns)}"
+            f"Expected 'shuffle_id' either as a column or as an index level. {sorted(missing_isc_columns)}."
         )
 
     if "shuffle_id" in relabelled_llm_nearest_neighbours_df.columns:

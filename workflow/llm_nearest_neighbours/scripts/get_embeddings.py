@@ -357,7 +357,7 @@ def embed_long_text(
 
     if step <= 0:
         raise ValueError(
-            f"Overlap is too large after accounting for special tokens. Chunk_token_length={chunk_token_length}, overlap={overlap}"
+            f"Overlap is too large after accounting for special tokens. Chunk_token_length={chunk_token_length}, overlap={overlap}."
         )
 
     chunk_embeddings = []

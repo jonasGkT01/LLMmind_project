@@ -31,25 +31,18 @@ def compute_hypergeometric_statistics(
 def main() -> None:
     parser = argparse.ArgumentParser(
         description=(
-            "Compute an upper-tail hypergeometric p-value separately "
-            "for each concept from an observed alignment-score Parquet file."
+            "Compute an upper-tail hypergeometric p-value separately for each concept from an observed alignment-score Parquet file."
         )
     )
     parser.add_argument(
         "--observed_alignment_scores",
         required=True,
-        help=(
-            "Path to the Parquet file containing the observed "
-            "alignment scores"
-        ),
-    )
+        help="Path to the Parquet file containing the observed alignment scores.",)
     parser.add_argument(
         "--number_of_neighbours",
         type=int,
         required=True,
-        help="Number of nearest neighbours used to compute alignment",
-    )
-
+        help="Number of nearest neighbours used to compute alignment.",)
     args = parser.parse_args()
 
     observed_df = pd.read_parquet(

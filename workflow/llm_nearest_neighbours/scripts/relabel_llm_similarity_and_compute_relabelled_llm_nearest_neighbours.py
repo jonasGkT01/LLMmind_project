@@ -59,7 +59,7 @@ def compute_relabelled_nearest_neighbours_numpy(
 
         relabelled_nearest_neighbours.append(shuffle_df)
 
-        print(f"Completed relabelling {shuffle_i + 1}/{number_of_relabellings}")
+        print(f"completed relabelling {shuffle_i + 1}/{number_of_relabellings}")
 
     return pd.concat(relabelled_nearest_neighbours, ignore_index=True)
 
