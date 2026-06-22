@@ -35,7 +35,7 @@ def main() -> None:
         )
     )
     parser.add_argument(
-        "--observed_alignment_scores",
+        "--observed_alignment_score",
         required=True,
         help="Path to the Parquet file containing the observed alignment scores.",)
     parser.add_argument(
@@ -46,7 +46,7 @@ def main() -> None:
     args = parser.parse_args()
 
     observed_df = pd.read_parquet(
-        args.observed_alignment_scores,
+        args.observed_alignment_score,
         engine="pyarrow",
     )
 

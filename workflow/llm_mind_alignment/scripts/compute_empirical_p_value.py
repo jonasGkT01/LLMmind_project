@@ -45,18 +45,18 @@ def main() -> None:
         )
     )
     parser.add_argument(
-        "--observed_alignment_scores",
+        "--observed_alignment_score",
         required=True,
         help="Path to the Parquet file containing the observed alignment scores.",)
     parser.add_argument(
-        "--relabelled_alignment_scores",
+        "--relabelled_alignment_score",
         required=True,
         help="Path to the Parquet file containing the alignment scores for all relabellings.",)
     args = parser.parse_args()
 
-    observed_df = pd.read_parquet(args.observed_alignment_scores, engine="pyarrow")
+    observed_df = pd.read_parquet(args.observed_alignment_score, engine="pyarrow")
 
-    relabelled_df = pd.read_parquet(args.relabelled_alignment_scores, engine="pyarrow")
+    relabelled_df = pd.read_parquet(args.relabelled_alignment_score, engine="pyarrow")
 
     summary_df = compute_empirical_statistics(
         observed_df=observed_df,
