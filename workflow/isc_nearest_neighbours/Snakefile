@@ -1,36 +1,11 @@
 import pandas as pd
 from pathlib import Path
 
-DATASETS = list(config["datasets"])
-SIMILARITY_TYPES = list(config["similarity_metrics"])
-
-def dataset_neighbour_pairs():
-    pairs = []
-
-    for dataset in DATASETS:
-        nn = config[dataset]["number_of_neighbours"]
-
-        # allow both old scalar syntax and new list syntax
-        if isinstance(nn, int):
-            nn = [nn]
-
-        for number_of_neighbours in nn:
-            pairs.append(
-                {
-                    "dataset": dataset,
-                    "number_of_neighbours": number_of_neighbours,
-                }
-            )
-
-    return pairs
-
-DATASET_NN_PAIRS = dataset_neighbour_pairs()
-
 rule all_isc_nearest_neighbours:
     input:
         [
             f"results/mind/{pair['dataset']}/{similarity_type}_nearest_neighbours/isc_{similarity_type}_nearest_neighbours_{pair['number_of_neighbours']}NN.parquet"
-            for pair in DATASET_NN_PAIRS
+            for pair in PAIRINGS
             for similarity_type in SIMILARITY_TYPES
         ]
 

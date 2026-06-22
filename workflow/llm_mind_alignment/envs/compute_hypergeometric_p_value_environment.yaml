@@ -1,0 +1,8 @@
+channels:
+  - conda-forge
+  - nodefaults
+dependencies:
+  - python
+  - scipy
+  - pandas
+  - pyarrow

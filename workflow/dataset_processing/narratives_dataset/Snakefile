@@ -332,5 +332,5 @@ rule write_narratives_problematic_stimuli:
                 f.write(f"{stimulus}\n")
 
         print(
-            f"Wrote {len(set(params.problematic_stimuli))} problematic stimuli to {output_path}"
+            f"wrote {len(set(params.problematic_stimuli))} problematic stimuli to {output_path}"
         )

@@ -1,35 +1,3 @@
-DATASETS = list(config["datasets"])
-MODEL_KEYS = list(config["models"].keys())
-SIMILARITY_TYPES = list(config["similarity_metrics"])
-NUMBER_OF_RELABELLINGS = range(config["number_of_relabellings"])
-
-def pairings():
-    pairs = []
-
-    for dataset in DATASETS:
-        nn = config[dataset]["number_of_neighbours"]
-
-        # allow both old scalar syntax and new list syntax
-        if isinstance(nn, int):
-            nn = [nn]
-
-        for number_of_neighbours in nn:
-            for stimuli_type in list(config[dataset]["stimuli_dir"].keys()):
-                for model in MODEL_KEYS:
-                    if config["models"][model]["modality"] in [stimuli_type, "multimodal"]:
-                        pairs.append(
-                            {
-                                "dataset": dataset,
-                                "number_of_neighbours": number_of_neighbours,
-                                "stimuli_type": stimuli_type,
-                                "model": model
-                            }
-                        )
-
-    return pairs
-
-PAIRINGS = pairings()
-
 rule all_llm_mind_alignment:
     input:
         [
@@ -96,11 +64,13 @@ rule compute_empirical_p_value:
         relabelled_alignment_score="results/alignment_score/{stimuli_type}_models/{dataset}/{similarity_type}_alignment_scores/{model}_brain_relabelled_{similarity_type}_alignment_score_{number_of_neighbours}NN.parquet"
     output:
         empirical_p_value="results/alignment_score/{stimuli_type}_models/{dataset}/{similarity_type}_alignment_scores/{model}_brain_empirical_{similarity_type}_alignment_score_{number_of_neighbours}NN.p_value.tsv"
+    conda:
+        "envs/compute_empirical_p_value_environment.yaml"
     shell:
         r"""
             python3 workflow/llm_mind_alignment/scripts/compute_empirical_p_value.py \
                 --observed_alignment_score {input.observed_alignment_score:q} \
-                --relabelled_alignment_score {input.relabelled_alignment_score:q} > {output}
+                --relabelled_alignment_score {input.relabelled_alignment_score:q} > {output.empirical_p_value:q}
         """
 
 rule compute_hypergeometric_p_value:
@@ -110,11 +80,13 @@ rule compute_hypergeometric_p_value:
         hypergeometric_p_value="results/alignment_score/{stimuli_type}_models/{dataset}/{similarity_type}_alignment_scores/{model}_brain_hypergeometric_{similarity_type}_alignment_score_{number_of_neighbours}NN.p_value.tsv"
     params:
         number_of_neighbours=lambda wc: wc.number_of_neighbours
+    conda:
+        "envs/compute_hypergeometric_p_value_environment.yaml"
     shell:
         r"""
             python3 workflow/llm_mind_alignment/scripts/compute_hypergeometric_p_value.py \
                 --observed_alignment_score {input.observed_alignment_score:q} \
-                --number_of_neighbours {params.number_of_neighbours} > {output}
+                --number_of_neighbours {params.number_of_neighbours} > {output.hypergeometric_p_value:q}
         """
 
 rule reduce:
@@ -127,6 +99,8 @@ rule reduce:
         ]
     output:
         tsv_summary="results/alignment_score/summary.tsv"
+    conda:
+        "envs/reduce_environment.yaml"
     shell:
         r"""
             matrix_reduce -t "results/alignment_score/*_models/*/*_alignment_scores/*_brain_*_*_alignment_score_*NN.p_value.tsv" > {output}

@@ -1,17 +1,9 @@
 configfile: "config/config.yaml"
 
-# include dataset processing files
-include: "dataset_processing/narratives_dataset/Snakefile"
-include: "dataset_processing/caption_scene_dataset/Snakefile"
-
-# include analysis files
-include: "isc_nearest_neighbours/Snakefile"
-include: "llm_nearest_neighbours/Snakefile"
-include: "llm_mind_alignment/Snakefile"
-
 DATASETS = list(config["datasets"])
 MODEL_KEYS = list(config["models"].keys())
 SIMILARITY_TYPES = list(config["similarity_metrics"])
+NUMBER_OF_RELABELLINGS = range(config["number_of_relabellings"])
 
 def pairings():
     pairs = []
@@ -39,6 +31,15 @@ def pairings():
     return pairs
 
 PAIRINGS = pairings()
+
+# include dataset processing files
+include: "dataset_processing/narratives_dataset/Snakefile"
+include: "dataset_processing/caption_scene_dataset/Snakefile"
+
+# include analysis files
+include: "isc_nearest_neighbours/Snakefile"
+include: "llm_nearest_neighbours/Snakefile"
+include: "llm_mind_alignment/Snakefile"
 
 rule all:
     input:

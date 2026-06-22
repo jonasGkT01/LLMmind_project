@@ -35,7 +35,7 @@ def caption_scene_parse_bold_path(path):
     match = re.match(pattern, name)
 
     if match is None:
-        raise ValueError(f"Could not parse subject/session/run from BOLD file: {path}")
+        raise ValueError(f"Could not parse subject/session/run from BOLD file: {path}.")
 
     return match.groupdict()
 
@@ -79,7 +79,7 @@ for bold_file in CAPTION_SCENE_BOLD_FILES:
     run_table = caption_scene_run_table_path(subject, run)
 
     if not Path(run_table).exists():
-        raise FileNotFoundError(f"Missing run table for {key}: {run_table}")
+        raise FileNotFoundError(f"Missing run table for {key}: {run_table}.")
 
     CAPTION_SCENE_BOLD_BY_KEY[key] = bold_file
     CAPTION_SCENE_RUN_TABLE_BY_KEY[key] = run_table
@@ -133,12 +133,12 @@ def caption_scene_all_isc_outputs(wildcards):
 
     stimuli = sorted(df["stimulus_id"].dropna().unique().tolist())
 
-    isc_nii_files = [
+    isc_npy_files = [
         f"{CAPTION_SCENE_ISC_DIR}/task-{stimulus_id}_isc_mean.npy"
         for stimulus_id in stimuli
     ]
 
-    return isc_nii_files
+    return isc_npy_files
 
 rule all_caption_scene_dataset:
     input:
