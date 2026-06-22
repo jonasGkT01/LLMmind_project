@@ -120,7 +120,7 @@ similarity_metrics:
 
 datasets:
   - "narratives"
-  - "caption_scene"
+#  - "caption_scene"
 
 narratives:
   number_of_neighbours: 5
