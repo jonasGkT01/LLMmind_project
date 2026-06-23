@@ -1,7 +1,7 @@
 rule all_llm_mind_alignment:
     input:
         [
-            f"results/alignment_Scores/{pair['dataset']}_{pair['model']}-{pair['stimuli_type']}_brain_{pair['similarity_type']}-alignment_score_{pair['number_of_neighbours']}NN.parquet"
+            f"results/alignment_scores/dataset-{pair['dataset']}_model-{pair['model']}-{pair['stimuli_type']}_brain_{pair['similarity_type']}-alignment_score_{pair['number_of_neighbours']}NN.parquet"
             for pair in PAIRINGS
         ],
 #        [
@@ -18,7 +18,7 @@ rule compute_llm_mind_alignment_score:
         isc_nearest_neighbours="results/mind/{dataset}/isc_{similarity_type}_nearest_neighbours_{number_of_neighbours}NN.parquet",
         llm_nearest_neighnours="results/{stimuli_type}_models/{dataset}/{similarity_type}_nearest_neighbours/{model}_{similarity_type}_nearest_neighbours_{number_of_neighbours}NN.parquet"
     output:
-        llm_brain_alignment_score="results/alignment_Scores/{dataset}_{model}-{stimuli_type}_brain_{similarity_type}-alignment_score_{number_of_neighbours}NN.parquet"
+        llm_brain_alignment_score="results/alignment_scores/dataset-{dataset}_model-{model}-{stimuli_type}_brain_{similarity_type}-alignment_score_{number_of_neighbours}NN.parquet"
     params:
         number_of_neighbours=lambda wc: wc.number_of_neighbours
     conda:
@@ -37,7 +37,7 @@ rule compute_relabelled_llm_mind_alignment_score:
         isc_nearest_neighbours="results/mind/{dataset}/isc_{similarity_type}_nearest_neighbours_{number_of_neighbours}NN.parquet",
         relabelled_llm_nearest_neighbours="results/{stimuli_type}_models/{dataset}/relabelled_nearest_neighbours/relabelled_{model}_{similarity_type}_nearest_neighbours_{number_of_neighbours}NN.parquet"
     output:
-        relabelled_alignment_score="results/alignment_Scores/{dataset}_{model}-{stimuli_type}_brain_{similarity_type}-relabelled_alignment_score_{number_of_neighbours}NN.parquet"
+        relabelled_alignment_score="results/alignment_scores/dataset-{dataset}_model-{model}-{stimuli_type}_brain_{similarity_type}-relabelled_alignment_score_{number_of_neighbours}NN.parquet"
     params:
         number_of_neighbours=lambda wc: wc.number_of_neighbours,
         model="{model}"
@@ -55,10 +55,10 @@ rule compute_relabelled_llm_mind_alignment_score:
 
 rule compute_empirical_p_value:
     input:
-        observed_alignment_score="results/alignment_Scores/{dataset}_{model}-{stimuli_type}_brain_{similarity_type}-alignment_score_{number_of_neighbours}NN.parquet",
-        relabelled_alignment_score="results/alignment_Scores/{dataset}_{model}-{stimuli_type}_brain_relabelled_{similarity_type}-alignment_score_{number_of_neighbours}NN.parquet"
+        observed_alignment_score="results/alignment_scores/dataset-{dataset}_model-{model}-{stimuli_type}_brain_{similarity_type}-alignment_score_{number_of_neighbours}NN.parquet",
+        relabelled_alignment_score="results/alignment_scores/dataset-{dataset}_model-{model}-{stimuli_type}_brain_relabelled_{similarity_type}-alignment_score_{number_of_neighbours}NN.parquet"
     output:
-        empirical_p_value="results/alignment_Scores/{dataset}_{model}-{stimuli_type}_brain_empirical_{similarity_type}-alignment_score_{number_of_neighbours}NN.p_value.tsv"
+        empirical_p_value="results/alignment_scores/dataset-{dataset}_model-{model}-{stimuli_type}_brain_empirical_{similarity_type}-alignment_score_{number_of_neighbours}NN.p_value.tsv"
     conda:
         "envs/compute_empirical_p_value_environment.yaml"
     shell:
@@ -70,9 +70,9 @@ rule compute_empirical_p_value:
 
 rule compute_hypergeometric_p_value:
     input:
-        observed_alignment_score="results/alignment_Scores/{dataset}_{model}-{stimuli_type}_brain_{similarity_type}-alignment_score_{number_of_neighbours}NN.parquet"
+        observed_alignment_score="results/alignment_scores/dataset-{dataset}_model-{model}-{stimuli_type}_brain_{similarity_type}-alignment_score_{number_of_neighbours}NN.parquet"
     output:
-        hypergeometric_p_value="results/alignment_Scores/{dataset}_{model}-{stimuli_type}_brain_hypergeometric_{similarity_type}-alignment_score_{number_of_neighbours}NN.p_value.tsv"
+        hypergeometric_p_value="results/alignment_scores/dataset-{dataset}_model-{model}-{stimuli_type}_brain_hypergeometric_{similarity_type}-alignment_score_{number_of_neighbours}NN.p_value.tsv"
     params:
         number_of_neighbours=lambda wc: wc.number_of_neighbours
     conda:
@@ -87,7 +87,7 @@ rule compute_hypergeometric_p_value:
 rule reduce:
     input:
         [
-            f"results/alignment_Scores/{pair['dataset']}_{pair['model']}-{pair['stimuli_type']}_brain_{method}_{pair['similarity_type']}-alignment_score_{pair['number_of_neighbours']}NN.p_value.tsv"
+            f"results/alignment_scores/dataset-{pair['dataset']}_model-{pair['model']}-{pair['stimuli_type']}_brain_{method}_{pair['similarity_type']}-alignment_score_{pair['number_of_neighbours']}NN.p_value.tsv"
             for pair in PAIRINGS
             for method in ["empirical", "hypergeometric"]
         ]
@@ -97,7 +97,7 @@ rule reduce:
         "envs/reduce_environment.yaml"
     shell:
         r"""
-            matrix_reduce -t "results/alignment_Scores/*_*-*_*_brain_*-*_alignment_score_*NN.p_value.tsv" > {output.tsv_summary:q}
+            matrix_reduce -t "results/alignment_scores/dataset-*_model-*-*_brain_*-*_alignment_score_*NN.p_value.tsv" > {output.tsv_summary:q}
         """
 
 #rule aggregate_all_alignment_scores:
