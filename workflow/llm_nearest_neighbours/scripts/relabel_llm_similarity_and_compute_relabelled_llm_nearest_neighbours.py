@@ -33,11 +33,9 @@ def compute_relabelled_nearest_neighbours_numpy(
     for shuffle_i in range(number_of_relabellings):
         rng = np.random.default_rng(random_seed + shuffle_i)
 
-        X_shuffle = X.copy()
+        permutation = rng.permutation(n)
 
-        for row_i in range(n):
-            off_diag = np.r_[0:row_i, row_i + 1:n]
-            X_shuffle[row_i, off_diag] = rng.permutation(X[row_i, off_diag])
+        X_shuffle = X[np.ix_(permutation, permutation)].copy()
 
         np.fill_diagonal(X_shuffle, -np.inf)
 
