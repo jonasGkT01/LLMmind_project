@@ -81,14 +81,12 @@ def write_run_manifests(out, output_run_manifest_dir, output_run_manifest_index)
 
         if len(unique_source_bolds) != 1:
             raise ValueError(
-                f"Run manifest {run_key} has multiple source BOLD files: "
-                f"{unique_source_bolds}"
+                f"Run manifest {run_key} has multiple source BOLD files: {unique_source_bolds}"
             )
 
         if len(unique_run_tables) != 1:
             raise ValueError(
-                f"Run manifest {run_key} has multiple run tables: "
-                f"{unique_run_tables}"
+                f"Run manifest {run_key} has multiple run tables: {unique_run_tables}"
             )
 
         index_rows.append(
@@ -114,7 +112,7 @@ def main():
     parser.add_argument(
         "--output_singleton_stimuli",
         required=True,
-        help="Output text file containing stimulus IDs represented by only one NIfTI.",
+        help="Output text file containing stimulus IDs represented by only one NIfTI",
     )
     parser.add_argument("--output_manifest", required=True)
     parser.add_argument("--output_run_manifest_dir", required=True)
@@ -129,9 +127,7 @@ def main():
 
     if len(args.bold_files) != len(args.run_tables):
         raise ValueError(
-            "The number of BOLD files and run tables must be identical. "
-            f"Got {len(args.bold_files)} BOLD files and "
-            f"{len(args.run_tables)} run tables."
+            f"The number of BOLD files and run tables must be identical. Got {len(args.bold_files)} BOLD files and {len(args.run_tables)} run tables"
         )
 
     n_vols = int(math.ceil(args.event_duration_s / args.tr))
@@ -164,8 +160,7 @@ def main():
 
         if missing_columns:
             raise ValueError(
-                f"Run table {run_table} is missing columns: "
-                f"{sorted(missing_columns)}"
+                f"Run table {run_table} is missing columns: {sorted(missing_columns)}"
             )
 
         df["Image"] = df["Image"].astype(str)
@@ -189,8 +184,7 @@ def main():
 
             if crop_start_s < 0:
                 raise ValueError(
-                    f"Negative crop start for {run_key}, event {event_index}, "
-                    f"image {image}: {crop_start_s}"
+                    f"Negative crop start for {run_key}, event {event_index}, image {image}: {crop_start_s}"
                 )
 
             start_vol = int(round(crop_start_s / args.tr))
@@ -246,8 +240,7 @@ def main():
         write_lines([], args.output_singleton_stimuli)
 
         raise ValueError(
-            "Global manifest is empty. No valid events were found after "
-            "excluding unreadable or corrupted BOLD files."
+            "Global manifest is empty. No valid events were found after excluding unreadable or corrupted BOLD files"
         )
 
     stimulus_counts = out.groupby("stimulus_id").size()
@@ -267,9 +260,7 @@ def main():
 
     if singleton_stimuli:
         warnings.warn(
-            "Removing stimuli represented by only one valid "
-            "single-stimulus NIfTI: "
-            + ", ".join(sorted(singleton_stimuli)),
+            "Removing stimuli represented by only one valid single-stimulus NIfTI: " + ", ".join(sorted(singleton_stimuli)),
             RuntimeWarning,
         )
 
@@ -277,8 +268,7 @@ def main():
 
     if out.empty:
         raise ValueError(
-            "Global manifest is empty after removing stimuli represented by "
-            "fewer than two single-stimulus NIfTI files."
+            "Global manifest is empty after removing stimuli represented by fewer than two single-stimulus NIfTI files"
         )
 
     out = out.sort_values(
@@ -300,10 +290,7 @@ def main():
     print(f"Wrote run manifests to {args.output_run_manifest_dir}")
     print(f"Wrote run manifest index to {args.output_run_manifest_index}")
     print(f"Skipped {skipped_corrupted} unreadable or corrupted BOLD files")
-    print(
-        f"Wrote {len(singleton_stimuli)} singleton stimulus IDs to "
-        f"{args.output_singleton_stimuli}"
-    )
+    print(f"Wrote {len(singleton_stimuli)} singleton stimulus IDs to {args.output_singleton_stimuli}")
 
 if __name__ == "__main__":
     main()

@@ -4,9 +4,8 @@ from pathlib import Path
 rule all_isc_nearest_neighbours:
     input:
         [
-            f"results/mind/{pair['dataset']}/{similarity_type}_nearest_neighbours/isc_{similarity_type}_nearest_neighbours_{pair['number_of_neighbours']}NN.parquet"
+            f"results/mind/{pair['dataset']}/{pair['similarity_type']}_nearest_neighbours/isc_{pair['similarity_type']}_nearest_neighbours_{pair['number_of_neighbours']}NN.parquet"
             for pair in PAIRINGS
-            for similarity_type in SIMILARITY_TYPES
         ]
 
 def isc_done_for_dataset(wc):
@@ -21,13 +20,14 @@ checkpoint create_isc_manifest:
     output:
         output_manifest="results/mind/{dataset}/manifests/isc_inputs.tsv"
     params:
+        dataset="{dataset}",
         isc_dir=isc_dir_for_dataset
     conda:
         "envs/create_isc_manifest_environment.yaml"
     shell:
         r"""
             python3 workflow/isc_nearest_neighbours/scripts/create_isc_manifest.py \
-                --dataset {wildcards.dataset:q} \
+                --dataset {params.dataset:q} \
                 --isc_dir {params.isc_dir:q} \
                 --output_manifest {output.output_manifest:q}
         """

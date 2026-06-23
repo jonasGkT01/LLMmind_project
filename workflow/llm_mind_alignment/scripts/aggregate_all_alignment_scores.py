@@ -25,7 +25,7 @@ def infer_alignment_column(df: pd.DataFrame) -> str:
         return numeric_columns[0]
 
     raise ValueError(
-        f"Could not infer alignment-score column. Available columns are: {list(df.columns)}."
+        f"Could not infer alignment-score column. Available columns are: {list(df.columns)}"
     )
 
 def infer_model_from_observed_path(path: str) -> str:
@@ -59,7 +59,7 @@ def infer_model_from_relabelled_big_path(path: str) -> str:
 
     if match is None:
         raise ValueError(
-            f"Cannot infer model from relabelled big alignment path: {path}."
+            f"Cannot infer model from relabelled big alignment path: {path}"
         )
 
     return match.group(1)
@@ -112,7 +112,7 @@ def compute_hypergeometric_statistics(
 
     if k > population_size:
         raise ValueError(
-            f"Cannot compute hypergeometric statistics with {k} neighbours and only {number_of_concepts} concepts. The maximum number of neighbours is {population_size}."
+            f"Cannot compute hypergeometric statistics with {k} neighbours and only {number_of_concepts} concepts. The maximum number of neighbours is {population_size}"
         )
 
     expected_common_neighbours = (k * k) / population_size
@@ -181,7 +181,7 @@ def extract_null_alignment_scores(
         grouped = relabelled_df.groupby(level="shuffle_id")
     else:
         raise ValueError(
-            f"Expected relabelled alignment dataframe to contain 'shuffle_id' either as a column or as an index level. Columns are: {list(relabelled_df.columns)}. Index levels are: {relabelled_df.index.names}."
+            f"Expected relabelled alignment dataframe to contain 'shuffle_id' either as a column or as an index level. Columns are: {list(relabelled_df.columns)}. Index levels are: {relabelled_df.index.names}"
         )
 
     null_alignment_scores = []
@@ -237,12 +237,12 @@ def main() -> None:
 
         if model not in observed_paths_by_model:
             raise ValueError(
-                f"Missing observed alignment score for model {model}."
+                f"Missing observed alignment score for model {model}"
             )
 
         if model not in relabelled_paths_by_model:
             raise ValueError(
-                f"Missing relabelled alignment score for model {model}."
+                f"Missing relabelled alignment score for model {model}"
             )
 
         observed_path = observed_paths_by_model[model]
@@ -264,7 +264,7 @@ def main() -> None:
 
         if len(null_alignment_scores) != args.number_of_relabelings:
             raise ValueError(
-                f"Model {model} has {len(null_alignment_scores)} valid relabellings in the big dataframe, but expected {args.number_of_relabelings}."
+                f"Model {model} has {len(null_alignment_scores)} valid relabellings in the big dataframe, but expected {args.number_of_relabelings}"
             )
 
         if len(null_alignment_scores) == 0:

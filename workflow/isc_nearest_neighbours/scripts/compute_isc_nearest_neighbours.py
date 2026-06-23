@@ -37,7 +37,7 @@ def main():
     
     if X_cosine.shape[1] - 1 < number_of_neighbours:
         raise ValueError(
-            f"Requested number of neighbours {number_of_neighbours} is too large for the number of concepts {X_cosine.shape[1] - 1}."
+            f"Requested number of neighbours {number_of_neighbours} is too large for the number of concepts {X_cosine.shape[1] - 1}"
         )
     
     concepts = cosine_similarity_df.index.to_numpy()
@@ -78,7 +78,7 @@ def main():
     np.fill_diagonal(X_pearson, -np.inf)
     if X_pearson.shape[1] - 1 < number_of_neighbours:
         raise ValueError(
-            f"Requested number of neighbours {number_of_neighbours} is too large for the number of concepts {X_pearson.shape[1] - 1}."
+            f"Requested number of neighbours {number_of_neighbours} is too large for the number of concepts {X_pearson.shape[1] - 1}"
         )
 
     concepts = pearson_similarity_df.index.to_numpy()

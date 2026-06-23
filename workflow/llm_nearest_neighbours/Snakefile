@@ -5,14 +5,12 @@ NUMBER_OF_RELABELLINGS = config["number_of_relabellings"]
 rule all_llm_nearest_neighbours:
     input:
         [
-            f"results/{pair['stimuli_type']}_models/{pair['dataset']}/{similarity_type}_nearest_neighbours/{pair['model']}_{similarity_type}_nearest_neighbours_{pair['number_of_neighbours']}NN.parquet"
+            f"results/{pair['stimuli_type']}_models/{pair['dataset']}/{pair['similarity_type']}_nearest_neighbours/{pair['model']}_{pair['similarity_type']}_nearest_neighbours_{pair['number_of_neighbours']}NN.parquet"
             for pair in PAIRINGS
-            for similarity_type in SIMILARITY_TYPES
         ],
         [
-            f"results/{pair['stimuli_type']}_models/{pair['dataset']}/relabelled_nearest_neighbours/relabelled_{pair['model']}_{similarity_type}_nearest_neighbours_{pair['number_of_neighbours']}NN.parquet"
+            f"results/{pair['stimuli_type']}_models/{pair['dataset']}/relabelled_nearest_neighbours/relabelled_{pair['model']}_{pair['similarity_type']}_{pair['number_of_neighbours']}NN.parquet"
             for pair in PAIRINGS
-            for similarity_type in SIMILARITY_TYPES
         ]
 
 rule download_pretrained_llm:

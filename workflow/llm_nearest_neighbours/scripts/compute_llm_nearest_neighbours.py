@@ -12,7 +12,7 @@ def compute_nearest_neighbours_from_array(
 ) -> pd.DataFrame:
     if X.shape[1] - 1 < number_of_neighbours:
         raise ValueError(
-            f"Requested {number_of_neighbours} neighbours, but only {X.shape[1] - 1} candidates are available."
+            f"Requested {number_of_neighbours} neighbours, but only {X.shape[1] - 1} candidates are available"
         )
 
     idx_part = np.argpartition(X, -number_of_neighbours, axis=1)[:, -number_of_neighbours:]
@@ -40,10 +40,10 @@ def main():
     similarity_df = pd.read_parquet(args.similarity_dataframe)
 
     if similarity_df.shape[0] != similarity_df.shape[1]:
-        raise ValueError(f"Expected a square similarity matrix, got {similarity_df.shape}.")
+        raise ValueError(f"Expected a square similarity matrix, got {similarity_df.shape}")
 
     if list(similarity_df.index) != list(similarity_df.columns):
-        raise ValueError("Expected similarity_df index and columns to match exactly.")
+        raise ValueError("Expected similarity_df index and columns to match exactly")
 
     X = similarity_df.to_numpy(copy=True)
     np.fill_diagonal(X, -np.inf)

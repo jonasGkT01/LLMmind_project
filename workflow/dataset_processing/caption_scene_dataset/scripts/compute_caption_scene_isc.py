@@ -28,8 +28,7 @@ def parcel_output_path(row, parcel_root):
 def compute_isc(parcel_ts_files, n_rois):
     if len(parcel_ts_files) < 2:
         raise ValueError(
-            f"ISC requires at least two parcel time-series files, "
-            f"got {len(parcel_ts_files)}."
+            f"ISC requires at least two parcel time-series files, got {len(parcel_ts_files)}"
         )
 
     data_list = [np.load(f) for f in parcel_ts_files]
@@ -54,8 +53,7 @@ def compute_isc(parcel_ts_files, n_rois):
         )
 
         raise ValueError(
-            "Mismatched time lengths across parcel time-series files. "
-            f"Details: {details}"
+            f"Mismatched time lengths across parcel time-series files. Details: {details}"
         )
 
     n_subjects = len(data_list)
@@ -121,7 +119,7 @@ def main():
     atlas_img = image.load_img(atlas.maps)
     atlas_data = atlas_img.get_fdata().astype(int)
 
-    print(f"Computing ISC from {len(args.parcel_ts)} parcel files")
+#    print(f"Computing ISC from {len(args.parcel_ts)} parcel files")
 
     isc_mean = compute_isc(args.parcel_ts, args.n_rois)
 

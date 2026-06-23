@@ -11,10 +11,10 @@ def compute_relabelled_nearest_neighbours_numpy(
     random_seed: int,
 ) -> pd.DataFrame:
     if similarity_df.shape[0] != similarity_df.shape[1]:
-        raise ValueError(f"Expected a square matrix, got {similarity_df.shape}.")
+        raise ValueError(f"Expected a square matrix, got {similarity_df.shape}")
 
     if list(similarity_df.index) != list(similarity_df.columns):
-        raise ValueError("Expected index and columns to match exactly.")
+        raise ValueError("Expected index and columns to match exactly")
 
     X = similarity_df.to_numpy(copy=True)
     concepts = similarity_df.index.to_numpy()
@@ -25,7 +25,7 @@ def compute_relabelled_nearest_neighbours_numpy(
 
     if n < k + 1:
         raise ValueError(
-            f"Requested {k} neighbours, but only {n} concepts are available."
+            f"Requested {k} neighbours, but only {n} concepts are available"
         )
 
     relabelled_nearest_neighbours = []

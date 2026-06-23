@@ -21,8 +21,7 @@ def main():
 
     if missing_columns:
         raise ValueError(
-            f"Image-caption table is missing columns: {sorted(missing_columns)}. "
-            f"Available columns are: {list(df.columns)}"
+            f"Image-caption table is missing columns: {sorted(missing_columns)}. Available columns are: {list(df.columns)}"
         )
 
     if "stimulus_id" not in manifest.columns:

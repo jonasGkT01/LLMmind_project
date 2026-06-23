@@ -77,12 +77,12 @@ def main():
 
     if missing_relabelled_columns:
         raise ValueError(
-            f"The relabelled nearest-neighbours dataframe is missing columns: {sorted(missing_relabelled_columns)}."
+            f"The relabelled nearest-neighbours dataframe is missing columns: {sorted(missing_relabelled_columns)}"
         )
 
     if missing_isc_columns:
         raise ValueError(
-            f"The ISC nearest-neighbours dataframe is missing columns: {sorted(missing_isc_columns)}."
+            f"The ISC nearest-neighbours dataframe is missing columns: {sorted(missing_isc_columns)}"
         )
 
     if "shuffle_id" in relabelled_llm_nearest_neighbours_df.columns:
@@ -91,7 +91,7 @@ def main():
         grouped = relabelled_llm_nearest_neighbours_df.groupby(level="shuffle_id")
     else:
         raise ValueError(
-            f"Expected 'shuffle_id' either as a column or as an index level. {sorted(missing_isc_columns)}."
+            f"Expected 'shuffle_id' either as a column or as an index level. {sorted(missing_isc_columns)}"
         )
 
     if "shuffle_id" in relabelled_llm_nearest_neighbours_df.columns:
@@ -100,7 +100,7 @@ def main():
         grouped = relabelled_llm_nearest_neighbours_df.groupby(level="shuffle_id")
     else:
         raise ValueError(
-            f"Expected 'shuffle_id' either as a column or as an index level. Columns are: {list(relabelled_llm_nearest_neighbours_df.columns)}. Index levels are: {relabelled_llm_nearest_neighbours_df.index.names}."
+            f"Expected 'shuffle_id' either as a column or as an index level. Columns are: {list(relabelled_llm_nearest_neighbours_df.columns)}. Index levels are: {relabelled_llm_nearest_neighbours_df.index.names}"
         )
 
     output_columns = [

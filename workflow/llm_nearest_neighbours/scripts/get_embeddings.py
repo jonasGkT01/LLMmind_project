@@ -35,7 +35,7 @@ def pool_hidden_state(
 
     if hidden_state.ndim != 3:
         raise ValueError(
-            f"Expected a 2D or 3D hidden-state tensor, got shape {tuple(hidden_state.shape)}."
+            f"Expected a 2D or 3D hidden-state tensor, got shape {tuple(hidden_state.shape)}"
         )
 
     if pool == "avg":
@@ -223,7 +223,7 @@ def extract_embedding_from_output(
         )
 
     raise ValueError(
-        f"Could not extract embeddings from model output of type {type(output).__name__}."
+        f"Could not extract embeddings from model output of type {type(output).__name__}"
     )
 
 def load_excluded_stimuli(
@@ -265,7 +265,7 @@ def load_stimuli(
 
     if text_files and image_files:
         raise ValueError(
-            f"Both text and image stimuli were found in {stimuli_dir}. Each execution must receive only one type of stimulus."
+            f"Both text and image stimuli were found in {stimuli_dir}. Each execution must receive only one type of stimulus"
         )
 
     if text_files:
@@ -298,7 +298,7 @@ def load_stimuli(
         ], "image"
 
     raise ValueError(
-        f"No supported stimulus files found in {stimuli_dir}."
+        f"No supported stimulus files found in {stimuli_dir}"
     )
 
 def embed_long_text(
@@ -329,7 +329,7 @@ def embed_long_text(
     n_tokens = len(input_ids)
 
     if n_tokens == 0:
-        raise ValueError("Empty stimulus after tokenization.")
+        raise ValueError("Empty stimulus after tokenization")
 
     bos_token_id = getattr(
         tokenizer,
@@ -350,14 +350,14 @@ def embed_long_text(
 
     if chunk_token_length <= 0:
         raise ValueError(
-            f"max_length={max_length} is too small after accounting for BOS."
+            f"max_length={max_length} is too small after accounting for BOS"
         )
 
     step = chunk_token_length - overlap
 
     if step <= 0:
         raise ValueError(
-            f"Overlap is too large after accounting for special tokens. Chunk_token_length={chunk_token_length}, overlap={overlap}."
+            f"Overlap is too large after accounting for special tokens. Chunk_token_length={chunk_token_length}, overlap={overlap}"
         )
 
     chunk_embeddings = []
@@ -386,7 +386,7 @@ def embed_long_text(
 
         if len(model_input_ids) > max_length:
             raise RuntimeError(
-                f"Chunk length {len(model_input_ids)} exceeds max_length={max_length}."
+                f"Chunk length {len(model_input_ids)} exceeds max_length={max_length}"
             )
 
         input_ids_tensor = torch.tensor(
@@ -437,7 +437,7 @@ def embed_long_text(
 
     if not chunk_embeddings:
         raise ValueError(
-            "No chunks were produced for stimulus."
+            "No chunks were produced for stimulus"
         )
 
     chunks = torch.stack(
@@ -609,12 +609,12 @@ def main():
 
     if args.modality == "language" and input_type != "text":
         raise ValueError(
-            "A language model requires textual stimuli."
+            "A language model requires textual stimuli"
         )
 
     if args.modality == "vision" and input_type != "image":
         raise ValueError(
-            "A vision model requires visual stimuli."
+            "A vision model requires visual stimuli"
         )
 
     if args.pool is None:
@@ -656,7 +656,7 @@ def main():
 
         if args.chunk_overlap >= max_length:
             raise ValueError(
-                f"--chunk_overlap must be smaller than chunk max length. Got overlap={args.chunk_overlap}, max_length={max_length}."
+                f"--chunk_overlap must be smaller than chunk max length. Got overlap={args.chunk_overlap}, max_length={max_length}"
             )
 
     else:

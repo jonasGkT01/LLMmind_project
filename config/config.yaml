@@ -1,5 +1,5 @@
 # configuration for relabelled similarity computation
-number_of_relabellings: 100 
+number_of_relabellings: 100
 random_seed: 37
 
 models:
@@ -114,7 +114,7 @@ models:
     modality: "language"
     quantization_method: "8bit"
 
-similarity_metrics:
+similarity_types:
   - "cosine"
   - "pearson"
 
@@ -128,6 +128,8 @@ narratives:
   scans_to_be_excluded: "resources/datasets/narratives_dataset/scan_exclude.json"
   excluded_scans_for_task: "resources/datasets/narratives_dataset/excluded_scans_for_task.json"
   processing_output_dir: "results/mind/narratives"
+#  processing_output_dir: 
+#     language: "results/mind_language/narratives"
   stimuli_dir: 
     language: "resources/datasets/narratives_dataset/stimuli/transcripts_renamed"
   excluded_stimuli: "resources/datasets/narratives_dataset/excluded_stimuli.txt"
@@ -202,6 +204,9 @@ caption_scene:
   scans_to_be_excluded: "resources/datasets/caption_scene_dataset/scan_exclude.json"
   excluded_scans_for_task: "resources/datasets/caption_scene_dataset/excluded_scans_for_task.json"
   processing_output_dir: "results/mind/caption_scene"
+#  processing_output_dir:
+#    language: "results/mind_language/caption_scene"
+#    vision: "results/mind_vision/caption_scene"
   stimuli_dir: 
     language: "resources/datasets/caption_scene_dataset/V1/stimuli/transcripts"
     vision: "resources/datasets/caption_scene_dataset/V1/stimuli/COCO_CN/All_images_480"

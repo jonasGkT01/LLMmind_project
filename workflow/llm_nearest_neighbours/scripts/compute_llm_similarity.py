@@ -66,7 +66,7 @@ def main():
 
     if not embedding_cols:
         raise ValueError(
-            f"No embedding columns found. Columns are: {list(embedding_df.columns[:20])}."
+            f"No embedding columns found. Columns are: {list(embedding_df.columns[:20])}"
         )
 
     # Sort numerically so dimensions are in order.

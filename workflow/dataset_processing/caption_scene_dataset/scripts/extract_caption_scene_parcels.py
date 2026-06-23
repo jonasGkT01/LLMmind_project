@@ -71,7 +71,7 @@ def extract_parcels(
     img = nib.load(str(bold_file))
 
     if img.ndim != 4:
-        raise ValueError(f"Expected 4D BOLD image, got shape {img.shape}: {bold_file}.")
+        raise ValueError(f"Expected 4D BOLD image, got shape {img.shape}: {bold_file}")
 
     parcel_matrix = get_resampled_parcel_matrix(
         img=img,
@@ -138,7 +138,7 @@ def main():
 
         parcel_ts.parent.mkdir(parents=True, exist_ok=True)
 
-        print(f"Extracting parcels from: {bold_file}")
+#        print(f"Extracting parcels from: {bold_file}")
 
         ts = extract_parcels(
             bold_file=bold_file,

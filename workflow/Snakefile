@@ -2,7 +2,7 @@ configfile: "config/config.yaml"
 
 DATASETS = list(config["datasets"])
 MODEL_KEYS = list(config["models"].keys())
-SIMILARITY_TYPES = list(config["similarity_metrics"])
+SIMILARITY_TYPES = list(config["similarity_types"])
 
 def pairings():
     pairs = []
@@ -18,14 +18,16 @@ def pairings():
             for stimuli_type in list(config[dataset]["stimuli_dir"].keys()):
                 for model in MODEL_KEYS:
                     if config["models"][model]["modality"] in [stimuli_type, "multimodal"]:
-                        pairs.append(
-                            {
-                                "dataset": dataset,
-                                "number_of_neighbours": number_of_neighbours,
-                                "stimuli_type": stimuli_type,
-                                "model": model
-                            }
-                        )
+                        for similarity_type in SIMILARITY_TYPES:
+                            pairs.append(
+                                {
+                                    "dataset": dataset,
+                                    "number_of_neighbours": number_of_neighbours,
+                                    "stimuli_type": stimuli_type,
+                                    "model": model,
+                                    "similarity_type": similarity_type,
+                                }
+                            )
 
     return pairs
 
@@ -43,11 +45,15 @@ include: "llm_mind_alignment/Snakefile"
 rule all:
     input:
         [
-            f"results/alignment_score/{pair['stimuli_type']}_models/{pair['dataset']}/{similarity_type}_alignment_scores/{pair['model']}_brain_{similarity_type}_alignment_score_{pair['number_of_neighbours']}NN.parquet"
+            f"results/alignment_Scores/{pair['dataset']}_{pair['model']}-{pair['stimuli_type']}_brain_{pair['similarity_type']}-alignment_score_{pair['number_of_neighbours']}NN.parquet"
             for pair in PAIRINGS
-            for similarity_type in SIMILARITY_TYPES
         ],
-        "results/alignment_score/summary.tsv"
+        "results/summary.tsv"
+#        [
+#            f"results/alignment_score/{pair['stimuli_type']}_models/{pair['dataset']}/{pair['similarity_type']}_alignment_scores/{pair['model']}_brain_{pair['similarity_type']}_alignment_score_{pair['number_of_neighbours']}NN.parquet"
+#            for pair in PAIRINGS
+#        ],
+#        "results/alignment_score/summary.tsv"
 #        [
 #            f"results/alignment_summary/{pair['stimuli_type']}_models/{pair['dataset']}/parquet_summary/{similarity_type}_alignment_summary_{pair['number_of_neighbours']}NN_all_models.parquet"
 #            for pair in PAIRINGS

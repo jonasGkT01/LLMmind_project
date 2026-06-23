@@ -17,8 +17,7 @@ def validate_manifest(manifest):
 
     if missing_columns:
         raise ValueError(
-            f"Manifest is missing required columns: {sorted(missing_columns)}. "
-            f"Available columns are: {list(manifest.columns)}"
+            f"Manifest is missing required columns: {sorted(missing_columns)}. Available columns are: {list(manifest.columns)}"
         )
 
 def write_crop(img, output_bold, start_vol, n_vols):
@@ -68,8 +67,7 @@ def main():
 
     if len(source_bolds) != 1:
         raise ValueError(
-            "This split script expects one source BOLD file per manifest. "
-            f"Found {len(source_bolds)} source BOLD files: {source_bolds}"
+            f"This split script expects one source BOLD file per manifest. Found {len(source_bolds)} source BOLD files: {source_bolds}"
         )
 
     source_bold = Path(source_bolds[0])

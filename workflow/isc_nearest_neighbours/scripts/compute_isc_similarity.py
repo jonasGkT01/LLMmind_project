@@ -25,7 +25,7 @@ def dataframe_to_embedding_matrix(df: pd.DataFrame) -> np.ndarray:
         return df.to_numpy(dtype=np.float64, copy=False)
     except (TypeError, ValueError) as exc:
         raise TypeError(
-            "Embedding dataframe could not be converted to a numeric matrix. Ensure all embedding values are numeric."
+            "Embedding dataframe could not be converted to a numeric matrix. Ensure all embedding values are numeric"
         ) from exc
 
 

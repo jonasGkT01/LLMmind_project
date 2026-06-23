@@ -26,7 +26,7 @@ def compute_isc(parcel_ts_files):
     n_parcels = data_list[0].shape[1]
 
     if n_subjects < 2:
-        raise ValueError("ISC requires at least two parcel time-series files.")
+        raise ValueError("ISC requires at least two parcel time-series files")
 
     data = np.stack(data_list, axis=0)
 
@@ -99,7 +99,7 @@ def main():
         if len(isc_nii_values) != 1:
             raise ValueError(f"Task {task} has multiple isc_nii outputs: {isc_nii_values}")
 
-        print(f"Computing ISC for task {task} from {len(parcel_ts_files)} files")
+#        print(f"Computing ISC for task {task} from {len(parcel_ts_files)} files")
 
         isc_mean = compute_isc(parcel_ts_files)
 

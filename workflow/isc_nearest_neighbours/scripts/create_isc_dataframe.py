@@ -11,7 +11,7 @@ def extract_task_from_filename(path: Path) -> str:
     match = TASK_PATTERN.search(path.name)
     if not match:
         raise ValueError(
-            f"Could not extract task name from filename: {path.name}. Expected pattern like 'task-<task>_isc_mean.npy'."
+            f"Could not extract task name from filename: {path.name}. Expected pattern like 'task-<task>_isc_mean.npy'"
         )
     return match.group(1)
 
