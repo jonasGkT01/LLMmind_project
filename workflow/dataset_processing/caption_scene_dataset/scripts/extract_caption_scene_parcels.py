@@ -39,34 +39,46 @@ def build_parcel_matrix(labels_3d, n_rois):
         dtype=np.float32,
     )
 
-def load_resampled_atlas(atlas_maps, reference_bold_file, n_rois):
-    reference_img = nib.load(str(reference_bold_file))
-    atlas_img = image.load_img(atlas_maps)
-
-    atlas_img = image.resample_to_img(
-        atlas_img,
-        reference_img,
-        interpolation="nearest",
-        force_resample=True,
-        copy_header=True,
+def bold_grid_key(img):
+    return (
+        img.shape[:3],
+        tuple(np.round(img.affine.ravel(), 6)),
     )
 
-    labels = atlas_img.get_fdata().astype(np.int32)
-    parcel_matrix = build_parcel_matrix(labels, n_rois)
+def get_resampled_parcel_matrix(img, atlas_img, n_rois, cache):
+    key = bold_grid_key(img)
 
-    return labels, parcel_matrix
+    if key not in cache:
+        resampled_atlas_img = image.resample_to_img(
+            atlas_img,
+            img,
+            interpolation="nearest",
+            force_resample=True,
+            copy_header=True,
+        )
 
-def extract_parcels(bold_file, parcel_matrix, atlas_shape):
+        labels = resampled_atlas_img.get_fdata().astype(np.int32)
+        cache[key] = build_parcel_matrix(labels, n_rois)
+
+    return cache[key]
+
+def extract_parcels(
+    bold_file,
+    atlas_img,
+    n_rois,
+    parcel_matrix_cache,
+):
     img = nib.load(str(bold_file))
 
     if img.ndim != 4:
-        raise ValueError(f"Expected 4D BOLD image, got shape {img.shape}: {bold_file}")
+        raise ValueError(f"Expected 4D BOLD image, got shape {img.shape}: {bold_file}.")
 
-    if img.shape[:3] != atlas_shape:
-        raise ValueError(
-            f"BOLD/atlas shape mismatch for {bold_file}: "
-            f"bold={img.shape[:3]}, atlas={atlas_shape}"
-        )
+    parcel_matrix = get_resampled_parcel_matrix(
+        img=img,
+        atlas_img=atlas_img,
+        n_rois=n_rois,
+        cache=parcel_matrix_cache,
+    )
 
     data = np.asarray(img.dataobj, dtype=np.float32)
     n_tp = data.shape[3]
@@ -108,22 +120,14 @@ def main():
     if manifest.empty:
         raise ValueError(f"Manifest is empty: {args.manifest}")
 
-    first_bold_file = Path(manifest.iloc[0]["output_bold"])
-
-    if not first_bold_file.exists():
-        raise FileNotFoundError(f"Missing reference BOLD file: {first_bold_file}")
-
     atlas = datasets.fetch_atlas_schaefer_2018(
         n_rois=args.n_rois,
         data_dir=args.atlas_dir,
         yeo_networks=args.yeo_networks,
     )
 
-    labels, parcel_matrix = load_resampled_atlas(
-        atlas_maps=atlas.maps,
-        reference_bold_file=first_bold_file,
-        n_rois=args.n_rois,
-    )
+    atlas_img = image.load_img(atlas.maps)
+    parcel_matrix_cache = {}
 
     for row in manifest.itertuples(index=False):
         bold_file = Path(row.output_bold)
@@ -138,8 +142,9 @@ def main():
 
         ts = extract_parcels(
             bold_file=bold_file,
-            parcel_matrix=parcel_matrix,
-            atlas_shape=labels.shape,
+            atlas_img=atlas_img,
+            n_rois=args.n_rois,
+            parcel_matrix_cache=parcel_matrix_cache,
         )
 
         np.save(parcel_ts, ts.astype(np.float32))
