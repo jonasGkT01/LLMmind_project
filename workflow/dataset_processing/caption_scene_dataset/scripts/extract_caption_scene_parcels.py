@@ -6,7 +6,6 @@ import numpy as np
 import pandas as pd
 from nilearn import datasets, image
 from scipy import sparse
-from scipy.signal import detrend
 
 def parcel_output_path(row, output_root):
     return (
@@ -18,13 +17,6 @@ def parcel_output_path(row, output_root):
             f"task-{row.stimulus_id}_event-{row.event_index}_parcel_ts.npy"
         )
     )
-
-def sample_zscore(ts):
-    mean = ts.mean(axis=0, keepdims=True)
-    std = ts.std(axis=0, ddof=1, keepdims=True)
-    std[std == 0] = 1.0
-
-    return (ts - mean) / std
 
 def build_parcel_matrix(labels_3d, n_rois):
     labels = labels_3d.reshape(-1).astype(np.int32)
@@ -82,9 +74,6 @@ def extract_parcels(bold_file, parcel_matrix, atlas_shape):
     flat = data.reshape(-1, n_tp)
     ts = parcel_matrix @ flat
     ts = ts.T.astype(np.float32)
-
-    ts = detrend(ts, axis=0, type="linear").astype(np.float32)
-    ts = sample_zscore(ts).astype(np.float32)
 
     return ts
 

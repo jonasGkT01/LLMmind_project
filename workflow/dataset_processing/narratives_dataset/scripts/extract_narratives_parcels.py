@@ -7,14 +7,6 @@ import pandas as pd
 from nilearn import datasets, image
 from nilearn.image import resample_to_img
 from scipy import sparse
-from scipy.signal import detrend
-
-def sample_zscore(ts):
-    mean = ts.mean(axis=0, keepdims=True)
-    std = ts.std(axis=0, ddof=1, keepdims=True)
-    std[std == 0] = 1.0
-
-    return (ts - mean) / std
 
 def build_parcel_matrix(labels_3d, n_rois):
     labels = labels_3d.reshape(-1).astype(np.int32)
@@ -79,9 +71,6 @@ def extract_parcels(bold_file, atlas_img, n_rois, parcel_matrix_cache):
     flat = data.reshape(-1, n_tp)
     ts = parcel_matrix @ flat
     ts = ts.T.astype(np.float32)
-
-    ts = detrend(ts, axis=0, type="linear").astype(np.float32)
-    ts = sample_zscore(ts).astype(np.float32)
 
     return ts
 
