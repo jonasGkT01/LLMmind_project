@@ -45,7 +45,11 @@ include: "llm_mind_alignment/Snakefile"
 rule all:
     input:
         [
-            f"results/alignment_Scores/{pair['dataset']}_{pair['model']}-{pair['stimuli_type']}_brain_{pair['similarity_type']}-alignment_score_{pair['number_of_neighbours']}NN.parquet"
+            f"results/alignment_scores/dataset-{pair['dataset']}_model-{pair['model']}-{pair['stimuli_type']}_brain_{pair['similarity_type']}-alignment_score_{pair['number_of_neighbours']}NN.parquet"
+            for pair in PAIRINGS
+        ],
+        [
+            f"results/alignment_scores/dataset-{pair['dataset']}_model-{pair['model']}-{pair['stimuli_type']}_brain_{pair['similarity_type']}-alignment_score_{pair['number_of_neighbours']}NN_relabelled.parquet"
             for pair in PAIRINGS
         ],
         "results/summary.tsv"
