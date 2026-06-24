@@ -1,5 +1,5 @@
 # configuration for relabelled similarity computation
-number_of_relabellings: 100
+number_of_relabellings: 1000
 random_seed: 37
 
 models:
