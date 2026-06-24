@@ -75,7 +75,7 @@ def main():
     if not source_bold.exists():
         raise FileNotFoundError(f"Missing source BOLD file: {source_bold}")
 
-    print(f"Loading source BOLD once: {source_bold}")
+#    print(f"Loading source BOLD once: {source_bold}")
 
     img = nib.load(str(source_bold))
 
