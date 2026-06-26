@@ -41,6 +41,7 @@ include: "dataset_processing/caption_scene_dataset/Snakefile"
 include: "isc_nearest_neighbours/Snakefile"
 include: "llm_nearest_neighbours/Snakefile"
 include: "llm_mind_alignment/Snakefile"
+#include: "llm_llm_alignment/Snakefile"
 
 rule all:
     input:

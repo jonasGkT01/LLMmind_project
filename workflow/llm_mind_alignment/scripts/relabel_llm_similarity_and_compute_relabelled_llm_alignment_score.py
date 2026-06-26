@@ -154,7 +154,7 @@ def compute_relabelled_alignment_scores(
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--similarity_dataframe", required=True)
+    parser.add_argument("--llm_similarity", required=True)
     parser.add_argument("--isc_nearest_neighbours", required=True)
     parser.add_argument("--relabelled_alignment_score", required=True)
     parser.add_argument("--number_of_relabellings", type=int, required=True)
@@ -170,11 +170,11 @@ def main():
     if args.number_of_neighbours <= 0:
         raise ValueError("--number_of_neighbours must be a positive integer")
 
-    similarity_df = pd.read_parquet(args.similarity_dataframe, engine="pyarrow")
+    llm_similarity_df = pd.read_parquet(args.llm_similarity, engine="pyarrow")
     brain_nearest_neighbours_df = pd.read_parquet(args.isc_nearest_neighbours, engine="pyarrow")
 
     result = compute_relabelled_alignment_scores(
-        similarity_df=similarity_df,
+        similarity_df=llm_similarity_df,
         brain_nearest_neighbours_df=brain_nearest_neighbours_df,
         number_of_relabellings=args.number_of_relabellings,
         number_of_neighbours=args.number_of_neighbours,

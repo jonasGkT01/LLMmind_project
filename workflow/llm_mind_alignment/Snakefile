@@ -42,14 +42,14 @@ rule compute_llm_mind_alignment_score:
 
 rule relabel_llm_similarity_and_compute_relabelled_llm_alignment_score:
     input:
-        llm_similarity="results/{stimuli_type}_models/{dataset}/{similarity_type}_similarity/{model}_{similarity_type}_similarity_{number_of_neighbours}NN.parquet",
+        llm_similarity="results/{stimuli_type}_models/{dataset}/{similarity_type}_similarity/{model}_{similarity_type}_similarity.parquet",
         isc_nearest_neighbours="results/mind/{dataset}/isc_{similarity_type}_nearest_neighbours_{number_of_neighbours}NN.parquet"
     output:
         relabelled_alignment_score="results/alignment_scores/dataset-{dataset}_model-{model}-{stimuli_type}_brain_{similarity_type}-alignment_score_{number_of_neighbours}NN_relabelled.parquet"
     params:
         number_of_neighbours=lambda wc: wc.number_of_neighbours,
         model=lambda wc: wc.model,
-        number_of_relabelings=NUMBER_OF_RELABELLINGS,
+        number_of_relabellings=NUMBER_OF_RELABELLINGS,
         random_seed=RANDOM_SEED
     conda:
         "envs/relabel_llm_similarity_and_compute_relabelled_llm_alignment_score_environment.yaml"
@@ -60,8 +60,8 @@ rule relabel_llm_similarity_and_compute_relabelled_llm_alignment_score:
                 --isc_nearest_neighbours {input.isc_nearest_neighbours:q} \
                 --relabelled_alignment_score {output.relabelled_alignment_score:q} \
                 --number_of_neighbours {params.number_of_neighbours} \
-                --model {params.model:q}
-                --number_of_relabelings {params.number_of_relabelings} \
+                --model {params.model:q} \
+                --number_of_relabellings {params.number_of_relabellings} \
                 --random_seed {params.random_seed}
         """
 
@@ -117,7 +117,7 @@ rule compute_hypergeometric_p_value:
                 --number_of_neighbours {params.number_of_neighbours} > {output.hypergeometric_p_value:q}
         """
 
-rule reduce:
+rule reduce_all_llmmind_alignment_p_values:
     input:
         [
             f"results/alignment_scores/dataset-{pair['dataset']}_model-{pair['model']}-{pair['stimuli_type']}_brain_{method}_{pair['similarity_type']}-alignment_score_{pair['number_of_neighbours']}NN.p_value.tsv"
@@ -127,7 +127,7 @@ rule reduce:
     output:
         tsv_summary="results/summary.tsv"
     conda:
-        "envs/reduce_environment.yaml"
+        "envs/reduce_all_llmmind_alignment_p_values_environment.yaml"
     shell:
         r"""
             matrix_reduce -t "results/alignment_scores/dataset-*_model-*-*_brain_*-*_alignment_score_*NN.p_value.tsv" > {output.tsv_summary:q}
