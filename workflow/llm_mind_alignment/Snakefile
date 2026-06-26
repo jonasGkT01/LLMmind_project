@@ -1,3 +1,6 @@
+NUMBER_OF_RELABELLINGS = config["number_of_relabellings"]
+RANDOM_SEED = config["random_seed"]
+
 rule all_llm_mind_alignment:
     input:
         [
@@ -37,26 +40,51 @@ rule compute_llm_mind_alignment_score:
                 --alignment_score {output.llm_brain_alignment_score:q}
         """
 
-rule compute_relabelled_llm_mind_alignment_score:
+rule relabel_llm_similarity_and_compute_relabelled_llm_alignment_score:
     input:
-        isc_nearest_neighbours="results/mind/{dataset}/isc_{similarity_type}_nearest_neighbours_{number_of_neighbours}NN.parquet",
-        relabelled_llm_nearest_neighbours="results/{stimuli_type}_models/{dataset}/{similarity_type}_nearest_neighbours/{model}_{similarity_type}_nearest_neighbours_{number_of_neighbours}NN_relabelled.parquet"
+        llm_similarity="results/{stimuli_type}_models/{dataset}/{similarity_type}_similarity/{model}_{similarity_type}_similarity_{number_of_neighbours}NN.parquet",
+        isc_nearest_neighbours="results/mind/{dataset}/isc_{similarity_type}_nearest_neighbours_{number_of_neighbours}NN.parquet"
     output:
         relabelled_alignment_score="results/alignment_scores/dataset-{dataset}_model-{model}-{stimuli_type}_brain_{similarity_type}-alignment_score_{number_of_neighbours}NN_relabelled.parquet"
     params:
         number_of_neighbours=lambda wc: wc.number_of_neighbours,
-        model=lambda wc: wc.model
+        model=lambda wc: wc.model,
+        number_of_relabelings=NUMBER_OF_RELABELLINGS,
+        random_seed=RANDOM_SEED
     conda:
-        "envs/compute_relabelled_llm_mind_alignment_score_environment.yaml"
+        "envs/relabel_llm_similarity_and_compute_relabelled_llm_alignment_score_environment.yaml"
     shell:
         r"""
-            python3 workflow/llm_mind_alignment/scripts/compute_relabelled_llm_mind_alignment_score.py \
-                --number_of_neighbours {params.number_of_neighbours} \
-                --model {params.model:q} \
-                --relabelled_llm_nearest_neighbours {input.relabelled_llm_nearest_neighbours:q} \
+            python3 workflow/llm_mind_alignment/scripts/relabel_llm_similarity_and_compute_relabelled_llm_alignment_score.py \
+                --llm_similarity {input.llm_similarity:q} \
                 --isc_nearest_neighbours {input.isc_nearest_neighbours:q} \
-                --relabelled_alignment_score {output.relabelled_alignment_score:q}
+                --relabelled_alignment_score {output.relabelled_alignment_score:q} \
+                --number_of_neighbours {params.number_of_neighbours} \
+                --model {params.model:q}
+                --number_of_relabelings {params.number_of_relabelings} \
+                --random_seed {params.random_seed}
         """
+
+#rule compute_relabelled_llm_mind_alignment_score:
+#    input:
+#        isc_nearest_neighbours="results/mind/{dataset}/isc_{similarity_type}_nearest_neighbours_{number_of_neighbours}NN.parquet",
+#        relabelled_llm_nearest_neighbours="results/{stimuli_type}_models/{dataset}/{similarity_type}_nearest_neighbours/{model}_{similarity_type}_nearest_neighbours_{number_of_neighbours}NN_relabelled.parquet"
+#    output:
+#        relabelled_alignment_score="results/alignment_scores/dataset-{dataset}_model-{model}-{stimuli_type}_brain_{similarity_type}-alignment_score_{number_of_neighbours}NN_relabelled.parquet"
+#    params:
+#        number_of_neighbours=lambda wc: wc.number_of_neighbours,
+#        model=lambda wc: wc.model
+#    conda:
+#        "envs/compute_relabelled_llm_mind_alignment_score_environment.yaml"
+#    shell:
+#        r"""
+#            python3 workflow/llm_mind_alignment/scripts/compute_relabelled_llm_mind_alignment_score.py \
+#                --number_of_neighbours {params.number_of_neighbours} \
+#                --model {params.model:q} \
+#                --relabelled_llm_nearest_neighbours {input.relabelled_llm_nearest_neighbours:q} \
+#                --isc_nearest_neighbours {input.isc_nearest_neighbours:q} \
+#                --relabelled_alignment_score {output.relabelled_alignment_score:q}
+#        """
 
 rule compute_empirical_p_value:
     input:
