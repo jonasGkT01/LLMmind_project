@@ -1,0 +1,78 @@
+from itertools import combinations
+
+def llm_llm_pairings():
+    llm_llm_pairs = []
+
+    for dataset in DATASET_KEYS:
+        nn = config[dataset]["number_of_neighbours"]
+
+        # allow both old scalar syntax and new list syntax
+        if isinstance(nn, int):
+            nn = [nn]
+
+        for number_of_neighbours in nn:
+            compatible_models = [
+                model
+                for model in MODEL_KEYS
+                if config["models"][model]["modality"] in list(config[dataset]["stimuli_dir"].keys() + ["multimodal"])
+            ]
+
+            for model_1, model_2 in combinations(compatible_models, 2):
+                for modality_1, modality_2 in ["language", "vision"]:
+                    if config["models"][model_1]["modality"] in [modality_1, "multimodal"] and config["models"][model_2]["modality"] in [modality_2, "multimodal"]:
+                        for similarity_type in SIMILARITY_TYPES:
+                            llm_llm_pairs.append(
+                                {
+                                    "dataset": dataset,
+                                    "number_of_neighbours": number_of_neighbours,
+                                    "model_1": model_1,
+                                    "modality_1": modality_1,
+                                    "model_2": model_2,
+                                    "modality_2": modality_2,
+                                    "similarity_type": similarity_type,
+                                }
+                            )
+    
+    return llm_llm_pairs
+
+LLM_LLM_PAIRINGS = llm_llm_pairings()
+
+rule all_llm_llm_alignment:
+    input:
+        [
+            f"results/alignment_scores/dataset-{llm_llm_pair['dataset']}_model-{llm_llm_pair['model_1']}-{llm_llm_pair['modality_1']}_model-{llm_llm_pair['model_2']}-{llm_llm_pair['modality_2']}_{llm_llm_pair['similarity_type']}-alignment_score_{llm_llm_pair['number_of_neighbours']}NN.parquet"
+            for llm_llm_pair in LLM_LLM_PAIRINGS
+        ],
+        "results/summary_llm_llm_alignment.tsv"
+
+rule compute_llm_llm_alignment_score:
+    input:
+        llm_nearest_neighbours_1="results/{modality_1}_models/{dataset}/{similarity_type}_nearest_neighbours/{model_1}_{similarity_type}_nearest_neighbours_{number_of_neighbours}NN.parquet",
+        llm_nearest_neighbours_2="results/{modality_2}_models/{dataset}/{similarity_type}_nearest_neighbours/{model_2}_{similarity_type}_nearest_neighbours_{number_of_neighbours}NN.parquet"
+    output:
+        llm_llm_alignment_score_tsv="results/alignment_scores/dataset-{dataset}_model-{model_1}-{modality_1}_model-{model_2}-{modality_2}_{similarity_type}-alignment_score_{number_of_neighbours}NN.tsv"
+    params:
+        number_of_neighbours=lambda wc: wc.number_of_neighbours
+    conda:
+        "envs/compute_llm_llm_alignment_score_environment.yaml"
+    shell:
+        r"""
+            python3 workflow/llm_llm_alignment/scripts/compute_llm_llm_alignment_score.py \
+                --number_of_neighbours {params.number_of_neighbours:q} \
+                --llm_nearest_neighbours_1 {input.llm_nearest_neighbours_1:q} \
+                --llm_nearest_neighbours_2 {input.llm_nearest_neighbours_2:q} > {output.llm_llm_alignment_score_tsv:q}
+        """
+
+rule reduce_all_llm_llm_alignment_scores:
+    input:
+        [
+            f"results/alignment_scores/dataset-{llm_llm_pair['dataset']}_model-{llm_llm_pair['model_1']}-{llm_llm_pair['modality_1']}_model-{llm_llm_pair['model_2']}-{llm_llm_pair['modality_2']}_{llm_llm_pair['similarity_type']}-alignment_score_{llm_llm_pair['number_of_neighbours']}NN.tsv"
+            for llm_llm_pair in LLM_LLM_PAIRINGS
+        ]
+    output:
+        reduced_llm_llm_alignment_scores_tsv="results/summary_llm_llm_alignment.tsv"
+    conda:
+        "envs/reduce_all_llm_llm_alignment_scores_environment.yaml"
+    shell:
+        r"""
+            matrix_reduce -t "results/alignment_scores/dataset-*_model-*-*_model-*-*_*-alignment_score_*NN.tsv" > {output.reduced_llm_llm_alignment_scores_tsv:q} 
