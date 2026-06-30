@@ -54,7 +54,7 @@ rule all:
             for pair in PAIRINGS
         ],
         "results/summary.tsv",
-#        "results/alignment_summary/all_alignment_scores.tsv"
+        "results/all_alignment_scores.tsv"
 #        [
 #            f"results/alignment_score/{pair['stimuli_type']}_models/{pair['dataset']}/{pair['similarity_type']}_alignment_scores/{pair['model']}_brain_{pair['similarity_type']}_alignment_score_{pair['number_of_neighbours']}NN.parquet"
 #            for pair in PAIRINGS

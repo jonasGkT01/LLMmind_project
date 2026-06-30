@@ -4,45 +4,58 @@ import argparse
 import numpy as np
 import pandas as pd
 
-def compute_empirical_statistics(
-    observed_df: pd.DataFrame,
-    relabelled_df: pd.DataFrame,
-) -> pd.DataFrame:
-    output_rows = []
+def compute_empirical_statistics(observed_df: pd.DataFrame, relabelled_df: pd.DataFrame) -> pd.DataFrame:
+    number_of_relabellings = relabelled_df["shuffle_id"].nunique()
 
-    for concept, observed_alignment_score in observed_df.set_index("concept")["alignment_score"].items():
-        concept_null_scores = relabelled_df[relabelled_df["concept"] == concept]["alignment_score"].to_numpy(dtype=float)
+    observed_by_concept = observed_df.set_index("concept")
 
-        number_of_relabellings = relabelled_df["shuffle_id"].nunique()
-
-        empirical_null_mean = concept_null_scores.mean()
-
-        number_of_exceedances = np.sum(
-                concept_null_scores
-                >= observed_alignment_score
-            )
-
-        empirical_p_value = (number_of_exceedances + 1)/(number_of_relabellings + 1)
-
-        output_rows.append(
-            {
-                "concept": concept,
-                "observed_common_neighbours": observed_df[observed_df["concept"] == concept]["common_neighbours"].values[0],
-                "observed_alignment_score": observed_alignment_score,
-                "empirical_null_mean_alignment_score": empirical_null_mean,
-                "number_of_relabellings": number_of_relabellings,
-                "number_of_null_scores_at_least_as_large": number_of_exceedances,
-                "empirical_upper_tail_p_value": empirical_p_value,
-            }
+    relabelled_summary_df = (
+        relabelled_df
+        .merge(
+            observed_by_concept[["alignment_score"]],
+            left_on="concept",
+            right_index=True,
+            suffixes=("", "_observed"),
         )
+        .assign(
+            exceeds_observed=lambda df: df["alignment_score"] >= df["alignment_score_observed"]
+        )
+        .groupby("concept", sort=False)
+        .agg(
+            empirical_null_mean_alignment_score=("alignment_score", "mean"),
+            number_of_null_scores_at_least_as_large=("exceeds_observed", "sum"),
+        )
+    )
 
-    return pd.DataFrame(output_rows)
+    summary_df = observed_by_concept.join(relabelled_summary_df)
+
+    summary_df["number_of_relabellings"] = number_of_relabellings
+    summary_df["empirical_upper_tail_p_value"] = (summary_df["number_of_null_scores_at_least_as_large"] + 1)/(number_of_relabellings + 1)
+
+    summary_df = summary_df.reset_index()
+
+    summary_df = summary_df.rename(
+        columns={
+            "common_neighbours": "observed_common_neighbours",
+            "alignment_score": "observed_alignment_score",
+        }
+    )
+
+    return summary_df[
+        [
+            "concept",
+            "observed_common_neighbours",
+            "observed_alignment_score",
+            "empirical_null_mean_alignment_score",
+            "number_of_relabellings",
+            "number_of_null_scores_at_least_as_large",
+            "empirical_upper_tail_p_value",
+        ]
+    ]
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description=(
-            "Compute an upper-tail empirical p-value separately for each concept using observed and relabelled alignment-score Parquet files"
-        )
+        description="Compute an upper-tail empirical p-value separately for each concept using observed and relabelled alignment-score Parquet files"
     )
     parser.add_argument(
         "--observed_alignment_score",
@@ -55,7 +68,6 @@ def main() -> None:
     args = parser.parse_args()
 
     observed_df = pd.read_parquet(args.observed_alignment_score, engine="pyarrow")
-
     relabelled_df = pd.read_parquet(args.relabelled_alignment_score, engine="pyarrow")
 
     summary_df = compute_empirical_statistics(

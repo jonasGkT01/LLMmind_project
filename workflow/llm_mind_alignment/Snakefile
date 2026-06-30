@@ -12,7 +12,7 @@ rule all_llm_mind_alignment:
             for pair in PAIRINGS
         ],
         "results/summary.tsv",
-#        "results/alignment_summary/all_alignment_scores.tsv"
+        "results/all_alignment_scores.tsv"
 #        [
 #            f"results/alignment_summary/{pair['stimuli_type']}_models/{pair['dataset']}/parquet_summary/{pair['similarity_type']}_alignment_summary_{pair['number_of_neighbours']}NN_all_models.parquet"
 #            for pair in PAIRINGS
@@ -129,15 +129,15 @@ rule aggregate_all_p_value_outputs:
             for pair in PAIRINGS
         ]
     output:
-        tsv="results/alignment_summary/all_alignment_scores.tsv"
+        all_alignment_Scores_tsv="results/all_alignment_scores.tsv"
     conda:
-        "envs/aggregate_all_alignment_scores_environment.yaml"
+        "envs/aggregate_all_p_value_outputs_environment.yaml"
     shell:
         r"""
             python3 workflow/llm_mind_alignment/scripts/aggregate_all_p_value_outputs.py \
                 --empirical_p_values {input.empirical_p_values:q} \
                 --hypergeometric_p_values {input.hypergeometric_p_values:q} \
-                --tsv {output.tsv:q}
+                --all_alignment_Scores_tsv {output.all_alignment_Scores_tsv:q}
         """
 
 rule reduce_all_llmmind_alignment_p_values:
@@ -153,7 +153,7 @@ rule reduce_all_llmmind_alignment_p_values:
         "envs/reduce_all_llmmind_alignment_p_values_environment.yaml"
     shell:
         r"""
-            matrix_reduce -t "results/alignment_scores/dataset-*_model-*-*_brain_*-*_alignment_score_*NN.p_value.tsv" > {output.tsv_summary:q}
+            matrix_reduce -t "results/alignment_scores/dataset-*_model-*-*_brain_*_*-alignment_score_*NN.p_value.tsv" > {output.tsv_summary:q}
         """
 
 #rule aggregate_all_alignment_scores:

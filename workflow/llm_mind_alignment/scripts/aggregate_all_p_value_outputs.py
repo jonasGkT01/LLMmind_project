@@ -369,7 +369,7 @@ def main():
         required=True,
         help="Concept-level hypergeometric p-value TSV files",)
     parser.add_argument(
-        "--tsv",
+        "--all_alignment_Scores_tsv",
         required=True,
         help="Output transposed model-level summary TSV",)
     args = parser.parse_args()
@@ -455,7 +455,7 @@ def main():
 
     summary_wide_df = reshape_summary(summary_df)
 
-    tsv_path = Path(args.tsv)
+    tsv_path = Path(args.all_alignment_Scores_tsv)
     tsv_path.parent.mkdir(parents=True, exist_ok=True)
 
     summary_wide_df.to_csv(
