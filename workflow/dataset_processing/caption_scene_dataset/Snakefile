@@ -19,6 +19,7 @@ CAPTION_SCENE_ISC_DONE = f"{CAPTION_SCENE_PROCESSING_OUTPUT_DIR}/manifests/.isc_
 CAPTION_SCENE_IMAGE_CAPTION_TSV = "resources/datasets/caption_scene_dataset/V1/stimuli/COCO_CN/Image_caption_pairs.tsv"
 CAPTION_SCENE_STIMULI_READY = config["caption_scene"]["stimuli_ready"]
 
+CAPTION_SCENE_VISUAL_STIMULI_DIR = config["caption_scene"]["stimuli_dir"]["vision"]
 CAPTION_SCENE_EXCLUDED_STIMULI = config["caption_scene"]["excluded_stimuli"]
 
 def caption_scene_parse_bold_path(path):
@@ -156,9 +157,10 @@ rule finish_caption_scene_isc:
 checkpoint make_caption_scene_manifest:
     input:
         bold_files=CAPTION_SCENE_BOLD_FILES,
-        run_tables=CAPTION_SCENE_RUN_TABLES
+        run_tables=CAPTION_SCENE_RUN_TABLES,
+        visual_stimuli_dir=CAPTION_SCENE_VISUAL_STIMULI_DIR
     output:
-        singleton_stimuli=CAPTION_SCENE_EXCLUDED_STIMULI,
+        excluded_stimuli=CAPTION_SCENE_EXCLUDED_STIMULI,
         manifest=CAPTION_SCENE_MANIFEST,
         run_manifest_dir=directory(CAPTION_SCENE_RUN_MANIFEST_DIR),
         run_manifest_index=CAPTION_SCENE_RUN_MANIFEST_INDEX
@@ -175,7 +177,8 @@ checkpoint make_caption_scene_manifest:
             python workflow/dataset_processing/caption_scene_dataset/scripts/make_caption_scene_manifest.py \
                 --bold_files {input.bold_files:q} \
                 --run_tables {input.run_tables:q} \
-                --output_singleton_stimuli {output.singleton_stimuli:q} \
+                --visual_stimuli_dir {input.visual_stimuli_dir:q} \
+                --output_excluded_stimuli {output.excluded_stimuli:q} \
                 --output_manifest {output.manifest:q} \
                 --output_run_manifest_dir {output.run_manifest_dir:q} \
                 --output_run_manifest_index {output.run_manifest_index:q} \
@@ -204,13 +207,13 @@ rule split_caption_scene_bold_by_run_manifest:
             touch {output.done}
         """
 
-def caption_scene_parcel_outputs(wildcards):
+def caption_scene_parcel_paths(wildcards):
     checkpoint_output = checkpoints.make_caption_scene_manifest.get().output.manifest
     df = read_manifest(checkpoint_output)
 
     rows = df[df["stimulus_id"] == wildcards.stimulus_id]
 
-    return [
+    parcel_paths = [
         str(
             Path(CAPTION_SCENE_PROCESSING_OUTPUT_DIR)
             / "parcels"
@@ -222,6 +225,14 @@ def caption_scene_parcel_outputs(wildcards):
         )
         for row in rows.itertuples(index=False)
     ]
+
+    if len(parcel_paths) < 2:
+        raise ValueError(
+            f"Stimulus {wildcards.stimulus_id} has only "
+            f"{len(parcel_paths)} parcel time-series files in the manifest"
+        )
+
+    return parcel_paths
 
 rule extract_caption_scene_parcels:
     input:
@@ -248,12 +259,12 @@ rule extract_caption_scene_parcels:
 
 rule compute_caption_scene_isc:
     input:
-        CAPTION_SCENE_PARCELS_DONE,
-        parcel_ts=caption_scene_parcel_outputs
+        parcels_done=CAPTION_SCENE_PARCELS_DONE
     output:
         isc_npy=f"{CAPTION_SCENE_ISC_DIR}/task-{{stimulus_id}}_isc_mean.npy",
         isc_nii=f"{CAPTION_SCENE_ISC_DIR}/task-{{stimulus_id}}_isc_mean.nii.gz"
     params:
+        parcel_ts=caption_scene_parcel_paths,
         n_rois=config["atlas"]["n_rois"],
         yeo_networks=config["atlas"]["yeo_networks"],
         atlas_dir=config["atlas"]["atlas_dir"]
@@ -262,7 +273,7 @@ rule compute_caption_scene_isc:
     shell:
         r"""
             python3 workflow/dataset_processing/caption_scene_dataset/scripts/compute_caption_scene_isc.py \
-                --parcel_ts {input.parcel_ts:q} \
+                --parcel_ts {params.parcel_ts:q} \
                 --isc_npy {output.isc_npy:q} \
                 --isc_nii {output.isc_nii:q} \
                 --n_rois {params.n_rois} \

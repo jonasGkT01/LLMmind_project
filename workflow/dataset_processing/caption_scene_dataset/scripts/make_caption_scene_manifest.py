@@ -8,6 +8,8 @@ import pandas as pd
 
 import nibabel as nib
 
+IMAGE_EXTENSIONS = {".bmp", ".jpeg", ".jpg", ".png", ".tif", ".tiff", ".webp",}
+
 def parse_bold_path(path):
     name = Path(path).name
 
@@ -39,9 +41,48 @@ def write_lines(values, output_path):
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    with output_path.open("w") as f:
+    with output_path.open("w", encoding="utf-8") as f:
         for value in sorted(set(values)):
             f.write(f"{value}\n")
+
+def collect_available_image_stimuli(visual_stimuli_dir):
+    visual_stimuli_dir = Path(visual_stimuli_dir)
+
+    if not visual_stimuli_dir.exists():
+        raise FileNotFoundError(
+            f"Visual stimuli directory does not exist: {visual_stimuli_dir}"
+        )
+
+    if not visual_stimuli_dir.is_dir():
+        raise NotADirectoryError(
+            f"Visual stimuli path is not a directory: {visual_stimuli_dir}"
+        )
+
+    image_paths = [
+        path
+        for path in sorted(visual_stimuli_dir.iterdir())
+        if path.is_file()
+        and path.suffix.lower() in IMAGE_EXTENSIONS
+    ]
+
+    if not image_paths:
+        raise ValueError(
+            f"No supported image files were found in: {visual_stimuli_dir}"
+        )
+
+    stimulus_to_path = {}
+
+    for image_path in image_paths:
+        stimulus_id = image_path.stem
+
+        if stimulus_id in stimulus_to_path:
+            raise ValueError(
+                f"Duplicate stimulus ID {stimulus_id} in visual stimuli directory: {stimulus_to_path[stimulus_id]} and {image_path}"
+            )
+
+        stimulus_to_path[stimulus_id] = image_path
+
+    return set(stimulus_to_path)
 
 def is_valid_nifti(path):
     try:
@@ -109,10 +150,13 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--bold_files", nargs="+", required=True)
     parser.add_argument("--run_tables", nargs="+", required=True)
+    parser.add_argument("--visual_stimuli_dir", required=True)
     parser.add_argument(
-        "--output_singleton_stimuli",
+        "--output_excluded_stimuli",
         required=True,
-        help="Output text file containing stimulus IDs represented by only one NIfTI",
+        help=(
+            "Output text file containing every image stimulus present in All_images_480 but absent from the final mind manifest"
+        ),
     )
     parser.add_argument("--output_manifest", required=True)
     parser.add_argument("--output_run_manifest_dir", required=True)
@@ -122,13 +166,16 @@ def main():
     parser.add_argument("--event_duration_s", required=True, type=float)
     parser.add_argument("--onset_shift_s", default=0.0, type=float)
     parser.add_argument("--run_table_encoding", default="gbk")
-
     args = parser.parse_args()
 
     if len(args.bold_files) != len(args.run_tables):
         raise ValueError(
             f"The number of BOLD files and run tables must be identical. Got {len(args.bold_files)} BOLD files and {len(args.run_tables)} run tables"
         )
+
+    available_image_stimuli = collect_available_image_stimuli(
+        args.visual_stimuli_dir
+    )
 
     n_vols = int(math.ceil(args.event_duration_s / args.tr))
     rows = []
@@ -156,6 +203,7 @@ def main():
             "Image",
             "Caption",
         }
+
         missing_columns = required_columns - set(df.columns)
 
         if missing_columns:
@@ -184,7 +232,8 @@ def main():
 
             if crop_start_s < 0:
                 raise ValueError(
-                    f"Negative crop start for {run_key}, event {event_index}, image {image}: {crop_start_s}"
+                    f"Negative crop start for {run_key}, event "
+                    f"{event_index}, image {image}: {crop_start_s}"
                 )
 
             start_vol = int(round(crop_start_s / args.tr))
@@ -237,7 +286,10 @@ def main():
     out = pd.DataFrame(rows)
 
     if out.empty:
-        write_lines([], args.output_singleton_stimuli)
+        write_lines(
+            available_image_stimuli,
+            args.output_excluded_stimuli,
+        )
 
         raise ValueError(
             "Global manifest is empty. No valid events were found after excluding unreadable or corrupted BOLD files"
@@ -253,11 +305,6 @@ def main():
         stimulus_counts == 1
     ].index.tolist()
 
-    write_lines(
-        singleton_stimuli,
-        args.output_singleton_stimuli,
-    )
-
     if singleton_stimuli:
         warnings.warn(
             "Removing stimuli represented by only one valid single-stimulus NIfTI: " + ", ".join(sorted(singleton_stimuli)),
@@ -266,9 +313,34 @@ def main():
 
     out = out[out["stimulus_id"].isin(valid_stimuli)].copy()
 
+    retained_stimuli = set(
+        out["stimulus_id"]
+        .dropna()
+        .astype(str)
+        .str.strip()
+    )
+
+    retained_without_source_image = sorted(
+        retained_stimuli - available_image_stimuli
+    )
+
+    if retained_without_source_image:
+        raise ValueError(
+            f"The final mind manifest contains stimulus IDs that are absent from All_images_480: {retained_without_source_image}"
+        )
+
+    excluded_stimuli = sorted(
+        available_image_stimuli - retained_stimuli
+    )
+
+    write_lines(
+        excluded_stimuli,
+        args.output_excluded_stimuli,
+    )
+
     if out.empty:
         raise ValueError(
-            "Global manifest is empty after removing stimuli represented by fewer than two single-stimulus NIfTI files"
+            "Global manifest is empty after removing stimuli represented by fewer than two valid single-stimulus NIfTI files"
         )
 
     out = out.sort_values(
@@ -290,7 +362,8 @@ def main():
     print(f"Wrote run manifests to {args.output_run_manifest_dir}")
     print(f"Wrote run manifest index to {args.output_run_manifest_index}")
     print(f"Skipped {skipped_corrupted} unreadable or corrupted BOLD files")
-    print(f"Wrote {len(singleton_stimuli)} singleton stimulus IDs to {args.output_singleton_stimuli}")
+    print(f"Wrote {len(excluded_stimuli)} excluded stimulus IDs to {args.output_excluded_stimuli}")
+    print(f"Retained {len(retained_stimuli)} stimulus IDs in the final mind manifest")
 
 if __name__ == "__main__":
     main()
