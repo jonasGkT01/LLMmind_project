@@ -5,5 +5,3 @@ dependencies:
   - python
   - numpy
   - pandas
-  - scipy
-  - pyarrow

@@ -11,7 +11,8 @@ rule all_llm_mind_alignment:
             f"results/alignment_scores/dataset-{pair['dataset']}_model-{pair['model']}-{pair['stimuli_type']}_brain_{pair['similarity_type']}-alignment_score_{pair['number_of_neighbours']}NN_relabelled.parquet"
             for pair in PAIRINGS
         ],
-        "results/summary.tsv"
+        "results/summary.tsv",
+#        "results/alignment_summary/all_alignment_scores.tsv"
 #        [
 #            f"results/alignment_summary/{pair['stimuli_type']}_models/{pair['dataset']}/parquet_summary/{pair['similarity_type']}_alignment_summary_{pair['number_of_neighbours']}NN_all_models.parquet"
 #            for pair in PAIRINGS
@@ -115,6 +116,28 @@ rule compute_hypergeometric_p_value:
             python3 workflow/llm_mind_alignment/scripts/compute_hypergeometric_p_value.py \
                 --observed_alignment_score {input.observed_alignment_score:q} \
                 --number_of_neighbours {params.number_of_neighbours} > {output.hypergeometric_p_value:q}
+        """
+
+rule aggregate_all_p_value_outputs:
+    input:
+        empirical_p_values=[
+            f"results/alignment_scores/dataset-{pair['dataset']}_model-{pair['model']}-{pair['stimuli_type']}_brain_empirical_{pair['similarity_type']}-alignment_score_{pair['number_of_neighbours']}NN.p_value.tsv"
+            for pair in PAIRINGS
+        ],
+        hypergeometric_p_values=[
+            f"results/alignment_scores/dataset-{pair['dataset']}_model-{pair['model']}-{pair['stimuli_type']}_brain_hypergeometric_{pair['similarity_type']}-alignment_score_{pair['number_of_neighbours']}NN.p_value.tsv"
+            for pair in PAIRINGS
+        ]
+    output:
+        tsv="results/alignment_summary/all_alignment_scores.tsv"
+    conda:
+        "envs/aggregate_all_alignment_scores_environment.yaml"
+    shell:
+        r"""
+            python3 workflow/llm_mind_alignment/scripts/aggregate_all_p_value_outputs.py \
+                --empirical_p_values {input.empirical_p_values:q} \
+                --hypergeometric_p_values {input.hypergeometric_p_values:q} \
+                --tsv {output.tsv:q}
         """
 
 rule reduce_all_llmmind_alignment_p_values:
