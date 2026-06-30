@@ -129,7 +129,7 @@ rule aggregate_all_p_value_outputs:
             for pair in PAIRINGS
         ]
     output:
-        all_alignment_Scores_tsv="results/all_alignment_scores.tsv"
+        all_alignment_scores_tsv="results/all_alignment_scores.tsv"
     conda:
         "envs/aggregate_all_p_value_outputs_environment.yaml"
     shell:
@@ -137,7 +137,7 @@ rule aggregate_all_p_value_outputs:
             python3 workflow/llm_mind_alignment/scripts/aggregate_all_p_value_outputs.py \
                 --empirical_p_values {input.empirical_p_values:q} \
                 --hypergeometric_p_values {input.hypergeometric_p_values:q} \
-                --all_alignment_Scores_tsv {output.all_alignment_Scores_tsv:q}
+                --all_alignment_scores_tsv {output.all_alignment_scores_tsv:q}
         """
 
 rule reduce_all_llmmind_alignment_p_values:
