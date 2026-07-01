@@ -30,6 +30,29 @@ def parse_p_value_path(path):
 
     return metadata
 
+def parse_relabelled_alignment_score_path(path):
+    filename = Path(path).name
+
+    pattern = (
+        r"dataset-(?P<dataset>.+?)"
+        r"_model-(?P<model>.+?)-(?P<stimuli_type>[^_]+)"
+        r"_brain_(?P<similarity_type>.+?)"
+        r"-alignment_score_(?P<number_of_neighbours>\d+)NN"
+        r"_relabelled\.parquet"
+    )
+
+    match = re.fullmatch(pattern, filename)
+
+    if match is None:
+        raise ValueError(
+            f"Could not parse relabelled alignment-score filename: {path}"
+        )
+
+    metadata = match.groupdict()
+    metadata["number_of_neighbours"] = int(metadata["number_of_neighbours"])
+
+    return metadata
+
 def result_key(metadata):
     return (
         metadata["dataset"],
@@ -97,6 +120,44 @@ def read_hypergeometric_p_values(path):
         )
 
     return hypergeometric_df
+
+def read_relabelled_alignment_scores(path):
+    relabelled_df = pd.read_parquet(path, engine="pyarrow")
+
+    required_columns = {
+        "shuffle_id",
+        "concept",
+        "alignment_score",
+    }
+
+    missing_columns = required_columns - set(relabelled_df.columns)
+
+    if missing_columns:
+        raise ValueError(
+            f"Relabelled alignment-score file {path} is missing columns: {sorted(missing_columns)}"
+        )
+
+    duplicated_relabelled_scores = relabelled_df[
+        relabelled_df.duplicated(
+            subset=[
+                "shuffle_id",
+                "concept",
+            ],
+            keep=False,
+        )
+    ][
+        [
+            "shuffle_id",
+            "concept",
+        ]
+    ].head(10).to_dict(orient="records")
+
+    if duplicated_relabelled_scores:
+        raise ValueError(
+            f"Relabelled alignment-score file {path} contains duplicated shuffle/concept scores: {duplicated_relabelled_scores}"
+        )
+
+    return relabelled_df
 
 def validate_matching_p_values(
     empirical_df,
@@ -171,6 +232,53 @@ def validate_matching_p_values(
             f"Observed alignment scores differ between empirical and hypergeometric files for {result_description}. Mismatching concepts: {mismatching_concepts[:10]}"
         )
 
+def compute_model_level_empirical_p_value(
+    empirical_df,
+    relabelled_df,
+    dataset,
+    model,
+    stimuli_type,
+    similarity_type,
+    number_of_neighbours,
+):
+    empirical_concepts = set(empirical_df["concept"])
+    relabelled_concepts = set(relabelled_df["concept"])
+
+    result_description = (f"dataset={dataset}, model={model}, stimuli_type={stimuli_type}, similarity_type={similarity_type}, number_of_neighbours={number_of_neighbours}")
+
+    if empirical_concepts != relabelled_concepts:
+        only_empirical = sorted(empirical_concepts - relabelled_concepts)
+        only_relabelled = sorted(relabelled_concepts - empirical_concepts)
+
+        raise ValueError(
+            f"Empirical p-value and relabelled alignment-score concept sets differ for {result_description}. Only empirical: {only_empirical[:10]}. Only relabelled: {only_relabelled[:10]}"
+        )
+
+    observed_model_alignment_score = empirical_df["observed_alignment_score"].mean()
+
+    null_model_alignment_scores = relabelled_df.groupby(
+        "shuffle_id",
+        sort=True,
+    )["alignment_score"].mean().to_numpy(dtype=float)
+
+    number_of_relabellings = len(null_model_alignment_scores)
+
+    if number_of_relabellings == 0:
+        raise ValueError(
+            f"No relabelled model-level scores were available for {result_description}"
+        )
+
+    number_of_null_scores_at_least_as_large = np.sum(
+        null_model_alignment_scores >= observed_model_alignment_score
+    )
+
+    model_level_empirical_p_value = (number_of_null_scores_at_least_as_large + 1)/(number_of_relabellings + 1)
+
+    return (
+        model_level_empirical_p_value,
+        number_of_null_scores_at_least_as_large,
+    )
+
 def aggregate_model_results(
     dataset,
     model,
@@ -179,6 +287,7 @@ def aggregate_model_results(
     number_of_neighbours,
     empirical_df,
     hypergeometric_df,
+    relabelled_df,
 ):
     validate_matching_p_values(
         empirical_df=empirical_df,
@@ -226,6 +335,16 @@ def aggregate_model_results(
 
     number_of_relabellings = int(number_of_relabellings_values[0])
 
+    model_level_empirical_p_value, model_level_number_of_null_scores_at_least_as_large = compute_model_level_empirical_p_value(
+        empirical_df=empirical_df,
+        relabelled_df=relabelled_df,
+        dataset=dataset,
+        model=model,
+        stimuli_type=stimuli_type,
+        similarity_type=similarity_type,
+        number_of_neighbours=number_of_neighbours,
+    )
+
     return {
         "dataset": dataset,
         "model": model,
@@ -238,6 +357,8 @@ def aggregate_model_results(
         "empirical_null_mean_common_neighbours": empirical_null_mean_common_neighbours,
         "empirical_null_mean_alignment_score": empirical_null_mean_alignment_score,
         "number_of_relabellings": number_of_relabellings,
+        "model_level_number_of_null_scores_at_least_as_large": model_level_number_of_null_scores_at_least_as_large,
+        "model_level_empirical_p_value": model_level_empirical_p_value,
         "mean_empirical_p_value_across_concepts": empirical_df["empirical_upper_tail_p_value"].mean(),
         "median_empirical_p_value_across_concepts": empirical_df["empirical_upper_tail_p_value"].median(),
         "min_empirical_p_value_across_concepts": empirical_df["empirical_upper_tail_p_value"].min(),
@@ -369,6 +490,11 @@ def main():
         required=True,
         help="Concept-level hypergeometric p-value TSV files",)
     parser.add_argument(
+        "--relabelled_alignment_scores",
+        nargs="+",
+        required=True,
+        help="Relabelled alignment-score Parquet files",)
+    parser.add_argument(
         "--all_alignment_scores_tsv",
         required=True,
         help="Output transposed model-level summary TSV",)
@@ -412,8 +538,23 @@ def main():
 
         hypergeometric_paths_by_key[key] = path
 
+    relabelled_paths_by_key = {}
+
+    for path in args.relabelled_alignment_scores:
+        metadata = parse_relabelled_alignment_score_path(path)
+
+        key = result_key(metadata)
+
+        if key in relabelled_paths_by_key:
+            raise ValueError(
+                f"Duplicate relabelled alignment-score file for result: {key}"
+            )
+
+        relabelled_paths_by_key[key] = path
+
     empirical_keys = set(empirical_paths_by_key)
     hypergeometric_keys = set(hypergeometric_paths_by_key)
+    relabelled_keys = set(relabelled_paths_by_key)
 
     if empirical_keys != hypergeometric_keys:
         only_empirical = sorted(empirical_keys - hypergeometric_keys)
@@ -423,6 +564,14 @@ def main():
             f"Empirical and hypergeometric result sets differ. Only empirical: {only_empirical}. Only hypergeometric: {only_hypergeometric}"
         )
 
+    if empirical_keys != relabelled_keys:
+        only_empirical = sorted(empirical_keys - relabelled_keys)
+        only_relabelled = sorted(relabelled_keys - empirical_keys)
+
+        raise ValueError(
+            f"Empirical p-value and relabelled alignment-score result sets differ. Only empirical: {only_empirical}. Only relabelled: {only_relabelled}"
+        )
+
     summary_rows = []
 
     for key in sorted(empirical_keys):
@@ -430,9 +579,11 @@ def main():
 
         empirical_path = empirical_paths_by_key[key]
         hypergeometric_path = hypergeometric_paths_by_key[key]
+        relabelled_path = relabelled_paths_by_key[key]
 
         empirical_df = read_empirical_p_values(empirical_path)
         hypergeometric_df = read_hypergeometric_p_values(hypergeometric_path)
+        relabelled_df = read_relabelled_alignment_scores(relabelled_path)
 
         summary_rows.append(
             aggregate_model_results(
@@ -443,6 +594,7 @@ def main():
                 number_of_neighbours=number_of_neighbours,
                 empirical_df=empirical_df,
                 hypergeometric_df=hypergeometric_df,
+                relabelled_df=relabelled_df,
             )
         )
 

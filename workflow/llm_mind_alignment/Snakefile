@@ -118,6 +118,22 @@ rule compute_hypergeometric_p_value:
                 --number_of_neighbours {params.number_of_neighbours} > {output.hypergeometric_p_value:q}
         """
 
+rule reduce_all_p_values:
+    input:
+        [
+            f"results/alignment_scores/dataset-{pair['dataset']}_model-{pair['model']}-{pair['stimuli_type']}_brain_{method}_{pair['similarity_type']}-alignment_score_{pair['number_of_neighbours']}NN.p_value.tsv"
+            for pair in PAIRINGS
+            for method in ["empirical", "hypergeometric"]
+        ]
+    output:
+        tsv_summary="results/summary.tsv"
+    conda:
+        "envs/reduce_all_p_values_environment.yaml"
+    shell:
+        r"""
+            matrix_reduce -t "results/alignment_scores/dataset-*_model-*-*_brain_*_*-alignment_score_*NN.p_value.tsv" > {output.tsv_summary:q}
+        """
+
 rule aggregate_all_p_value_outputs:
     input:
         empirical_p_values=[
@@ -126,6 +142,10 @@ rule aggregate_all_p_value_outputs:
         ],
         hypergeometric_p_values=[
             f"results/alignment_scores/dataset-{pair['dataset']}_model-{pair['model']}-{pair['stimuli_type']}_brain_hypergeometric_{pair['similarity_type']}-alignment_score_{pair['number_of_neighbours']}NN.p_value.tsv"
+            for pair in PAIRINGS
+        ],
+        relabelled_alignment_scores=[
+            f"results/alignment_scores/dataset-{pair['dataset']}_model-{pair['model']}-{pair['stimuli_type']}_brain_{pair['similarity_type']}-alignment_score_{pair['number_of_neighbours']}NN_relabelled.parquet"
             for pair in PAIRINGS
         ]
     output:
@@ -137,23 +157,8 @@ rule aggregate_all_p_value_outputs:
             python3 workflow/llm_mind_alignment/scripts/aggregate_all_p_value_outputs.py \
                 --empirical_p_values {input.empirical_p_values:q} \
                 --hypergeometric_p_values {input.hypergeometric_p_values:q} \
+                --relabelled_alignment_scores {input.relabelled_alignment_scores:q} \
                 --all_alignment_scores_tsv {output.all_alignment_scores_tsv:q}
-        """
-
-rule reduce_all_llmmind_alignment_p_values:
-    input:
-        [
-            f"results/alignment_scores/dataset-{pair['dataset']}_model-{pair['model']}-{pair['stimuli_type']}_brain_{method}_{pair['similarity_type']}-alignment_score_{pair['number_of_neighbours']}NN.p_value.tsv"
-            for pair in PAIRINGS
-            for method in ["empirical", "hypergeometric"]
-        ]
-    output:
-        tsv_summary="results/summary.tsv"
-    conda:
-        "envs/reduce_all_llmmind_alignment_p_values_environment.yaml"
-    shell:
-        r"""
-            matrix_reduce -t "results/alignment_scores/dataset-*_model-*-*_brain_*_*-alignment_score_*NN.p_value.tsv" > {output.tsv_summary:q}
         """
 
 #rule aggregate_all_alignment_scores:
