@@ -5,3 +5,4 @@ channels:
 dependencies:
   - python
   - matrix_reduce
+  - bawk

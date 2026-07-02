@@ -131,8 +131,20 @@ rule reduce_all_p_values:
         "envs/reduce_all_p_values_environment.yaml"
     shell:
         r"""
-            matrix_reduce -t "results/alignment_scores/dataset-*_model-*-*_brain_*_*-alignment_score_*NN.p_value.tsv" > {output.tsv_summary:q}
+            matrix_reduce -t "results/alignment_scores/dataset-*_model-*-*_brain_*_*-alignment_score_*NN.p_value.tsv" \
+            | bawk 'NR==1 {{$1="dataset;model;stimuli_type;pvalue_type;similarity_type;number_of_neighbours"; print}} $2!="concept" {{print}}' | tr ";" "\t" > {output.tsv_summary}
         """
+
+#rule translate_parquet_to_tsv_addingobserved_alignment_score:
+#    input:
+#        parquet="results/alignment_scores/dataset-narratives_model-bloom_7b1-language_brain_cosine-alignment_score_5NN_relabelled.parquet",
+#        empirical_p_value_tsv="results/alignment_scores/dataset-narratives_model-bloom_7b1-language_brain_empirical_cosine-alignment_score_5NN.p_value.tsv"
+#    output:
+#        observed_alignment_score_tsv="results/alignment_scores/dataset-narratives_model-bloom_7b1-language_brain_cosine-alignment_score_5NN.observed.tsv"
+#    shell:
+#        r"""
+#            ./parquet2tsv.sh results/alignment_scores/dataset-narratives_model-bloom_7b1-language_brain_cosine-alignment_score_5NN_relabelled.parquet | translate -a results/alignment_scores/dataset-narratives_model-bloom_7b1-language_brain_empirical_cosine-alignment_score_5NN.p_value.tsv 3 > results/alignment_scores/dataset-narratives_model-bloom_7b1-language_brain_cosine-alignment_score_5NN.observed.tsv
+#        """
 
 rule aggregate_all_p_value_outputs:
     input:
