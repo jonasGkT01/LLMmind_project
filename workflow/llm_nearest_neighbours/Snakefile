@@ -15,7 +15,7 @@ rule all_llm_nearest_neighbours:
 
 rule download_pretrained_llm:
     output:
-        model_dir=directory("resources/models/{model}")
+        model_dir=directory(protected("resources/models/{model}"))
     params:
         hf_name=lambda wc: config["models"][wc.model]["hf_name"]
     conda:
