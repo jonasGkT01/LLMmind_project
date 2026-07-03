@@ -9,7 +9,7 @@ def pairings():
 
     for dataset in DATASETS:
         numbers_of_neighbours = config[dataset]["number_of_neighbours"]
-        
+
         # allow both old scalar syntax and new list syntax
         if isinstance(numbers_of_neighbours, int):
             numbers_of_neighbours = [numbers_of_neighbours]
@@ -55,18 +55,3 @@ rule all:
         ],
         "results/summary.tsv",
         "results/all_alignment_scores.tsv"
-#        [
-#            f"results/alignment_score/{pair['stimuli_type']}_models/{pair['dataset']}/{pair['similarity_type']}_alignment_scores/{pair['model']}_brain_{pair['similarity_type']}_alignment_score_{pair['number_of_neighbours']}NN.parquet"
-#            for pair in PAIRINGS
-#        ],
-#        "results/alignment_score/summary.tsv"
-#        [
-#            f"results/alignment_summary/{pair['stimuli_type']}_models/{pair['dataset']}/parquet_summary/{similarity_type}_alignment_summary_{pair['number_of_neighbours']}NN_all_models.parquet"
-#            for pair in PAIRINGS
-#            for similarity_type in SIMILARITY_TYPES
-#        ],
-#        [
-#            f"results/alignment_summary/{pair['stimuli_type']}_models/{pair['dataset']}/tsv_summary/{similarity_type}_alignment_summary_{pair['number_of_neighbours']}NN_all_models.tsv"
-#            for pair in PAIRINGS
-#            for similarity_type in SIMILARITY_TYPES
-#        ]

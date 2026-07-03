@@ -1,7 +1,5 @@
 from pathlib import Path
 
-#NUMBER_OF_RELABELLINGS = config["number_of_relabellings"]
-
 rule all_llm_nearest_neighbours:
     input:
         [
@@ -86,24 +84,3 @@ rule compute_llm_nearest_neighbours:
                 --similarity_dataframe {input.similarity_dataframe:q} \
                 --nearest_neighbours {output.nearest_neighbours:q}
         """
-
-#rule relabel_llm_similarity_and_compute_relabelled_llm_nearest_neighbours:
-#    input:
-#        similarity_dataframe="results/{stimuli_type}_models/{dataset}/{similarity_type}_similarity/{model}_{similarity_type}_similarity.parquet"
-#    output:
-#        relabelled_nearest_neighbours="results/{stimuli_type}_models/{dataset}/{similarity_type}_nearest_neighbours/{model}_{similarity_type}_nearest_neighbours_{number_of_neighbours}NN_relabelled.parquet"
-#    params:
-#        number_of_neighbours=lambda wc: wc.number_of_neighbours,
-#        number_of_relabellings=NUMBER_OF_RELABELLINGS,
-#        random_seed=config["random_seed"]
-#    conda:
-#        "envs/relabel_llm_similarity_and_compute_relabelled_llm_nearest_neighbours_environment.yaml"
-#    shell:
-#        r"""
-#            python3 workflow/llm_nearest_neighbours/scripts/relabel_llm_similarity_and_compute_relabelled_llm_nearest_neighbours.py \
-#                --similarity_dataframe {input.similarity_dataframe:q} \
-#                --relabelled_nearest_neighbours {output.relabelled_nearest_neighbours:q} \
-#                --number_of_neighbours {params.number_of_neighbours} \
-#                --number_of_relabellings {params.number_of_relabellings} \
-#                --random_seed {params.random_seed}
-#        """
