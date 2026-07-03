@@ -8,13 +8,13 @@ def pairings():
     pairs = []
 
     for dataset in DATASETS:
-        nn = config[dataset]["number_of_neighbours"]
-
+        numbers_of_neighbours = config[dataset]["number_of_neighbours"]
+        
         # allow both old scalar syntax and new list syntax
-        if isinstance(nn, int):
-            nn = [nn]
+        if isinstance(numbers_of_neighbours, int):
+            numbers_of_neighbours = [numbers_of_neighbours]
 
-        for number_of_neighbours in nn:
+        for number_of_neighbours in numbers_of_neighbours:
             for stimuli_type in list(config[dataset]["stimuli_dir"].keys()):
                 for model in MODEL_KEYS:
                     if config["models"][model]["modality"] in [stimuli_type, "multimodal"]:
