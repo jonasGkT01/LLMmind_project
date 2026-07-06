@@ -15,6 +15,10 @@ rule all_llm_mind_alignment:
             f"results/alignment_scores/dataset-{pair['dataset']}_model-{pair['model']}-{pair['stimuli_type']}_brain_{pair['similarity_type']}-alignment_score_{pair['number_of_neighbours']}NN.observed.tsv"
             for pair in PAIRINGS
         ],
+        [
+            f"results/alignment_scores/dataset-{pair['dataset']}_model-{pair['model']}-{pair['stimuli_type']}_brain_{pair['similarity_type']}-alignment_score_{pair['number_of_neighbours']}NN.observed.tsv"
+            for pair in PAIRINGS
+        ],
         "results/summary.tsv",
         "results/all_alignment_scores.tsv"
 
@@ -110,16 +114,16 @@ rule reduce_all_p_values:
             | bawk 'NR==1 {{$1="dataset;model;stimuli_type;pvalue_type;similarity_type;number_of_neighbours"; print}} $2!="concept" {{print}}' | tr ";" "\t" > {output.tsv_summary}
         """
 
-#rule translate_parquet_to_tsv_adding_observed_alignment_score:
-#    input:
-#        relabelled_alignment_score="results/alignment_scores/dataset-{dataset}_model-{model}-{stimuli_type}_brain_{similarity_type}-alignment_score_{number_of_neighbours}NN_relabelled.parquet",
-#        empirical_p_value="results/alignment_scores/dataset-{dataset}_model-{model}-{stimuli_type}_brain_empirical_{similarity_type}-alignment_score_{number_of_neighbours}NN.p_value.tsv"
-#    output:
-#        relabelled_alignment_score_with_observed_value=protected("results/alignment_scores/dataset-{dataset}_model-{model}-{stimuli_type}_brain_{similarity_type}-alignment_score_{number_of_neighbours}NN.observed.tsv")
-#    shell:
-#        r"""
-#            ./parquet2tsv.sh {input.relabelled_alignment_score:q} | translate -a {input.empirical_p_value:q} 3 > {output.relabelled_alignment_score_with_observed_value:q}
-#        """
+rule translate_parquet_to_tsv_adding_observed_alignment_score:
+    input:
+        relabelled_alignment_score="results/alignment_scores/dataset-{dataset}_model-{model}-{stimuli_type}_brain_{similarity_type}-alignment_score_{number_of_neighbours}NN_relabelled.parquet",
+        empirical_p_value="results/alignment_scores/dataset-{dataset}_model-{model}-{stimuli_type}_brain_empirical_{similarity_type}-alignment_score_{number_of_neighbours}NN.p_value.tsv"
+    output:
+        relabelled_alignment_score_with_observed_value=protected("results/alignment_scores/dataset-{dataset}_model-{model}-{stimuli_type}_brain_{similarity_type}-alignment_score_{number_of_neighbours}NN.observed.tsv")
+    shell:
+        r"""
+            ./parquet2tsv.sh {input.relabelled_alignment_score:q} | translate -a {input.empirical_p_value:q} 3 > {output.relabelled_alignment_score_with_observed_value:q}
+        """
 
 rule aggregate_all_p_value_outputs:
     input:
