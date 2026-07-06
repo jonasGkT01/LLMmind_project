@@ -399,8 +399,8 @@ def reshape_summary(summary_df):
                 "stimuli_type",
                 "similarity_type",
                 "number_of_neighbours",
-                "statistic",
                 "model",
+                "statistic",
             ],
             keep=False,
         )
@@ -413,8 +413,8 @@ def reshape_summary(summary_df):
                 "stimuli_type",
                 "similarity_type",
                 "number_of_neighbours",
-                "statistic",
                 "model",
+                "statistic",
             ]
         ].drop_duplicates().to_dict(orient="records")
 
@@ -422,61 +422,42 @@ def reshape_summary(summary_df):
             f"Duplicate model results were found: {duplicated_keys[:10]}"
         )
 
-    summary_wide_df = summary_long_df.pivot(
-        index=[
-            "dataset",
-            "stimuli_type",
-            "similarity_type",
-            "number_of_neighbours",
-            "statistic",
-        ],
-        columns="model",
-        values="value",
-    ).reset_index()
-
-    summary_wide_df.columns.name = None
-
     statistic_order = {
         statistic: index
         for index, statistic in enumerate(statistic_columns)
     }
 
-    summary_wide_df["_statistic_order"] = summary_wide_df["statistic"].map(statistic_order)
+    summary_long_df["_statistic_order"] = summary_long_df["statistic"].map(statistic_order)
 
-    summary_wide_df = summary_wide_df.sort_values(
+    summary_long_df = summary_long_df.sort_values(
         [
             "dataset",
             "stimuli_type",
             "similarity_type",
             "number_of_neighbours",
+            "model",
             "_statistic_order",
         ]
     ).drop(columns="_statistic_order").reset_index(drop=True)
 
-    fixed_columns = [
-        "dataset",
-        "stimuli_type",
-        "similarity_type",
-        "number_of_neighbours",
-        "statistic",
+    summary_long_df = summary_long_df[
+        [
+            "dataset",
+            "stimuli_type",
+            "similarity_type",
+            "number_of_neighbours",
+            "model",
+            "statistic",
+            "value",
+        ]
     ]
 
-    model_columns = sorted(
-        [
-            column
-            for column in summary_wide_df.columns
-            if column not in fixed_columns
-        ]
-    )
-
-    summary_wide_df = summary_wide_df[fixed_columns + model_columns]
-
-    return summary_wide_df
+    return summary_long_df
 
 def main():
     parser = argparse.ArgumentParser(
         description=(
-            "Aggregate all concept-level empirical and hypergeometric p-value TSV files into one transposed model-level summary TSV"
+            "Aggregate all concept-level empirical and hypergeometric p-value TSV files into one long model-level summary TSV"
         )
     )
     parser.add_argument(
@@ -497,7 +478,7 @@ def main():
     parser.add_argument(
         "--all_alignment_scores_tsv",
         required=True,
-        help="Output transposed model-level summary TSV",)
+        help="Output long model-level summary TSV",)
     args = parser.parse_args()
 
     empirical_paths_by_key = {}
@@ -605,12 +586,12 @@ def main():
             "No model results were available for aggregation"
         )
 
-    summary_wide_df = reshape_summary(summary_df)
+    summary_long_df = reshape_summary(summary_df)
 
     tsv_path = Path(args.all_alignment_scores_tsv)
     tsv_path.parent.mkdir(parents=True, exist_ok=True)
 
-    summary_wide_df.to_csv(
+    summary_long_df.to_csv(
         tsv_path,
         sep="\t",
         index=False,
