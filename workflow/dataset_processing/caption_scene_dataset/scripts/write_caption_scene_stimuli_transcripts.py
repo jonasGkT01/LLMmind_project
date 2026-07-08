@@ -16,7 +16,7 @@ def main():
     df = pd.read_csv(args.image_caption_table, sep="\t")
     manifest = pd.read_csv(args.manifest, sep="\t")
 
-    required_columns = {"Image", "Caption"}
+    required_columns = {"image_id", "chinese_caption", "checked_english_caption"}
     missing_columns = required_columns - set(df.columns)
 
     if missing_columns:
@@ -40,8 +40,8 @@ def main():
     output_dir.mkdir(parents=True, exist_ok=True)
 
     for _, row in df.iterrows():
-        image = str(row["Image"]).strip()
-        caption = str(row["Caption"]).strip()
+        image = str(row["image_id"]).strip()
+        caption = str(row["checked_english_caption"]).strip()
 
         if image == "" or image.lower() == "none":
             continue

@@ -16,7 +16,7 @@ CAPTION_SCENE_RUN_MANIFEST_INDEX = f"{CAPTION_SCENE_INTERMEDIATE_DIR}/manifest/b
 CAPTION_SCENE_PARCELS_DONE = f"{CAPTION_SCENE_PROCESSING_OUTPUT_DIR}/manifests/.parcels_done"
 CAPTION_SCENE_ISC_DONE = f"{CAPTION_SCENE_PROCESSING_OUTPUT_DIR}/manifests/.isc_done"
 
-CAPTION_SCENE_IMAGE_CAPTION_TSV = "resources/datasets/caption_scene_dataset/V1/stimuli/COCO_CN/Image_caption_pairs.tsv"
+CAPTION_SCENE_IMAGE_CAPTION_TSV = "resources/datasets/caption_scene_dataset/V1/stimuli/COCO_CN/Translated_Image_Caption_pairs.tsv"
 CAPTION_SCENE_STIMULI_READY = config["caption_scene"]["stimuli_ready"]
 
 CAPTION_SCENE_VISUAL_STIMULI_DIR = config["caption_scene"]["stimuli_dir"]["vision"]

@@ -101,7 +101,7 @@ rule reduce_all_p_values:
             for method in ["empirical", "hypergeometric"]
         ]
     output:
-        tsv_summary=protected("results/summary.tsv")
+        tsv_summary="results/summary.tsv"
     conda:
         "envs/reduce_all_p_values_environment.yaml"
     shell:
@@ -115,7 +115,7 @@ rule translate_parquet_to_tsv_adding_observed_alignment_score:
         relabelled_alignment_score="results/alignment_scores/dataset-{dataset}_model-{model}-{stimuli_type}_brain_{similarity_type}-alignment_score_{number_of_neighbours}NN_relabelled.parquet",
         empirical_p_value="results/alignment_scores/dataset-{dataset}_model-{model}-{stimuli_type}_brain_empirical_{similarity_type}-alignment_score_{number_of_neighbours}NN.p_value.tsv"
     output:
-        relabelled_alignment_score_with_observed_value=protected("results/alignment_scores/dataset-{dataset}_model-{model}-{stimuli_type}_brain_{similarity_type}-alignment_score_{number_of_neighbours}NN.observed.tsv")
+        relabelled_alignment_score_with_observed_value="results/alignment_scores/dataset-{dataset}_model-{model}-{stimuli_type}_brain_{similarity_type}-alignment_score_{number_of_neighbours}NN.observed.tsv"
     shell:
         r"""
             ./parquet2tsv.sh {input.relabelled_alignment_score:q} | translate -a {input.empirical_p_value:q} 3 > {output.relabelled_alignment_score_with_observed_value:q}
@@ -136,7 +136,7 @@ rule aggregate_all_p_value_outputs:
             for pair in PAIRINGS
         ]
     output:
-        all_alignment_scores_tsv=protected("results/all_alignment_scores.tsv")
+        all_alignment_scores_tsv="results/all_alignment_scores.tsv"
     conda:
         "envs/aggregate_all_p_value_outputs_environment.yaml"
     shell:
