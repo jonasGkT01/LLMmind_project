@@ -8,111 +8,133 @@ models:
     hf_name: "timm/vit_tiny_patch16_224.augreg_in21k"
     modality: "vision"
     quantization_method: null
+    parameters_millions: 6
   i21k_s:
     name: "ViT-Small/16 ImageNet-21K"
     hf_name: "timm/vit_small_patch16_224.augreg_in21k"
     modality: "vision"
     quantization_method: null
+    parameters_millions: 22
   i21k_b:
     name: "ViT-Base/16 ImageNet-21K"
     hf_name: "timm/vit_base_patch16_224.augreg_in21k"
     modality: "vision"
     quantization_method: null
+    parameters_millions: 86
   i21k_l:
     name: "ViT-Large/16 ImageNet-21K"
     hf_name: "timm/vit_large_patch16_224.augreg_in21k"
     modality: "vision"
     quantization_method: null
+    parameters_millions: 307
   dinov2_s:
     name: "DINOv2 ViT-S/14"
     hf_name: "facebook/dinov2-small"
     modality: "vision"
     quantization_method: null
+    parameters_millions: 22
   dinov2_m:
     name: "DINOv2 ViT-B/14"
     hf_name: "facebook/dinov2-base"
     modality: "vision"
     quantization_method: null
+    parameters_millions: 87
   dinov2_l:
     name: "DINOv2 ViT-L/14"
     hf_name: "facebook/dinov2-large"
     modality: "vision"
     quantization_method: null
+    parameters_millions: 304
   dinov2_g:
     name: "DINOv2 ViT-g/14"
     hf_name: "facebook/dinov2-giant"
     modality: "vision"
     quantization_method: null
+    parameters_millions: 1100
 #  clip_b:
 #    name: "CLIP ViT-B/16 LAION-2B"
 #    hf_name: "timm/vit_base_patch16_clip_224.laion2b"
 #    modality: "multimodal"
 #    quantization_method: null
+#    parameters_millions: 86
 #  clip_l:
 #    name: "CLIP ViT-L/14 LAION-2B"
 #    hf_name: "timm/vit_large_patch14_clip_224.laion2b"
 #    modality: "multimodal"
 #    quantization_method: null
+#    parameters_millions: 304
 #  clip_h:
 #    name: "CLIP ViT-H/14 LAION-2B"
 #    hf_name: "timm/vit_huge_patch14_clip_224.laion2b"
 #    modality: "multimodal"
 #    quantization_method: null
+#    parameters_millions: 632
   clip_i21k_ft_b:
     name: "CLIP ViT-B/16 LAION-2B, ImageNet-12K fine-tuned"
     hf_name: "timm/vit_base_patch16_clip_224.laion2b_ft_in12k"
     modality: "vision"
     quantization_method: null
+    parameters_millions: 86
   clip_i21k_ft_l:
     name: "CLIP ViT-L/14 LAION-2B, ImageNet-12K fine-tuned"
     hf_name: "timm/vit_large_patch14_clip_224.laion2b_ft_in12k"
     modality: "vision"
     quantization_method: null
+    parameters_millions: 304
   clip_i21k_ft_h:
     name: "CLIP ViT-H/14 LAION-2B, ImageNet-12K fine-tuned"
     hf_name: "timm/vit_huge_patch14_clip_224.laion2b_ft_in12k"
     modality: "vision"
     quantization_method: null
+    parameters_millions: 632
   bloom_560m:
     name: "BLOOMZ-560M"
     hf_name: "bigscience/bloomz-560m"
     modality: "language"
     quantization_method: null
+    parameters_millions: 560
   bloom_1b1:
     name: "BLOOMZ-1.1B"
     hf_name: "bigscience/bloomz-1b1"
     modality: "language"
     quantization_method: null
+    parameters_millions: 1100
   bloom_1b7:
     name: "BLOOMZ-1.7B"
     hf_name: "bigscience/bloomz-1b7"
     modality: "language"
     quantization_method: null
+    parameters_millions: 1700
   bloom_3b:
     name: "BLOOMZ-3B"
     hf_name: "bigscience/bloomz-3b"
     modality: "language"
     quantization_method: null
+    parameters_millions: 3000
   bloom_7b1:
     name: "BLOOMZ-7.1B"
     hf_name: "bigscience/bloomz-7b1"
     modality: "language"
     quantization_method: null
+    parameters_millions: 7100
   openllama_3b:
     name: "OpenLLaMA-3B"
     hf_name: "openlm-research/open_llama_3b"
     modality: "language"
     quantization_method: null
+    parameters_millions: 3000
   openllama_7b:
     name: "OpenLLaMA-7B"
     hf_name: "openlm-research/open_llama_7b"
     modality: "language"
     quantization_method: null
+    parameters_millions: 7000
   openllama_13b:
     name: "OpenLLaMA-13B"
     hf_name: "openlm-research/open_llama_13b"
     modality: "language"
     quantization_method: "8bit"
+    parameters_millions: 13000
 
 similarity_types:
   - "cosine"

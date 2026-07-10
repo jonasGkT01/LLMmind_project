@@ -1,70 +1,11 @@
-from itertools import combinations
-
-def llm_llm_pairings():
-    llm_llm_pairs = []
-
-    for dataset in DATASETS:
-        numbers_of_neighbours = config[dataset]["number_of_neighbours"]
-
-        # allow both old scalar syntax and new list syntax
-        if isinstance(numbers_of_neighbours, int):
-            numbers_of_neighbours = [numbers_of_neighbours]
-
-        available_modalities = list(config[dataset]["stimuli_dir"].keys())
-
-        for number_of_neighbours in numbers_of_neighbours:
-            for modality in available_modalities:
-
-                compatible_models = [
-                    model
-                    for model in MODEL_KEYS
-                    if config["models"][model]["modality"] in [modality, "multimodal"]
-                ]
-
-                for model_1, model_2 in combinations(compatible_models, 2):
-                    for similarity_type in SIMILARITY_TYPES:
-                        llm_llm_pairs.append(
-                            {
-                                "dataset": dataset,
-                                "number_of_neighbours": number_of_neighbours,
-                                "model_1": model_1,
-                                "stimuli_type_1": modality,
-                                "model_2": model_2,
-                                "stimuli_type_2": modality,
-                                "similarity_type": similarity_type,
-                            }
-                        )
-
-    return llm_llm_pairs
-
-LLM_LLM_PAIRINGS = llm_llm_pairings()
-
-HEATMAP_PAIRINGS = [
-    {
-        "dataset": dataset,
-        "similarity_type": similarity_type,
-        "number_of_neighbours": number_of_neighbours,
-    }
-    for dataset in DATASETS
-    for similarity_type in SIMILARITY_TYPES
-    for number_of_neighbours in (
-        config[dataset]["number_of_neighbours"]
-        if isinstance(config[dataset]["number_of_neighbours"], list)
-        else [config[dataset]["number_of_neighbours"]]
-    )
-]
-
 rule all_llm_llm_alignment:
     input:
         [
             f"results/alignment_scores/dataset-{pair['dataset']}_model-{pair['model_1']}-{pair['stimuli_type_1']}_model-{pair['model_2']}-{pair['stimuli_type_2']}_{pair['similarity_type']}-alignment_score_{pair['number_of_neighbours']}NN.parquet"
             for pair in LLM_LLM_PAIRINGS
-        ]
-
-rule all_alignment_heatmaps:
-    input:
+        ],
         [
-            f"results/figures/alignment_heatmaps/dataset-{pair['dataset']}_{pair['similarity_type']}-alignment_score_{pair['number_of_neighbours']}NN.png"
+            f"results/alignment_heatmaps/dataset-{pair['dataset']}_{pair['similarity_type']}-alignment_score_{pair['number_of_neighbours']}NN.png"
             for pair in HEATMAP_PAIRINGS
         ]
 
@@ -87,7 +28,6 @@ rule compute_llm_llm_alignment_score:
                 --alignment_score {output.llm_llm_alignment_score:q}
         """
 
-
 rule plot_alignment_heatmap:
     input:
         llm_brain_alignment_scores=lambda wc: [
@@ -105,7 +45,7 @@ rule plot_alignment_heatmap:
             and str(pair["number_of_neighbours"]) == str(wc.number_of_neighbours)
         ]
     output:
-        heatmap=f"results/figures/alignment_heatmaps/dataset-{dataset}_{similarity_type}-alignment_score_{number_of_neighbours}NN.png"
+        heatmap="results/alignment_heatmaps/dataset-{dataset}_{similarity_type}-alignment_score_{number_of_neighbours}NN.png"
     conda:
         "envs/plot_alignment_heatmap_environment.yaml"
     shell:
