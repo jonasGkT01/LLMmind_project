@@ -58,7 +58,7 @@ def llm_llm_pairings():
             ]
 
             for model_1, model_2 in combinations(compatible_models, 2):
-                for modality_1, modality_2 in available_modalities:
+                for modality_1, modality_2 in product(available_modalities, repeat=2):
                     if config["models"][model_1]["modality"] in [modality_1, "multimodal"] and config["models"][model_2]["modality"] in [modality_2, "multimodal"]:
                         for similarity_type in SIMILARITY_TYPES:
                             llm_llm_pairs.append(
