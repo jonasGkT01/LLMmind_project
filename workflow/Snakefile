@@ -48,27 +48,25 @@ def llm_llm_pairings():
         available_modalities = list(config[dataset]["stimuli_dir"].keys())
 
         for number_of_neighbours in numbers_of_neighbours:
-            for modality in available_modalities:
+            compatible_models = [
+                model
+                for model in MODEL_KEYS
+                if config["models"][model]["modality"] in set(available_modalities + ["multimodal"])
+            ]
 
-                compatible_models = [
-                    model
-                    for model in MODEL_KEYS
-                    if config["models"][model]["modality"] in [modality, "multimodal"]
-                ]
-
-                for model_1, model_2 in combinations(compatible_models, 2):
-                    for similarity_type in SIMILARITY_TYPES:
-                        llm_llm_pairs.append(
-                            {
-                                "dataset": dataset,
-                                "number_of_neighbours": number_of_neighbours,
-                                "model_1": model_1,
-                                "stimuli_type_1": modality,
-                                "model_2": model_2,
-                                "stimuli_type_2": modality,
-                                "similarity_type": similarity_type,
-                            }
-                        )
+            for model_1, model_2 in combinations(compatible_models, 2):
+                for similarity_type in SIMILARITY_TYPES:
+                    llm_llm_pairs.append(
+                        {
+                            "dataset": dataset,
+                            "number_of_neighbours": number_of_neighbours,
+                            "model_1": model_1,
+                            "stimuli_type_1": config["models"][model_1]["modality"],
+                            "model_2": model_2,
+                            "stimuli_type_2": config["models"][model_2]["modality"],
+                            "similarity_type": similarity_type,
+                        }
+                    )
 
     return llm_llm_pairs
 
