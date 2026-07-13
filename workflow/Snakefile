@@ -36,7 +36,7 @@ def pairings():
 
 PAIRINGS = pairings()
 
-from itertools import combinations
+from itertools import combinations, product
 
 def llm_llm_pairings():
     llm_llm_pairs = []
