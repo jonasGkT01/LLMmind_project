@@ -54,6 +54,11 @@ rule plot_alignment_heatmap:
         ]
     output:
         heatmap="results/alignment_heatmaps/dataset-{dataset}_{similarity_type}-alignment_score_{number_of_neighbours}NN.png"
+    params:
+        model_parameters=[
+            f"{model}={config['models'][model]['parameters_millions']}"
+            for model in MODEL_KEYS
+        ]
     conda:
         "envs/plot_alignment_heatmap_environment.yaml"
     shell:
@@ -61,6 +66,7 @@ rule plot_alignment_heatmap:
             python3 workflow/llm_llm_alignment/scripts/plot_alignment_heatmap.py \
                 --llm_brain_alignment_scores {input.llm_brain_alignment_scores:q} \
                 --llm_llm_alignment_scores {input.llm_llm_alignment_scores:q} \
+                --model_parameters {params.model_parameters:q} \
                 --heatmap {output.heatmap:q}
         """
 

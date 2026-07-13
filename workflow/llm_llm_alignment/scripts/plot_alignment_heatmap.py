@@ -52,8 +52,55 @@ def read_mean_alignment_score(path):
 
     return float(df["alignment_score"].mean())
 
+def parse_model_parameters(model_parameters):
+    parameters_by_model = {}
+
+    for model_parameter in model_parameters:
+        if "=" not in model_parameter:
+            raise ValueError(
+                f"Invalid model-parameter specification: {model_parameter}"
+            )
+
+        model, number_of_parameters = model_parameter.split("=", 1)
+
+        if model in parameters_by_model:
+            raise ValueError(
+                f"Parameters were provided more than once for model {model}"
+            )
+
+        parameters_by_model[model] = float(number_of_parameters)
+
+    return parameters_by_model
+
+def model_family(model):
+    if "_" not in model:
+        return model
+
+    return model.rsplit("_", 1)[0]
+
 def model_label(model, stimuli_type):
     return f"{model}-{stimuli_type}"
+
+def model_sort_key(label, model_metadata, parameters_by_model):
+    if label == "brain":
+        return (1, "", "", float("inf"), "")
+
+    metadata = model_metadata[label]
+    model = metadata["model"]
+    stimuli_type = metadata["stimuli_type"]
+
+    if model not in parameters_by_model:
+        raise ValueError(
+            f"No number of parameters was provided for model {model}"
+        )
+
+    return (
+        0,
+        stimuli_type,
+        model_family(model),
+        parameters_by_model[model],
+        model,
+    )
 
 def main():
     parser = argparse.ArgumentParser()
@@ -69,11 +116,20 @@ def main():
         default=[],
         help="LLM-LLM alignment score parquet files",
     )
+    parser.add_argument(
+        "--model_parameters",
+        nargs="+",
+        required=True,
+        help="Model parameter counts formatted as model=parameters_millions",
+    )
     parser.add_argument("--heatmap", type=str, required=True)
     args = parser.parse_args()
 
+    parameters_by_model = parse_model_parameters(args.model_parameters)
+
     values = {}
     labels = set()
+    model_metadata = {}
 
     for path in args.llm_brain_alignment_scores:
         metadata = parse_llm_brain_path(path)
@@ -87,6 +143,11 @@ def main():
 
         labels.add(label)
         labels.add("brain")
+
+        model_metadata[label] = {
+            "model": metadata["model"],
+            "stimuli_type": metadata["stimuli_type"],
+        }
 
         values[(label, "brain")] = score
         values[("brain", label)] = score
@@ -108,13 +169,29 @@ def main():
         labels.add(label_1)
         labels.add(label_2)
 
+        model_metadata[label_1] = {
+            "model": metadata["model_1"],
+            "stimuli_type": metadata["stimuli_type_1"],
+        }
+        model_metadata[label_2] = {
+            "model": metadata["model_2"],
+            "stimuli_type": metadata["stimuli_type_2"],
+        }
+
         values[(label_1, label_2)] = score
         values[(label_2, label_1)] = score
 
     if not labels:
         raise ValueError("No alignment score files were provided")
 
-    labels = sorted(labels, key=lambda x: (x == "brain", x))
+    labels = sorted(
+        labels,
+        key=lambda label: model_sort_key(
+            label,
+            model_metadata,
+            parameters_by_model,
+        ),
+    )
 
     matrix = np.full((len(labels), len(labels)), np.nan)
 
