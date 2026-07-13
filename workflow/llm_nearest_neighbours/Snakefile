@@ -3,11 +3,11 @@ from pathlib import Path
 rule all_llm_nearest_neighbours:
     input:
         [
-            f"results/{pair['stimuli_type']}_models/{pair['dataset']}/{pair['similarity_type']}_nearest_neighbours/{pair['model']}_{pair['similarity_type']}_nearest_neighbours_{pair['number_of_neighbours']}NN.parquet"
+            f"results/{pair['stimuli_type']}_models/{pair['dataset']}/pearson_similarity/{pair['model']}_{pair['similarity_type']}_similarity.parquet"
             for pair in PAIRINGS
         ],
         [
-            f"results/{pair['stimuli_type']}_models/{pair['dataset']}/relabelling/{pair['similarity_type']}_nearest_neighbours/{pair['model']}_{pair['similarity_type']}_nearest_neighbours_{pair['number_of_neighbours']}NN.parquet"
+            f"results/{pair['stimuli_type']}_models/{pair['dataset']}/{pair['similarity_type']}_nearest_neighbours/{pair['model']}_{pair['similarity_type']}_nearest_neighbours_{pair['number_of_neighbours']}NN.parquet"
             for pair in PAIRINGS
         ]
 

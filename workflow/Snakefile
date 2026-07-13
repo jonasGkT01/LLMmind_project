@@ -4,6 +4,9 @@ DATASETS = list(config["datasets"])
 MODEL_KEYS = list(config["models"].keys())
 SIMILARITY_TYPES = list(config["similarity_types"])
 
+NUMBER_OF_RELABELLINGS = config["number_of_relabellings"]
+RANDOM_SEED = config["random_seed"]
+
 def pairings():
     pairs = []
 
@@ -55,18 +58,20 @@ def llm_llm_pairings():
             ]
 
             for model_1, model_2 in combinations(compatible_models, 2):
-                for similarity_type in SIMILARITY_TYPES:
-                    llm_llm_pairs.append(
-                        {
-                            "dataset": dataset,
-                            "number_of_neighbours": number_of_neighbours,
-                            "model_1": model_1,
-                            "stimuli_type_1": config["models"][model_1]["modality"],
-                            "model_2": model_2,
-                            "stimuli_type_2": config["models"][model_2]["modality"],
-                            "similarity_type": similarity_type,
-                        }
-                    )
+                for modality_1, modality_2 in available_modalities:
+                    if config["models"][model_1]["modality"] in [modality_1, "multimodal"] and config["models"][model_2]["modality"] in [modality_2, "multimodal"]:
+                        for similarity_type in SIMILARITY_TYPES:
+                            llm_llm_pairs.append(
+                                {
+                                    "dataset": dataset,
+                                    "number_of_neighbours": number_of_neighbours,
+                                    "model_1": model_1,
+                                    "stimuli_type_1": modality_1,
+                                    "model_2": model_2,
+                                    "stimuli_type_2": modality_2,
+                                    "similarity_type": similarity_type,
+                                }
+                            )
 
     return llm_llm_pairs
 
