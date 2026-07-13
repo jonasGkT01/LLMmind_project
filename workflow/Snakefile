@@ -120,4 +120,12 @@ rule all:
         [
             f"results/alignment_heatmaps/dataset-{pair['dataset']}_{pair['similarity_type']}-alignment_score_{pair['number_of_neighbours']}NN.png"
             for pair in HEATMAP_PAIRINGS
+        ],
+        [
+            f"results/alignment_scores/dataset-{pair['dataset']}_model-{pair['model_1']}-{pair['stimuli_type_1']}_model-{pair['model_2']}-{pair['stimuli_type_2']}_empirical_{pair['similarity_type']}-alignment_score_{pair['number_of_neighbours']}NN.p_value.tsv"
+            for pair in LLM_LLM_PAIRINGS
+        ],
+        [
+            f"results/alignment_heatmaps/dataset-{pair['dataset']}_{pair['similarity_type']}-alignment_score_{pair['number_of_neighbours']}NN_empirical_p_values.png"
+            for pair in HEATMAP_PAIRINGS
         ]

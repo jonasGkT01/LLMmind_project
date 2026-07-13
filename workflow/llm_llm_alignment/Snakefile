@@ -7,6 +7,14 @@ rule all_llm_llm_alignment:
         [
             f"results/alignment_heatmaps/dataset-{pair['dataset']}_{pair['similarity_type']}-alignment_score_{pair['number_of_neighbours']}NN.png"
             for pair in HEATMAP_PAIRINGS
+        ],
+        [
+            f"results/alignment_scores/dataset-{pair['dataset']}_model-{pair['model_1']}-{pair['stimuli_type_1']}_model-{pair['model_2']}-{pair['stimuli_type_2']}_empirical_{pair['similarity_type']}-alignment_score_{pair['number_of_neighbours']}NN.p_value.tsv"
+            for pair in LLM_LLM_PAIRINGS
+        ],
+        [
+            f"results/alignment_heatmaps/dataset-{pair['dataset']}_{pair['similarity_type']}-alignment_score_{pair['number_of_neighbours']}NN_empirical_p_values.png"
+            for pair in HEATMAP_PAIRINGS
         ]
 
 rule compute_llm_llm_alignment_score:
@@ -53,5 +61,62 @@ rule plot_alignment_heatmap:
             python3 workflow/llm_llm_alignment/scripts/plot_alignment_heatmap.py \
                 --llm_brain_alignment_scores {input.llm_brain_alignment_scores:q} \
                 --llm_llm_alignment_scores {input.llm_llm_alignment_scores:q} \
+                --heatmap {output.heatmap:q}
+        """
+
+rule compute_llm_llm_empirical_p_value:
+    input:
+        observed_alignment_score="results/alignment_scores/dataset-{dataset}_model-{model_1}-{stimuli_type_1}_model-{model_2}-{stimuli_type_2}_{similarity_type}-alignment_score_{number_of_neighbours}NN.parquet",
+        llm_similarity_1="results/{stimuli_type_1}_models/{dataset}/{similarity_type}_similarity/{model_1}_{similarity_type}_similarity.parquet",
+        llm_similarity_2="results/{stimuli_type_2}_models/{dataset}/{similarity_type}_similarity/{model_2}_{similarity_type}_similarity.parquet"
+    output:
+        empirical_p_value="results/alignment_scores/dataset-{dataset}_model-{model_1}-{stimuli_type_1}_model-{model_2}-{stimuli_type_2}_empirical_{similarity_type}-alignment_score_{number_of_neighbours}NN.p_value.tsv"
+    params:
+        number_of_neighbours=lambda wc: wc.number_of_neighbours,
+        number_of_relabellings=NUMBER_OF_RELABELLINGS,
+        random_seed=RANDOM_SEED,
+        model_1=lambda wc: wc.model_1,
+        model_2=lambda wc: wc.model_2,
+        stimuli_type_1=lambda wc: wc.stimuli_type_1,
+        stimuli_type_2=lambda wc: wc.stimuli_type_2,
+        number_of_parameters_1=lambda wc: config["models"][wc.model_1]["parameters_millions"],
+        number_of_parameters_2=lambda wc: config["models"][wc.model_2]["parameters_millions"]
+    conda:
+        "envs/compute_llm_llm_empirical_p_value_environment.yaml"
+    shell:
+        r"""
+            python3 workflow/llm_llm_alignment/scripts/compute_llm_llm_empirical_p_value.py \
+                --observed_alignment_score {input.observed_alignment_score:q} \
+                --llm_similarity_1 {input.llm_similarity_1:q} \
+                --llm_similarity_2 {input.llm_similarity_2:q} \
+                --empirical_p_value {output.empirical_p_value:q} \
+                --number_of_neighbours {params.number_of_neighbours} \
+                --number_of_relabellings {params.number_of_relabellings} \
+                --random_seed {params.random_seed} \
+                --model_1 {params.model_1:q} \
+                --model_2 {params.model_2:q} \
+                --stimuli_type_1 {params.stimuli_type_1:q} \
+                --stimuli_type_2 {params.stimuli_type_2:q} \
+                --number_of_parameters_1 {params.number_of_parameters_1} \
+                --number_of_parameters_2 {params.number_of_parameters_2}
+        """
+
+rule plot_llm_llm_empirical_p_value_heatmap:
+    input:
+        empirical_p_values=lambda wc: [
+            f"results/alignment_scores/dataset-{wc.dataset}_model-{pair['model_1']}-{pair['stimuli_type_1']}_model-{pair['model_2']}-{pair['stimuli_type_2']}_empirical_{wc.similarity_type}-alignment_score_{wc.number_of_neighbours}NN.p_value.tsv"
+            for pair in LLM_LLM_PAIRINGS
+            if pair["dataset"] == wc.dataset
+            and pair["similarity_type"] == wc.similarity_type
+            and str(pair["number_of_neighbours"]) == str(wc.number_of_neighbours)
+        ]
+    output:
+        heatmap="results/alignment_heatmaps/dataset-{dataset}_{similarity_type}-alignment_score_{number_of_neighbours}NN_empirical_p_values.png"
+    conda:
+        "envs/plot_llm_llm_empirical_p_value_heatmap_environment.yaml"
+    shell:
+        r"""
+            python3 workflow/llm_llm_alignment/scripts/plot_llm_llm_empirical_p_value_heatmap.py \
+                --empirical_p_values {input.empirical_p_values:q} \
                 --heatmap {output.heatmap:q}
         """
