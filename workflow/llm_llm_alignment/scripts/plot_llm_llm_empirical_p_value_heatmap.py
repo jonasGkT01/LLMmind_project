@@ -22,10 +22,7 @@ def read_empirical_p_value(path):
         "empirical_p_value",
     }
 
-    missing_columns = (
-        required_columns
-        - set(p_value_df.columns)
-    )
+    missing_columns = required_columns - set(p_value_df.columns)
 
     if missing_columns:
         raise ValueError(
@@ -98,27 +95,13 @@ def benjamini_hochberg(p_values):
     order = np.argsort(p_values)
     ordered_p_values = p_values[order]
 
-    ordered_q_values = (
-        ordered_p_values
-        * number_of_tests
-        / np.arange(
-            1,
-            number_of_tests + 1,
-        )
-    )
+    ordered_q_values = ordered_p_values * number_of_tests / np.arange(1, number_of_tests + 1,)
 
-    ordered_q_values = np.minimum.accumulate(
-        ordered_q_values[::-1]
-    )[::-1]
+    ordered_q_values = np.minimum.accumulate(ordered_q_values[::-1])[::-1]
 
-    ordered_q_values = np.minimum(
-        ordered_q_values,
-        1.0,
-    )
+    ordered_q_values = np.minimum(ordered_q_values, 1.0,)
 
-    q_values = np.empty_like(
-        ordered_q_values
-    )
+    q_values = np.empty_like(ordered_q_values)
 
     q_values[order] = ordered_q_values
 
@@ -141,13 +124,10 @@ def main():
     parser.add_argument(
         "--empirical_p_values",
         nargs="+",
-        required=True,
-    )
+        required=True,)
     parser.add_argument(
         "--heatmap",
-        required=True,
-    )
-
+        required=True,)
     args = parser.parse_args()
 
     records = [
