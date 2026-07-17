@@ -54,19 +54,19 @@ models:
 #  clip_b:
 #    name: "CLIP ViT-B/16 LAION-2B"
 #    hf_name: "timm/vit_base_patch16_clip_224.laion2b"
-#    modality: "multimodal"
+#    modality: "vision"
 #    quantization_method: null
 #    parameters_millions: 86
 #  clip_l:
 #    name: "CLIP ViT-L/14 LAION-2B"
 #    hf_name: "timm/vit_large_patch14_clip_224.laion2b"
-#    modality: "multimodal"
+#    modality: "vision"
 #    quantization_method: null
 #    parameters_millions: 304
 #  clip_h:
 #    name: "CLIP ViT-H/14 LAION-2B"
 #    hf_name: "timm/vit_huge_patch14_clip_224.laion2b"
-#    modality: "multimodal"
+#    modality: "vision"
 #    quantization_method: null
 #    parameters_millions: 632
   clip_i21k_ft_b:
