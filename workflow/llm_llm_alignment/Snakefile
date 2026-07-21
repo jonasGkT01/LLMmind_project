@@ -107,9 +107,10 @@ rule compute_llm_llm_empirical_p_value:
                 --number_of_parameters_2 {params.number_of_parameters_2}
         """
 
-rule plot_llm_llm_empirical_p_value_heatmap:
+rule plot_empirical_p_value_heatmap:
     input:
-        empirical_p_values=lambda wc: [
+        llm_brain_empirical_p_values="results/all_alignment_scores.tsv",
+        llm_llm_empirical_p_values=lambda wc: [
             f"results/alignment_scores/dataset-{wc.dataset}_model-{pair['model_1']}-{pair['stimuli_type_1']}_model-{pair['model_2']}-{pair['stimuli_type_2']}_empirical_{wc.similarity_type}-alignment_score_{wc.number_of_neighbours}NN.p_value.tsv"
             for pair in LLM_LLM_PAIRINGS
             if pair["dataset"] == wc.dataset
@@ -118,11 +119,24 @@ rule plot_llm_llm_empirical_p_value_heatmap:
         ]
     output:
         heatmap="results/alignment_heatmaps/dataset-{dataset}_{similarity_type}-alignment_score_{number_of_neighbours}NN_empirical_p_values.png"
+    params:
+        model_parameters=[
+            f"{model}={config['models'][model]['parameters_millions']}"
+            for model in MODEL_KEYS
+        ],
+        dataset=lambda wc: wc.dataset,
+        similarity_type=lambda wc: wc.similarity_type,
+        number_of_neighbours=lambda wc: wc.number_of_neighbours
     conda:
-        "envs/plot_llm_llm_empirical_p_value_heatmap_environment.yaml"
+        "envs/plot_empirical_p_value_heatmap_environment.yaml"
     shell:
         r"""
-            python3 workflow/llm_llm_alignment/scripts/plot_llm_llm_empirical_p_value_heatmap.py \
-                --empirical_p_values {input.empirical_p_values:q} \
+            python3 workflow/llm_llm_alignment/scripts/plot_empirical_p_value_heatmap.py \
+                --llm_brain_empirical_p_values {input.llm_brain_empirical_p_values:q} \
+                --llm_llm_empirical_p_values {input.llm_llm_empirical_p_values:q} \
+                --model_parameters {params.model_parameters:q} \
+                --dataset {params.dataset:q} \
+                --similarity_type {params.similarity_type:q} \
+                --number_of_neighbours {params.number_of_neighbours} \
                 --heatmap {output.heatmap:q}
         """
