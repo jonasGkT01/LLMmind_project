@@ -103,7 +103,7 @@ rule reduce_all_p_values:
         "envs/reduce_all_p_values_environment.yaml"
     shell:
         r"""
-            matrix_reduce -t "results/alignment_scores/dataset-*_model-*-*_brain_*_*-alignment_score_*NN.p_value.tsv" \
+            matrix_reduce -t {input:q} \
             | bawk 'NR==1 {{$1="dataset;model;stimuli_type;pvalue_type;similarity_type;number_of_neighbours"; print}} $2!="concept" {{print}}' | tr ";" "\t" > {output.tsv_summary}
         """
 
