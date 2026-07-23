@@ -17,8 +17,7 @@ rule all_llm_mind_alignment:
         #    f"results/alignment_scores/dataset-{pair['dataset']}_model-{pair['model']}-{pair['stimuli_type']}_brain_{pair['similarity_type']}-alignment_score_{pair['number_of_neighbours']}NN.observed.tsv"
         #    for pair in PAIRINGS
         #],
-        "results/empirical_p_value_summary.tsv",
-        "results/hypergeometric_p_value_summary.tsv",
+        "results/tsv_summary.tsv",
         "results/all_alignment_scores.tsv"
 
 rule compute_llm_mind_alignment_score:
@@ -107,17 +106,13 @@ rule reduce_all_p_values:
             for pair in PAIRINGS
         ]
     output:
-        tsv_summary_empirical="results/empirical_p_value_summary.tsv",
-        tsv_summary_hypergeometric="results/hypergeometric_p_value_summary.tsv"
+        tsv_summary="results/tsv_summary.tsv"
     conda:
         "envs/reduce_all_p_values_environment.yaml"
     shell:
         r"""
-            matrix_reduce -t {input.empirical_p_values:q} \
-            | bawk 'NR==1 {{$1="dataset;model;stimuli_type;pvalue_type;similarity_type;number_of_neighbours"; print}} $2!="concept" {{print}}' | tr ";" "\t" > {output.tsv_summary_empirical:q}
-
-            matrix_reduce -t {input.hypergeometric_p_values:q} \
-            | bawk 'NR==1 {{$1="dataset;model;stimuli_type;pvalue_type;similarity_type;number_of_neighbours"; print}} $2!="concept" {{print}}' | tr ";" "\t" > {output.tsv_summary_hypergeometric:q}
+            matrix_reduce -t "results/alignment_scores/dataset-*_model-*-*_brain_*_*-alignment_score_*NN.p_value.tsv" \
+            | bawk 'NR==1 {{$1="dataset;model;stimuli_type;pvalue_type;similarity_type;number_of_neighbours"; print}} $2!="concept" {{print}}' | tr ";" "\t" > {output.tsv_summary}
         """
 
 #rule translate_parquet_to_tsv_adding_observed_alignment_score:
