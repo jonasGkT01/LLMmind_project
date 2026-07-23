@@ -1,0 +1,38 @@
+rule all_visualisation:
+    input:
+        [
+            f"results/alignment_enrichment_plots/dataset-{pair['dataset']}_{pair['similarity_type']}-concept_alignment_enrichment_{pair['number_of_neighbours']}NN.png"
+            for pair in HEATMAP_PAIRINGS
+        ]
+
+rule plot_concept_alignment_enrichment:
+    input:
+        llm_brain_alignment_scores=lambda wc: [
+            f"results/alignment_scores/dataset-{wc.dataset}_model-{pair['model']}-{pair['stimuli_type']}_brain_{wc.similarity_type}-alignment_score_{wc.number_of_neighbours}NN.parquet"
+            for pair in PAIRINGS
+            if pair["dataset"] == wc.dataset
+            and pair["similarity_type"] == wc.similarity_type
+            and str(pair["number_of_neighbours"]) == str(wc.number_of_neighbours)
+        ]
+    output:
+        plot="results/alignment_enrichment_plots/dataset-{dataset}_{similarity_type}-concept_alignment_enrichment_{number_of_neighbours}NN.png"
+    params:
+        model_parameters=[
+            f"{model}={config['models'][model]['parameters_millions']}"
+            for model in MODEL_KEYS
+        ],
+        dataset=lambda wc: wc.dataset,
+        similarity_type=lambda wc: wc.similarity_type,
+        number_of_neighbours=lambda wc: wc.number_of_neighbours
+    conda:
+        "envs/plot_concept_alignment_enrichment_environment.yaml"
+    shell:
+        r"""
+            python3 workflow/llm_mind_alignment/scripts/plot_concept_alignment_enrichment.py \
+                --llm_brain_alignment_scores {input.llm_brain_alignment_scores:q} \
+                --model_parameters {params.model_parameters:q} \
+                --dataset {params.dataset:q} \
+                --similarity_type {params.similarity_type:q} \
+                --number_of_neighbours {params.number_of_neighbours} \
+                --plot {output.plot:q}
+        """
