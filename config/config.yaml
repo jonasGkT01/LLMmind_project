@@ -150,8 +150,6 @@ narratives:
   scans_to_be_excluded: "resources/datasets/narratives_dataset/scan_exclude.json"
   excluded_scans_for_task: "resources/mind/narratives_dataset/excluded_scans_for_task.json"
   processing_output_dir: "results/mind/narratives"
-#  processing_output_dir: 
-#     language: "results/mind_language/narratives"
   stimuli_dir: 
     language: "resources/datasets/narratives_dataset/stimuli/transcripts_renamed"
   excluded_stimuli: "resources/datasets/narratives_dataset/excluded_stimuli.txt"
@@ -221,14 +219,11 @@ narratives:
     - "notthefallshortscram"
 
 caption_scene:
-  number_of_neighbours: [5,50,500]
+  number_of_neighbours: [5,50,250,500,1000]
   bold_glob: "resources/datasets/caption_scene_dataset/V1/derivatives/pp_data/sub-*/func/sub-*_ses-*_task-CSD_run-*.nii.gz"
   scans_to_be_excluded: "resources/datasets/caption_scene_dataset/scan_exclude.json"
   excluded_scans_for_task: "resources/mind/caption_scene_dataset/excluded_scans_for_task.json"
   processing_output_dir: "results/mind/caption_scene"
-#  processing_output_dir:
-#    language: "results/mind_language/caption_scene"
-#    vision: "results/mind_vision/caption_scene"
   stimuli_dir: 
     language: "resources/datasets/caption_scene_dataset/V1/stimuli/transcripts"
     vision: "resources/datasets/caption_scene_dataset/V1/stimuli/COCO_CN/All_images_480"
