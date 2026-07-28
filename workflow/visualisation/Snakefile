@@ -28,7 +28,7 @@ rule plot_concept_alignment_enrichment:
         "envs/plot_concept_alignment_enrichment_environment.yaml"
     shell:
         r"""
-            python3 workflow/llm_mind_alignment/scripts/plot_concept_alignment_enrichment.py \
+            python3 workflow/visualisation/scripts/plot_concept_alignment_enrichment.py \
                 --llm_brain_alignment_scores {input.llm_brain_alignment_scores:q} \
                 --model_parameters {params.model_parameters:q} \
                 --dataset {params.dataset:q} \
