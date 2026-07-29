@@ -122,6 +122,19 @@ def main():
         required=True,
         help="Model parameter counts formatted as model=parameters_millions",
     )
+    parser.add_argument(
+        "--dataset",
+        required=True,
+    )
+    parser.add_argument(
+        "--similarity_type",
+        required=True,
+    )
+    parser.add_argument(
+        "--number_of_neighbours",
+        type=int,
+        required=True,
+    )
     parser.add_argument("--heatmap", type=str, required=True)
     args = parser.parse_args()
 
@@ -218,7 +231,10 @@ def main():
     ax.set_xticklabels(labels, rotation=90)
     ax.set_yticklabels(labels)
 
-    ax.set_title("Alignment scores")
+    ax.set_title("Alignment scores"
+        f"dataset={args.dataset}, "
+        f"similarity={args.similarity_type}, "
+        f"neighbours={args.number_of_neighbours}")
     ax.set_xlabel("Model / brain")
     ax.set_ylabel("Model / brain")
 
