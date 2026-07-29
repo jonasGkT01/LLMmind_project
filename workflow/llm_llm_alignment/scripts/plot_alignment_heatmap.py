@@ -231,7 +231,11 @@ def main():
     ax.set_xticklabels(labels, rotation=90)
     ax.set_yticklabels(labels)
 
+<<<<<<< HEAD
     ax.set_title("Alignment scores\n"
+=======
+    ax.set_title("Alignment scores"
+>>>>>>> 9ba01bddf7dfea3c9a971b38a06193cc798fb056
         f"dataset={args.dataset}, "
         f"similarity={args.similarity_type}, "
         f"neighbours={args.number_of_neighbours}")
