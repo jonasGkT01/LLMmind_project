@@ -252,7 +252,10 @@ def main():
                 annotation = f"{annotation}\n{significance}"
             ax.text(column_i, row_i, annotation, ha="center", va="center", fontsize=7)
 
-    ax.set_title("LLM–LLM and LLM–brain empirical p-values")
+    ax.set_title("LLM–LLM and LLM–brain empirical p-values\n"
+        f"dataset={args.dataset}, "
+        f"similarity={args.similarity_type}, "
+        f"neighbours={args.number_of_neighbours}")
     ax.set_xlabel("Model / brain")
     ax.set_ylabel("Model / brain")
     colorbar = fig.colorbar(image, ax=ax)
