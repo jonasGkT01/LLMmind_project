@@ -67,6 +67,9 @@ rule plot_alignment_heatmap:
                 --llm_brain_alignment_scores {input.llm_brain_alignment_scores:q} \
                 --llm_llm_alignment_scores {input.llm_llm_alignment_scores:q} \
                 --model_parameters {params.model_parameters:q} \
+                --dataset {wildcards.dataset:q} \
+                --similarity_type {wildcards.similarity_type:q} \
+                --number_of_neighbours {wildcards.number_of_neighbours} \
                 --heatmap {output.heatmap:q}
         """
 
@@ -118,7 +121,7 @@ rule plot_empirical_p_value_heatmap:
             and str(pair["number_of_neighbours"]) == str(wc.number_of_neighbours)
         ]
     output:
-        heatmap="results/alignment_heatmaps/dataset-{dataset}_{similarity_type}-alignment_score_{number_of_neighbours}NN_empirical_p_values.png"
+        heatmap="results/alignment_p_value_heatmaps/dataset-{dataset}_{similarity_type}-alignment_score_{number_of_neighbours}NN_empirical_p_values.png"
     params:
         model_parameters=[
             f"{model}={config['models'][model]['parameters_millions']}"
