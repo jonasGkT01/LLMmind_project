@@ -13,8 +13,8 @@ def validate_required_columns(
         )
 
 def validate_similarity_dataframe(
-        similarity_df,
-        source = "Similarity dataframe",
+    similarity_df,
+    source = "Similarity dataframe",
 ):
     if similarity_df.shape[0] != similarity_df.shape[1]:
         raise ValueError(
