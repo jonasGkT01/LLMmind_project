@@ -131,7 +131,7 @@ def compute_relabelled_alignment_scores(similarity_df, brain_nearest_neighbours_
             concept_indices=concept_indices,
         )
         common_neighbours_matrix[shuffle_i] = compute_common_neighbours(
-            llm_neighbours = relabelled_llm_neighbours,
+            neighbours = relabelled_llm_neighbours,
             brain_neighbour_mask = brain_neighbour_mask,
             concept_indices = concept_indices,
         )

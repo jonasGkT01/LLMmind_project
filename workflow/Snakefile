@@ -1,8 +1,8 @@
 configfile: "config/config.yaml"
 
-shell.prefix(
-    'export PYTHONPATH="$PWD/workflow:$PYTHONPATH"; '
-)
+#shell.prefix(
+#    'export PYTHONPATH="$PWD/workflow:$PYTHONPATH"; '
+#)
 
 DATASETS = list(config["datasets"])
 MODEL_KEYS = list(config["models"].keys())
