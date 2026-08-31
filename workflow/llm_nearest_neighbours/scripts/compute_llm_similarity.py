@@ -18,7 +18,6 @@ def main():
                       help = "Path to dataframe of computed Pearson similarities")
     args = parser.parse_args()
 
-    embedding_dataframe = args.embedding_dataframe
     cosine_similarity_dataframe = args.cosine_similarity_dataframe
     pearson_similarity_dataframe = args.pearson_similarity_dataframe
 
