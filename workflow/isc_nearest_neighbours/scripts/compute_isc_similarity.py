@@ -1,7 +1,9 @@
-import numpy as np
-import pandas as pd
 import argparse
 
+import numpy as np
+import pandas as pd
+
+from libraries.compute_similarity import cosine_similarity, pearson_similarity
 
 def dataframe_to_embedding_matrix(df: pd.DataFrame) -> np.ndarray:
     if df.shape[1] == 1:
@@ -29,41 +31,6 @@ def dataframe_to_embedding_matrix(df: pd.DataFrame) -> np.ndarray:
         ) from exc
 
 
-def normalize_l2(x):
-    x = np.asarray(x, dtype=np.float64)
-
-    if x.ndim == 1:
-        norm = np.linalg.norm(x)
-        if norm == 0:
-            return x
-        return x / norm
-
-    if x.ndim != 2:
-        raise ValueError(f"Expected 1D or 2D array, got {x.ndim}D")
-
-    norm = np.linalg.norm(x, 2, axis=1, keepdims=True)
-    return np.divide(x, norm, out=np.zeros_like(x), where=norm != 0)
-
-
-def pearson_normalize(x):
-    """
-        Row-wise Pearson normalization.
-
-        Pearson similarity between two vectors is cosine similarity after
-        subtracting each vector's mean.
-    """
-    x = np.asarray(x, dtype=np.float64)
-
-    if x.ndim != 2:
-        raise ValueError(f"Expected 2D embedding matrix, got {x.ndim}D")
-
-    # Mean-center each embedding vector
-    x = x - np.mean(x, axis=1, keepdims=True)
-
-    # L2-normalize centered vectors
-    return normalize_l2(x)
-
-
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--isc_dataframe",
@@ -88,8 +55,7 @@ def main():
 
     ##### COSINE SIMILARITY #####
     # compute cosine similarities for all the concepts in the embedding dataframe
-    X = normalize_l2(embedding_matrix)
-    cosine_result = X @ X.T
+    cosine_result = cosine_similarity(embedding_matrix)
 
     cosine_result_df = pd.DataFrame(
         cosine_result,
@@ -106,8 +72,7 @@ def main():
 
     ##### PEARSON SIMILARITY #####
     # compute Pearson similarities for all concepts in the embedding dataframe
-    X = pearson_normalize(embedding_matrix)
-    pearson_result = X @ X.T
+    pearson_result = pearson_similarity(embedding_matrix)
 
     pearson_result_df = pd.DataFrame(
         pearson_result,

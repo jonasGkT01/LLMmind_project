@@ -5,40 +5,34 @@ import nibabel as nib
 import numpy as np
 import pandas as pd
 from nilearn import datasets, image
-from scipy.stats import pearsonr
 
-def safe_pearsonr(x, y):
-    if np.allclose(x, x[0]) or np.allclose(y, y[0]):
-        return 0.0
-
-    r, _ = pearsonr(x, y)
-    return float(np.nan_to_num(r, nan=0.0, posinf=0.0, neginf=0.0))
+from libraries.fmri_processing import compute_leave_one_out_isc
 
 def compute_isc(parcel_ts_files):
     data_list = [np.load(f) for f in parcel_ts_files]
 
     time_lengths = [x.shape[0] for x in data_list]
+
     if len(set(time_lengths)) != 1:
         minimum_time = min(time_lengths)
-        data_list = [x[:minimum_time, :] for x in data_list]
+        data_list = [
+            x[:minimum_time, :]
+            for x in data_list
+        ]
 
     n_subjects = len(data_list)
-    n_parcels = data_list[0].shape[1]
 
     if n_subjects < 2:
-        raise ValueError("ISC requires at least two parcel time-series files")
+        raise ValueError(
+            "ISC requires at least two parcel time-series files"
+        )
 
-    data = np.stack(data_list, axis=0)
+    data = np.stack(
+        data_list,
+        axis=0,
+    )
 
-    isc = np.zeros((n_subjects, n_parcels), dtype=np.float32)
-
-    for s in range(n_subjects):
-        others_mean = data[np.arange(n_subjects) != s].mean(axis=0)
-
-        for p in range(n_parcels):
-            isc[s, p] = safe_pearsonr(data[s, :, p], others_mean[:, p])
-
-    return isc.mean(axis=0).astype(np.float32)
+    return compute_leave_one_out_isc(data)
 
 def save_isc_outputs(isc_mean, isc_npy, isc_nii, atlas_data, atlas_img):
     isc_npy = Path(isc_npy)

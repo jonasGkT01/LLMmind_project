@@ -1,6 +1,8 @@
+import argparse
+
 import pandas as pd
 
-import argparse
+from libraries.compute_alignment import compute_alignment_scores
 
 def main():
     parser = argparse.ArgumentParser()
@@ -47,49 +49,11 @@ def main():
             f"The second nearest-neighbours dataframe is missing columns: {sorted(missing_columns_2)}"
         )
 
-    # create two dictionaries to store the dataframes of nearest neighbours
-    nearest_neighbours_dict_1 = {
-        concept: group.drop(columns = "concept").reset_index(drop = True)
-        for concept, group in nearest_neighbours_df_1.groupby("concept")
-    }
-    nearest_neighbours_dict_2 = {
-        concept: group.drop(columns = "concept").reset_index(drop = True)
-        for concept, group in nearest_neighbours_df_2.groupby("concept")
-    }
-
-    # get the set of concepts for which the nearest neighbours in both models have been computed
-    concepts = sorted(
-        set(nearest_neighbours_df_1["concept"])
-        & set(nearest_neighbours_df_2["concept"])
+    alignment_score_df = compute_alignment_scores(
+        nearest_neighbours_df_1=nearest_neighbours_df_1,
+        nearest_neighbours_df_2=nearest_neighbours_df_2,
+        number_of_neighbours=number_of_neighbours,
     )
-    rows = []
-
-    # concept by concept, count how many nearest neighbours are in common between the two models
-    for c in concepts:
-        neighbours_1 = set(nearest_neighbours_dict_1[c]["neighbour"])
-        neighbours_2 = set(nearest_neighbours_dict_2[c]["neighbour"])
-
-        common_neighbours = len(neighbours_1 & neighbours_2)
-
-        rows.append({
-            "concept": c, 
-            "common_neighbours": common_neighbours, 
-            "alignment_score": common_neighbours / number_of_neighbours, 
-            "alignment_score_percentage": common_neighbours / number_of_neighbours * 100
-        })    
-
-    # create a pandas dataframe to store alignment scores results
-    alignment_score_df = pd.DataFrame(
-        rows,
-        columns = [
-            "concept",
-            "common_neighbours",
-            "alignment_score",
-            "alignment_score_percentage",
-        ],
-    )
-
-#    alignment_score_df = alignment_score_df.sort_values("concept").reset_index(drop = True)
 
     # save the alignment scores as a parquet file
     alignment_score_df.to_parquet(alignment_score, engine = "pyarrow",index = True)

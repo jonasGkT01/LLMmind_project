@@ -4,6 +4,9 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from libraries.compute_alignment import compute_common_neighbours
+from libraries.compute_nearest_neighbours import compute_topk_indices, create_neighbour_mask, relabel_nearest_neighbours
+
 def make_concept_index(concepts):
     return {concept: i for i, concept in enumerate(concepts)}
 
@@ -29,35 +32,6 @@ def encode_brain_nearest_neighbours(brain_nearest_neighbours_df, concepts, numbe
         rows.append(encoded_neighbours)
 
     return np.asarray(rows, dtype=np.int64)
-
-def compute_observed_topk_indices(similarity_df, number_of_neighbours):
-    similarity = similarity_df.to_numpy(copy=True)
-
-    if similarity.shape[0] < number_of_neighbours + 1:
-        raise ValueError(f"Requested {number_of_neighbours} neighbours, but only {similarity.shape[0]} concepts are available")
-
-    np.fill_diagonal(similarity, -np.inf)
-    partitioned_indices = np.argpartition(similarity, -number_of_neighbours, axis=1)[:, -number_of_neighbours:]
-    partitioned_scores = np.take_along_axis(similarity, partitioned_indices, axis=1)
-    order = np.argsort(partitioned_scores, axis=1)[:, ::-1]
-    topk_indices = np.take_along_axis(partitioned_indices, order, axis=1)
-
-    return topk_indices.astype(np.int64)
-
-def create_brain_neighbour_mask(brain_neighbours, number_of_concepts):
-    concept_indices = np.arange(number_of_concepts, dtype=np.int64)
-    brain_neighbour_mask = np.zeros((number_of_concepts, number_of_concepts), dtype=bool)
-    brain_neighbour_mask[concept_indices[:, None], brain_neighbours] = True
-
-    return brain_neighbour_mask, concept_indices
-
-def compute_common_neighbours(llm_neighbours, brain_neighbour_mask, concept_indices):
-    return brain_neighbour_mask[concept_indices[:, None], llm_neighbours].sum(axis=1)
-
-def relabel_nearest_neighbours(observed_neighbours, permutation, inverse_permutation, concept_indices):
-    inverse_permutation[permutation] = concept_indices
-
-    return inverse_permutation[observed_neighbours[permutation]]
 
 def select_common_neighbour_dtype(number_of_neighbours):
     if number_of_neighbours <= np.iinfo(np.uint8).max:
@@ -127,19 +101,19 @@ def compute_relabelled_alignment_scores(similarity_df, brain_nearest_neighbours_
     if missing_brain_concepts:
         raise ValueError(f"The brain nearest-neighbours dataframe is missing concepts: {missing_brain_concepts}")
 
-    observed_llm_neighbours = compute_observed_topk_indices(
-        similarity_df=similarity_df,
-        number_of_neighbours=number_of_neighbours,
+    observed_llm_neighbours = compute_topk_indices(
+        similarity = similarity_df.to_numpy(copy = True),
+        number_of_neighbours = number_of_neighbours,
     )
+
     brain_neighbours = encode_brain_nearest_neighbours(
-        brain_nearest_neighbours_df=brain_nearest_neighbours_df,
-        concepts=concepts,
-        number_of_neighbours=number_of_neighbours,
+        brain_nearest_neighbours_df = brain_nearest_neighbours_df,
+        concepts = concepts,
+        number_of_neighbours = number_of_neighbours,
     )
-    brain_neighbour_mask, concept_indices = create_brain_neighbour_mask(
-        brain_neighbours=brain_neighbours,
-        number_of_concepts=len(concepts),
-    )
+
+    brain_neighbour_mask, concept_indices = create_neighbour_mask(brain_neighbours)
+
     common_neighbour_dtype = select_common_neighbour_dtype(number_of_neighbours)
     common_neighbours_matrix = np.empty(
         (number_of_relabellings, len(concepts)),
@@ -157,9 +131,9 @@ def compute_relabelled_alignment_scores(similarity_df, brain_nearest_neighbours_
             concept_indices=concept_indices,
         )
         common_neighbours_matrix[shuffle_i] = compute_common_neighbours(
-            llm_neighbours=relabelled_llm_neighbours,
-            brain_neighbour_mask=brain_neighbour_mask,
-            concept_indices=concept_indices,
+            llm_neighbours = relabelled_llm_neighbours,
+            brain_neighbour_mask = brain_neighbour_mask,
+            concept_indices = concept_indices,
         )
 
         if shuffle_i == 0 or (shuffle_i + 1) % 100 == 0 or shuffle_i + 1 == number_of_relabellings:

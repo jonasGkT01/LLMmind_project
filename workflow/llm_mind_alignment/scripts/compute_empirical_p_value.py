@@ -4,6 +4,8 @@ import argparse
 import numpy as np
 import pandas as pd
 
+from libraries.compute_statistics import empirical_upper_tail_p_value
+
 def compute_empirical_statistics(observed_df: pd.DataFrame, relabelled_df: pd.DataFrame) -> pd.DataFrame:
     number_of_relabellings = relabelled_df["shuffle_id"].nunique()
 
@@ -30,7 +32,12 @@ def compute_empirical_statistics(observed_df: pd.DataFrame, relabelled_df: pd.Da
     summary_df = observed_by_concept.join(relabelled_summary_df)
 
     summary_df["number_of_relabellings"] = number_of_relabellings
-    summary_df["empirical_upper_tail_p_value"] = (summary_df["number_of_null_scores_at_least_as_large"] + 1)/(number_of_relabellings + 1)
+    summary_df["empirical_upper_tail_p_value"] = (
+        empirical_upper_tail_p_value(
+            number_at_least_as_large = summary_df["number_of_null_scores_at_least_as_large"],
+            number_of_relabellings = number_of_relabellings,
+        )
+    )
 
     summary_df = summary_df.reset_index()
 

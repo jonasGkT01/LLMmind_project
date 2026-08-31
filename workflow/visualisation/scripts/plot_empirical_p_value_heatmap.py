@@ -6,30 +6,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+from libraries.manage_model_metadata import model_family, model_label, parse_model_parameters
+from libraries.compute_statistics import benjamini_hochberg
+
 def validate_p_value(value, source):
     p_value = float(value)
     if not 0 < p_value <= 1:
         raise ValueError(f"{source} contains an invalid empirical p-value: {p_value}")
     return p_value
-
-def parse_model_parameters(model_parameters):
-    parameters_by_model = {}
-    for specification in model_parameters:
-        if "=" not in specification:
-            raise ValueError(f"Invalid model-parameter specification: {specification}")
-        model, number_of_parameters = specification.split("=", 1)
-        if model in parameters_by_model:
-            raise ValueError(f"Parameters were provided more than once for model {model}")
-        parameters_by_model[model] = float(number_of_parameters)
-    return parameters_by_model
-
-def model_family(model):
-    if "_" not in model:
-        return model
-    return model.rsplit("_", 1)[0]
-
-def model_label(model, stimuli_type):
-    return f"{model}-{stimuli_type}"
 
 def model_sort_key(label, model_metadata):
     if label == "brain":
@@ -138,18 +122,6 @@ def read_llm_brain_records(path, dataset, similarity_type, number_of_neighbours,
             }
         )
     return records
-
-def benjamini_hochberg(p_values):
-    p_values = np.asarray(p_values, dtype=float)
-    if len(p_values) == 0:
-        return np.asarray([], dtype=float)
-    order = np.argsort(p_values)
-    ordered_p_values = p_values[order]
-    ordered_q_values = ordered_p_values * len(p_values) / np.arange(1, len(p_values) + 1)
-    ordered_q_values = np.minimum.accumulate(ordered_q_values[::-1])[::-1]
-    q_values = np.empty_like(ordered_q_values)
-    q_values[order] = np.minimum(ordered_q_values, 1.0)
-    return q_values
 
 def significance_label(q_value):
     if q_value < 0.001:

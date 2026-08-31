@@ -5,15 +5,8 @@ import nibabel as nib
 import numpy as np
 import pandas as pd
 from nilearn import datasets, image
-from scipy.stats import pearsonr
 
-def safe_pearsonr(x, y):
-    if np.allclose(x, x[0]) or np.allclose(y, y[0]):
-        return 0.0
-
-    r, _ = pearsonr(x, y)
-
-    return float(np.nan_to_num(r, nan=0.0, posinf=0.0, neginf=0.0))
+from libraries.fmri_processing import compute_leave_one_out_isc
 
 def parcel_output_path(row, parcel_root):
     return (
@@ -56,24 +49,12 @@ def compute_isc(parcel_ts_files, n_rois):
             f"Mismatched time lengths across parcel time-series files. Details: {details}"
         )
 
-    n_subjects = len(data_list)
-    n_parcels = data_list[0].shape[1]
-
-    data = np.stack(data_list, axis=0).astype(np.float32)
-
-    isc = np.zeros((n_subjects, n_parcels), dtype=np.float32)
-
-    for subject_idx in range(n_subjects):
-        other_subjects = np.arange(n_subjects) != subject_idx
-        others_mean = data[other_subjects].mean(axis=0)
-
-        for parcel_idx in range(n_parcels):
-            isc[subject_idx, parcel_idx] = safe_pearsonr(
-                data[subject_idx, :, parcel_idx],
-                others_mean[:, parcel_idx],
-            )
-
-    return isc.mean(axis=0).astype(np.float32)
+    data = np.stack(
+        data_list,
+        axis=0,
+    ).astype(np.float32)
+    
+    return compute_leave_one_out_isc(data)
 
 def save_isc(isc_mean, isc_npy, isc_nii, atlas_data, atlas_img):
     isc_npy = Path(isc_npy)

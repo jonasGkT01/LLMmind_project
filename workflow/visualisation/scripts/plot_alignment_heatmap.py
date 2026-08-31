@@ -7,6 +7,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+from libraries.manage_model_metadata import model_family, model_label, parse_model_parameters
+
 def parse_llm_brain_path(path):
     filename = Path(path).name
 
@@ -45,41 +47,12 @@ def parse_llm_llm_path(path):
     return match.groupdict()
 
 def read_mean_alignment_score(path):
-    df = pd.read_parquet(path, engine="pyarrow")
+    df = pd.read_parquet(path, engine = "pyarrow")
 
     if "alignment_score" not in df.columns:
         raise ValueError(f"{path} does not contain an 'alignment_score' column")
 
     return float(df["alignment_score"].mean())
-
-def parse_model_parameters(model_parameters):
-    parameters_by_model = {}
-
-    for model_parameter in model_parameters:
-        if "=" not in model_parameter:
-            raise ValueError(
-                f"Invalid model-parameter specification: {model_parameter}"
-            )
-
-        model, number_of_parameters = model_parameter.split("=", 1)
-
-        if model in parameters_by_model:
-            raise ValueError(
-                f"Parameters were provided more than once for model {model}"
-            )
-
-        parameters_by_model[model] = float(number_of_parameters)
-
-    return parameters_by_model
-
-def model_family(model):
-    if "_" not in model:
-        return model
-
-    return model.rsplit("_", 1)[0]
-
-def model_label(model, stimuli_type):
-    return f"{model}-{stimuli_type}"
 
 def model_sort_key(label, model_metadata, parameters_by_model):
     if label == "brain":
@@ -104,37 +77,12 @@ def model_sort_key(label, model_metadata, parameters_by_model):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--llm_brain_alignment_scores",
-        nargs="*",
-        default=[],
-        help="LLM-brain alignment score parquet files",
-    )
-    parser.add_argument(
-        "--llm_llm_alignment_scores",
-        nargs="*",
-        default=[],
-        help="LLM-LLM alignment score parquet files",
-    )
-    parser.add_argument(
-        "--model_parameters",
-        nargs="+",
-        required=True,
-        help="Model parameter counts formatted as model=parameters_millions",
-    )
-    parser.add_argument(
-        "--dataset",
-        required=True,
-    )
-    parser.add_argument(
-        "--similarity_type",
-        required=True,
-    )
-    parser.add_argument(
-        "--number_of_neighbours",
-        type=int,
-        required=True,
-    )
+    parser.add_argument("--llm_brain_alignment_scores", nargs="*", default=[], help="LLM-brain alignment score parquet files",)
+    parser.add_argument("--llm_llm_alignment_scores", nargs="*", default=[], help="LLM-LLM alignment score parquet files",)
+    parser.add_argument("--model_parameters", nargs="+", required=True, help="Model parameter counts formatted as model=parameters_millions",)
+    parser.add_argument("--dataset", required=True,)
+    parser.add_argument("--similarity_type", required=True,)
+    parser.add_argument("--number_of_neighbours", type=int, required=True,)
     parser.add_argument("--heatmap", type=str, required=True)
     args = parser.parse_args()
 
@@ -232,9 +180,7 @@ def main():
     ax.set_yticklabels(labels)
 
     ax.set_title("Alignment scores\n"
-        f"dataset={args.dataset}, "
-        f"similarity={args.similarity_type}, "
-        f"neighbours={args.number_of_neighbours}")
+        f"dataset={args.dataset}, similarity={args.similarity_type}, neighbours={args.number_of_neighbours}")
     ax.set_xlabel("Model / brain")
     ax.set_ylabel("Model / brain")
 
