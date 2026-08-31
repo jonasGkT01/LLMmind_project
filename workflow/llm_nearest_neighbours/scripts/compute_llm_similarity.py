@@ -25,10 +25,7 @@ def main():
     # load the dataframe
     embedding_df = pd.read_parquet(args.embedding_dataframe)
 
-    embedding_cols = [
-        c for c in embedding_df.columns
-        if isinstance(c, int)
-    ]
+    embedding_cols = [c for c in embedding_df.columns if isinstance(c, int)]
 
     if not embedding_cols:
         # Parquet may round-trip integer column names as strings depending on engine/version.
@@ -45,9 +42,11 @@ def main():
     # Sort numerically so dimensions are in order.
     embedding_cols = sorted(embedding_cols, key=lambda c: int(c))
 
+    embedding_matrix = embedding_df[embedding_cols].to_numpy(dtype=np.float64)
+
     ##### COSINE SIMILARITY #####
     # compute cosine similarities for all the concepts in the embedding dataframe
-    cosine_result = cosine_similarity(embedding_df[embedding_cols].to_numpy(dtype=np.float64))
+    cosine_result = cosine_similarity(embedding_matrix)
 
     cosine_similarity_df = pd.DataFrame(
         cosine_result, 
@@ -65,7 +64,7 @@ def main():
 
     ##### PEARSON SIMILARITY #####
     # compute Pearson similarities for all the concepts in the embedding dataframe
-    pearson_result = pearson_similarity(embedding_df[embedding_cols].to_numpy(dtype=np.float64))
+    pearson_result = pearson_similarity(embedding_matrix)
 
     pearson_similarity_df = pd.DataFrame(
         pearson_result, 
