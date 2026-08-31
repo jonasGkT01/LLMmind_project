@@ -7,7 +7,7 @@ import pandas as pd
 
 from libraries.compute_alignment import compute_mean_alignment_score
 from libraries.compute_nearest_neighbours import compute_topk_indices, create_neighbour_mask, relabel_nearest_neighbours
-from libraries.compute_statistics import empirical_p_value, empirical_upper_tail_p_value
+from libraries.compute_statistics import empirical_upper_tail_p_value
 from libraries.validate_data import validate_similarity_dataframe
 
 def select_shared_concepts(similarity_df_1, similarity_df_2):
