@@ -8,14 +8,14 @@ from libraries.compute_similarity import cosine_similarity, pearson_similarity
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--embedding_dataframe", 
-                      type = str, 
-                      help = "Path to dataframe of embeddings")
+                        type = str, 
+                        help = "Path to dataframe of embeddings")
     parser.add_argument("--cosine_similarity_dataframe", 
-                      type = str, 
-                      help = "Path to dataframe of computed cosine similarities")
+                        type = str, 
+                        help = "Path to dataframe of computed cosine similarities")
     parser.add_argument("--pearson_similarity_dataframe", 
-                      type = str, 
-                      help = "Path to dataframe of computed Pearson similarities")
+                        type = str, 
+                        help = "Path to dataframe of computed Pearson similarities")
     args = parser.parse_args()
 
     cosine_similarity_dataframe = args.cosine_similarity_dataframe
@@ -34,9 +34,7 @@ def main():
         ]
 
     if not embedding_cols:
-        raise ValueError(
-            f"No embedding columns found. Columns are: {list(embedding_df.columns[:20])}"
-        )
+        raise ValueError(f"No embedding columns found. Columns are: {list(embedding_df.columns[:20])}")
 
     # Sort numerically so dimensions are in order.
     embedding_cols = sorted(embedding_cols, key=lambda c: int(c))

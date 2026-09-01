@@ -20,14 +20,10 @@ def main():
     missing_columns = required_columns - set(df.columns)
 
     if missing_columns:
-        raise ValueError(
-            f"Image-caption table is missing columns: {sorted(missing_columns)}. Available columns are: {list(df.columns)}"
-        )
+        raise ValueError(f"Image-caption table is missing columns: {sorted(missing_columns)}. Available columns are: {list(df.columns)}")
 
     if "stimulus_id" not in manifest.columns:
-        raise ValueError(
-            f"Manifest is missing column: stimulus_id. Available columns are: {list(manifest.columns)}"
-        )
+        raise ValueError(f"Manifest is missing column: stimulus_id. Available columns are: {list(manifest.columns)}")
 
     manifest_stimuli = set(
         manifest["stimulus_id"]

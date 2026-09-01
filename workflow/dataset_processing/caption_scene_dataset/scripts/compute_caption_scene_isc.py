@@ -20,22 +20,16 @@ def parcel_output_path(row, parcel_root):
 
 def compute_isc(parcel_ts_files, n_rois):
     if len(parcel_ts_files) < 2:
-        raise ValueError(
-            f"ISC requires at least two parcel time-series files, got {len(parcel_ts_files)}"
-        )
+        raise ValueError(f"ISC requires at least two parcel time-series files, got {len(parcel_ts_files)}")
 
     data_list = [np.load(f) for f in parcel_ts_files]
 
     for path, arr in zip(parcel_ts_files, data_list):
         if arr.ndim != 2:
-            raise ValueError(
-                f"Expected 2D parcel time series, got shape {arr.shape}: {path}"
-            )
+            raise ValueError(f"Expected 2D parcel time series, got shape {arr.shape}: {path}")
 
         if arr.shape[1] != n_rois:
-            raise ValueError(
-                f"Expected {n_rois} parcels, got {arr.shape[1]} parcels: {path}"
-            )
+            raise ValueError(f"Expected {n_rois} parcels, got {arr.shape[1]} parcels: {path}")
 
     time_lengths = [x.shape[0] for x in data_list]
 
@@ -45,9 +39,7 @@ def compute_isc(parcel_ts_files, n_rois):
             for path, arr in zip(parcel_ts_files, data_list)
         )
 
-        raise ValueError(
-            f"Mismatched time lengths across parcel time-series files. Details: {details}"
-        )
+        raise ValueError(f"Mismatched time lengths across parcel time-series files. Details: {details}")
 
     data = np.stack(
         data_list,
@@ -100,7 +92,7 @@ def main():
     atlas_img = image.load_img(atlas.maps)
     atlas_data = atlas_img.get_fdata().astype(int)
 
-#    print(f"Computing ISC from {len(args.parcel_ts)} parcel files")
+    print(f"Computing ISC {args.isc_npy} from {len(args.parcel_ts)} parcel files")
 
     isc_mean = compute_isc(args.parcel_ts, args.n_rois)
 

@@ -23,9 +23,7 @@ def compute_isc(parcel_ts_files):
     n_subjects = len(data_list)
 
     if n_subjects < 2:
-        raise ValueError(
-            "ISC requires at least two parcel time-series files"
-        )
+        raise ValueError("ISC requires at least two parcel time-series files")
 
     data = np.stack(
         data_list,

@@ -61,17 +61,13 @@ def compute_empirical_statistics(observed_df: pd.DataFrame, relabelled_df: pd.Da
     ]
 
 def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Compute an upper-tail empirical p-value separately for each concept using observed and relabelled alignment-score Parquet files"
-    )
-    parser.add_argument(
-        "--observed_alignment_score",
-        required=True,
-        help="Path to the Parquet file containing the observed alignment scores",)
-    parser.add_argument(
-        "--relabelled_alignment_score",
-        required=True,
-        help="Path to the Parquet file containing the alignment scores for all relabellings",)
+    parser = argparse.ArgumentParser(description="Compute an upper-tail empirical p-value separately for each concept using observed and relabelled alignment-score Parquet files")
+    parser.add_argument("--observed_alignment_score",
+                        required=True,
+                        help="Path to the Parquet file containing the observed alignment scores",)
+    parser.add_argument("--relabelled_alignment_score",
+                        required=True,
+                        help="Path to the Parquet file containing the alignment scores for all relabellings",)
     args = parser.parse_args()
 
     observed_df = pd.read_parquet(args.observed_alignment_score, engine="pyarrow")

@@ -16,9 +16,7 @@ def validate_manifest(manifest):
     missing_columns = required_columns - set(manifest.columns)
 
     if missing_columns:
-        raise ValueError(
-            f"Manifest is missing required columns: {sorted(missing_columns)}. Available columns are: {list(manifest.columns)}"
-        )
+        raise ValueError(f"Manifest is missing required columns: {sorted(missing_columns)}. Available columns are: {list(manifest.columns)}")
 
 def write_crop(img, output_bold, start_vol, n_vols):
     output_bold = Path(output_bold)
@@ -35,9 +33,7 @@ def write_crop(img, output_bold, start_vol, n_vols):
         raise ValueError(f"n_vols must be positive: {n_vols}")
 
     if end_vol > img.shape[3]:
-        raise ValueError(
-            f"Requested volumes [{start_vol}:{end_vol}] exceed BOLD length {img.shape[3]}"
-        )
+        raise ValueError(f"Requested volumes [{start_vol}:{end_vol}] exceed BOLD length {img.shape[3]}")
 
     cropped = np.asarray(img.dataobj[..., start_vol:end_vol], dtype=np.float32)
 
@@ -66,16 +62,14 @@ def main():
     source_bolds = manifest["source_bold"].drop_duplicates().tolist()
 
     if len(source_bolds) != 1:
-        raise ValueError(
-            f"This split script expects one source BOLD file per manifest. Found {len(source_bolds)} source BOLD files: {source_bolds}"
-        )
+        raise ValueError(f"This split script expects one source BOLD file per manifest. Found {len(source_bolds)} source BOLD files: {source_bolds}")
 
     source_bold = Path(source_bolds[0])
 
     if not source_bold.exists():
         raise FileNotFoundError(f"Missing source BOLD file: {source_bold}")
 
-#    print(f"Loading source BOLD once: {source_bold}")
+    print(f"Loading source BOLD once: {source_bold}")
 
     img = nib.load(str(source_bold))
 

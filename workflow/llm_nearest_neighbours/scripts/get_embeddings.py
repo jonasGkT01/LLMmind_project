@@ -34,9 +34,7 @@ def pool_hidden_state(
         return hidden_state
 
     if hidden_state.ndim != 3:
-        raise ValueError(
-            f"Expected a 2D or 3D hidden-state tensor, got shape {tuple(hidden_state.shape)}"
-        )
+        raise ValueError(f"Expected a 2D or 3D hidden-state tensor, got shape {tuple(hidden_state.shape)}")
 
     if pool == "avg":
         return mean_pool_last_hidden(
@@ -264,19 +262,13 @@ def load_stimuli(
     ]
 
     if text_files and image_files:
-        raise ValueError(
-            f"Both text and image stimuli were found in {stimuli_dir}. Each execution must receive only one type of stimulus"
-        )
+        raise ValueError(f"Both text and image stimuli were found in {stimuli_dir}. Each execution must receive only one type of stimulus")
 
     if text_files:
         items = []
 
         for path in text_files:
-            with open(
-                path,
-                "r",
-                encoding="utf-8",
-            ) as input_file:
+            with open(path, "r", encoding="utf-8") as input_file:
                 text = input_file.read()
 
             items.append(
@@ -297,9 +289,7 @@ def load_stimuli(
             for path in image_files
         ], "image"
 
-    raise ValueError(
-        f"No supported stimulus files found in {stimuli_dir}"
-    )
+    raise ValueError(f"No supported stimulus files found in {stimuli_dir}")
 
 def embed_long_text(
     text: str,
@@ -349,16 +339,12 @@ def embed_long_text(
     )
 
     if chunk_token_length <= 0:
-        raise ValueError(
-            f"max_length={max_length} is too small after accounting for BOS"
-        )
+        raise ValueError(f"max_length={max_length} is too small after accounting for BOS")
 
     step = chunk_token_length - overlap
 
     if step <= 0:
-        raise ValueError(
-            f"Overlap is too large after accounting for special tokens. Chunk_token_length={chunk_token_length}, overlap={overlap}"
-        )
+        raise ValueError(f"Overlap is too large after accounting for special tokens. Chunk_token_length={chunk_token_length}, overlap={overlap}")
 
     chunk_embeddings = []
     chunk_lengths = []
@@ -385,9 +371,7 @@ def embed_long_text(
             model_input_ids = chunk_ids
 
         if len(model_input_ids) > max_length:
-            raise RuntimeError(
-                f"Chunk length {len(model_input_ids)} exceeds max_length={max_length}"
-            )
+            raise RuntimeError(f"Chunk length {len(model_input_ids)} exceeds max_length={max_length}")
 
         input_ids_tensor = torch.tensor(
             [model_input_ids],
@@ -436,9 +420,7 @@ def embed_long_text(
             torch.cuda.empty_cache()
 
     if not chunk_embeddings:
-        raise ValueError(
-            "No chunks were produced for stimulus"
-        )
+        raise ValueError("No chunks were produced for stimulus")
 
     chunks = torch.stack(
         chunk_embeddings,
@@ -548,59 +530,45 @@ def load_model(
     return model
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Extract language or vision embeddings"
-    )
-    parser.add_argument(
-        "--stimuli_dir",
-        required=True,
-        help="Directory containing the input stimuli")
-    parser.add_argument(
-        "--output",
-        required=True,
-        help="Output Parquet file")
-    parser.add_argument(
-        "--model_path",
-        required=True,
-        help="Path or Hugging Face identifier of the model")
-    parser.add_argument(
-        "--modality",
-        required=True,
-        choices=["language", "vision", "multimodal"],
-        help="Modality supported by the model")
-    parser.add_argument(
-        "--quantization_method",
-        choices=["4bit", "8bit"],
-        default=None,
-        help="Optional model quantization method")
-    parser.add_argument(
-        "--excluded_stimuli",
-        required=True,
-        help="File containing one excluded stimulus name per line")
-    parser.add_argument(
-        "--pool",
-        choices=["avg", "cls", "last"],
-        default=None,
-        help="Pooling method")
-    parser.add_argument(
-        "--chunk_max_length",
-        type=int,
-        default=None,
-        help="Maximum model input length per textual chunk")
-    parser.add_argument(
-        "--chunk_overlap",
-        type=int,
-        default=256,
-        help="Number of overlapping tokens between textual chunks")
-    parser.add_argument(
-        "--trust_remote_code",
-        action="store_true",
-        help="Allow custom Hugging Face model code")
+    parser = argparse.ArgumentParser(description="Extract language or vision embeddings")
+    parser.add_argument("--stimuli_dir",
+                        required=True,
+                        help="Directory containing the input stimuli")
+    parser.add_argument("--output",
+                        required=True,
+                        help="Output Parquet file")
+    parser.add_argument("--model_path",
+                        required=True,
+                        help="Path or Hugging Face identifier of the model")
+    parser.add_argument("--modality",
+                        required=True,
+                        choices=["language", "vision", "multimodal"],
+                        help="Modality supported by the model")
+    parser.add_argument("--quantization_method",
+                        choices=["4bit", "8bit"],
+                        default=None,
+                        help="Optional model quantization method")
+    parser.add_argument("--excluded_stimuli",
+                        required=True,
+                        help="File containing one excluded stimulus name per line")
+    parser.add_argument("--pool",
+                        choices=["avg", "cls", "last"],
+                        default=None,
+                        help="Pooling method")
+    parser.add_argument("--chunk_max_length",
+                        type=int,
+                        default=None,
+                        help="Maximum model input length per textual chunk")
+    parser.add_argument("--chunk_overlap",
+                        type=int,
+                        default=256,
+                        help="Number of overlapping tokens between textual chunks")
+    parser.add_argument("--trust_remote_code",
+                        action="store_true",
+                        help="Allow custom Hugging Face model code")
     args = parser.parse_args()
 
-    excluded_stimuli = load_excluded_stimuli(
-        excluded_stimuli_path=args.excluded_stimuli,
-    )
+    excluded_stimuli = load_excluded_stimuli(excluded_stimuli_path=args.excluded_stimuli,)
 
     items, input_type = load_stimuli(
         stimuli_dir=args.stimuli_dir,
@@ -608,14 +576,10 @@ def main():
     )
 
     if args.modality == "language" and input_type != "text":
-        raise ValueError(
-            "A language model requires textual stimuli"
-        )
+        raise ValueError("A language model requires textual stimuli")
 
     if args.modality == "vision" and input_type != "image":
-        raise ValueError(
-            "A vision model requires visual stimuli"
-        )
+        raise ValueError("A vision model requires visual stimuli")
 
     if args.pool is None:
         if input_type == "image":
@@ -655,9 +619,7 @@ def main():
         )
 
         if args.chunk_overlap >= max_length:
-            raise ValueError(
-                f"--chunk_overlap must be smaller than chunk max length. Got overlap={args.chunk_overlap}, max_length={max_length}"
-            )
+            raise ValueError(f"--chunk_overlap must be smaller than chunk max length. Got overlap={args.chunk_overlap}, max_length={max_length}")
 
     else:
         processor = AutoProcessor.from_pretrained(
@@ -756,18 +718,11 @@ def main():
     ]
 
     if unexpected_columns:
-        raise ValueError(
-            f"Unexpected non-embedding columns found: {unexpected_columns}"
-        )
+        raise ValueError(f"Unexpected non-embedding columns found: {unexpected_columns}")
 
-    dataframe = dataframe[
-        metadata_columns
-        + embedding_columns
-    ]
+    dataframe = dataframe[metadata_columns + embedding_columns]
 
-    output_directory = os.path.dirname(
-        args.output
-    )
+    output_directory = os.path.dirname(args.output)
 
     if output_directory:
         os.makedirs(

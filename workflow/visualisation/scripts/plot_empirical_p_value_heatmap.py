@@ -55,10 +55,7 @@ def read_llm_llm_records(paths, parameters_by_model):
             if model not in parameters_by_model:
                 raise ValueError(f"No number of parameters was provided for model {model}")
             if not np.isclose(file_parameters, parameters_by_model[model]):
-                raise ValueError(
-                    f"{path} reports {file_parameters} million parameters for {model}, "
-                    f"but the configuration reports {parameters_by_model[model]}"
-                )
+                raise ValueError(f"{path} reports {file_parameters} million parameters for {model}, but the configuration reports {parameters_by_model[model]}")
         records.append(
             {
                 "model_1": model_1,
@@ -95,10 +92,7 @@ def read_llm_brain_records(path, dataset, similarity_type, number_of_neighbours,
         & (p_value_df["statistic"].astype(str) == "model_level_empirical_p_value")
     ].copy()
     if selected_df.empty:
-        raise ValueError(
-            f"No model-brain empirical p-values were found in {path} for dataset={dataset}, "
-            f"similarity_type={similarity_type}, number_of_neighbours={number_of_neighbours}"
-        )
+        raise ValueError(f"No model-brain empirical p-values were found in {path} for dataset={dataset}, similarity_type={similarity_type}, number_of_neighbours={number_of_neighbours}")
     duplicated_rows = selected_df.duplicated(subset=["model", "stimuli_type"], keep=False)
     if duplicated_rows.any():
         duplicates = selected_df.loc[
@@ -224,10 +218,7 @@ def main():
                 annotation = f"{annotation}\n{significance}"
             ax.text(column_i, row_i, annotation, ha="center", va="center", fontsize=7)
 
-    ax.set_title("LLM–LLM and LLM–brain empirical p-values\n"
-        f"dataset={args.dataset}, "
-        f"similarity={args.similarity_type}, "
-        f"neighbours={args.number_of_neighbours}")
+    ax.set_title(f"LLM–LLM and LLM–brain empirical p-values\ndataset={args.dataset}, similarity={args.similarity_type}, neighbours={args.number_of_neighbours}")
     ax.set_xlabel("Model / brain")
     ax.set_ylabel("Model / brain")
     colorbar = fig.colorbar(image, ax=ax)

@@ -67,7 +67,7 @@ def main():
 
         parcel_ts.parent.mkdir(parents=True, exist_ok=True)
 
-#        print(f"Extracting parcels from: {bold_file}")
+        print(f"Extracting parcels from: {bold_file}")
 
         ts = extract_parcels(
             bold_file=bold_file,

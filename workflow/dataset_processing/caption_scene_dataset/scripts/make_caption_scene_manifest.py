@@ -49,14 +49,10 @@ def collect_available_image_stimuli(visual_stimuli_dir):
     visual_stimuli_dir = Path(visual_stimuli_dir)
 
     if not visual_stimuli_dir.exists():
-        raise FileNotFoundError(
-            f"Visual stimuli directory does not exist: {visual_stimuli_dir}"
-        )
+        raise FileNotFoundError(f"Visual stimuli directory does not exist: {visual_stimuli_dir}")
 
     if not visual_stimuli_dir.is_dir():
-        raise NotADirectoryError(
-            f"Visual stimuli path is not a directory: {visual_stimuli_dir}"
-        )
+        raise NotADirectoryError(f"Visual stimuli path is not a directory: {visual_stimuli_dir}")
 
     image_paths = [
         path
@@ -66,9 +62,7 @@ def collect_available_image_stimuli(visual_stimuli_dir):
     ]
 
     if not image_paths:
-        raise ValueError(
-            f"No supported image files were found in: {visual_stimuli_dir}"
-        )
+        raise ValueError(f"No supported image files were found in: {visual_stimuli_dir}")
 
     stimulus_to_path = {}
 
@@ -76,9 +70,7 @@ def collect_available_image_stimuli(visual_stimuli_dir):
         stimulus_id = image_path.stem
 
         if stimulus_id in stimulus_to_path:
-            raise ValueError(
-                f"Duplicate stimulus ID {stimulus_id} in visual stimuli directory: {stimulus_to_path[stimulus_id]} and {image_path}"
-            )
+            raise ValueError(f"Duplicate stimulus ID {stimulus_id} in visual stimuli directory: {stimulus_to_path[stimulus_id]} and {image_path}")
 
         stimulus_to_path[stimulus_id] = image_path
 
@@ -121,14 +113,10 @@ def write_run_manifests(out, output_run_manifest_dir, output_run_manifest_index)
         unique_run_tables = sorted(run_df["run_table"].unique().tolist())
 
         if len(unique_source_bolds) != 1:
-            raise ValueError(
-                f"Run manifest {run_key} has multiple source BOLD files: {unique_source_bolds}"
-            )
+            raise ValueError(f"Run manifest {run_key} has multiple source BOLD files: {unique_source_bolds}")
 
         if len(unique_run_tables) != 1:
-            raise ValueError(
-                f"Run manifest {run_key} has multiple run tables: {unique_run_tables}"
-            )
+            raise ValueError(f"Run manifest {run_key} has multiple run tables: {unique_run_tables}")
 
         index_rows.append(
             {
@@ -151,13 +139,7 @@ def main():
     parser.add_argument("--bold_files", nargs="+", required=True)
     parser.add_argument("--run_tables", nargs="+", required=True)
     parser.add_argument("--visual_stimuli_dir", required=True)
-    parser.add_argument(
-        "--output_excluded_stimuli",
-        required=True,
-        help=(
-            "Output text file containing every image stimulus present in All_images_480 but absent from the final mind manifest"
-        ),
-    )
+    parser.add_argument("--output_excluded_stimuli", required=True, help="Output text file containing every image stimulus present in All_images_480 but absent from the final mind manifest")
     parser.add_argument("--output_manifest", required=True)
     parser.add_argument("--output_run_manifest_dir", required=True)
     parser.add_argument("--output_run_manifest_index", required=True)
@@ -169,9 +151,7 @@ def main():
     args = parser.parse_args()
 
     if len(args.bold_files) != len(args.run_tables):
-        raise ValueError(
-            f"The number of BOLD files and run tables must be identical. Got {len(args.bold_files)} BOLD files and {len(args.run_tables)} run tables"
-        )
+        raise ValueError(f"The number of BOLD files and run tables must be identical. Got {len(args.bold_files)} BOLD files and {len(args.run_tables)} run tables")
 
     available_image_stimuli = collect_available_image_stimuli(
         args.visual_stimuli_dir
@@ -207,9 +187,7 @@ def main():
         missing_columns = required_columns - set(df.columns)
 
         if missing_columns:
-            raise ValueError(
-                f"Run table {run_table} is missing columns: {sorted(missing_columns)}"
-            )
+            raise ValueError(f"Run table {run_table} is missing columns: {sorted(missing_columns)}")
 
         df["Image"] = df["Image"].astype(str)
 
@@ -231,10 +209,7 @@ def main():
             crop_start_s = onset_s + float(args.onset_shift_s)
 
             if crop_start_s < 0:
-                raise ValueError(
-                    f"Negative crop start for {run_key}, event "
-                    f"{event_index}, image {image}: {crop_start_s}"
-                )
+                raise ValueError(f"Negative crop start for {run_key}, event {event_index}, image {image}: {crop_start_s}")
 
             start_vol = int(round(crop_start_s / args.tr))
             crop_end_s = crop_start_s + float(args.event_duration_s)
@@ -250,9 +225,7 @@ def main():
             )
 
             if output_bold in seen_outputs:
-                raise ValueError(
-                    f"Duplicate output path inside {run_key}: {output_bold}"
-                )
+                raise ValueError(f"Duplicate output path inside {run_key}: {output_bold}")
 
             seen_outputs.add(output_bold)
 
@@ -291,19 +264,12 @@ def main():
             args.output_excluded_stimuli,
         )
 
-        raise ValueError(
-            "Global manifest is empty. No valid events were found after excluding unreadable or corrupted BOLD files"
-        )
+        raise ValueError("Global manifest is empty. No valid events were found after excluding unreadable or corrupted BOLD files")
 
     stimulus_counts = out.groupby("stimulus_id").size()
 
-    valid_stimuli = stimulus_counts[
-        stimulus_counts >= 2
-    ].index
-
-    singleton_stimuli = stimulus_counts[
-        stimulus_counts == 1
-    ].index.tolist()
+    valid_stimuli = stimulus_counts[stimulus_counts >= 2].index
+    singleton_stimuli = stimulus_counts[stimulus_counts == 1].index.tolist()
 
     if singleton_stimuli:
         warnings.warn(
@@ -325,13 +291,9 @@ def main():
     )
 
     if retained_without_source_image:
-        raise ValueError(
-            f"The final mind manifest contains stimulus IDs that are absent from All_images_480: {retained_without_source_image}"
-        )
+        raise ValueError(f"The final mind manifest contains stimulus IDs that are absent from All_images_480: {retained_without_source_image}")
 
-    excluded_stimuli = sorted(
-        available_image_stimuli - retained_stimuli
-    )
+    excluded_stimuli = sorted(available_image_stimuli - retained_stimuli)
 
     write_lines(
         excluded_stimuli,
@@ -339,13 +301,9 @@ def main():
     )
 
     if out.empty:
-        raise ValueError(
-            "Global manifest is empty after removing stimuli represented by fewer than two valid single-stimulus NIfTI files"
-        )
+        raise ValueError("Global manifest is empty after removing stimuli represented by fewer than two valid single-stimulus NIfTI files")
 
-    out = out.sort_values(
-        ["subject", "session", "run", "event_index"]
-    ).reset_index(drop=True)
+    out = out.sort_values(["subject", "session", "run", "event_index"]).reset_index(drop=True)
 
     output_path = Path(args.output_manifest)
     output_path.parent.mkdir(parents=True, exist_ok=True)

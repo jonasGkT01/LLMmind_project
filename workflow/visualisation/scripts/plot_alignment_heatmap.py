@@ -63,9 +63,7 @@ def model_sort_key(label, model_metadata, parameters_by_model):
     stimuli_type = metadata["stimuli_type"]
 
     if model not in parameters_by_model:
-        raise ValueError(
-            f"No number of parameters was provided for model {model}"
-        )
+        raise ValueError(f"No number of parameters was provided for model {model}")
 
     return (
         0,
@@ -179,8 +177,7 @@ def main():
     ax.set_xticklabels(labels, rotation=90)
     ax.set_yticklabels(labels)
 
-    ax.set_title("Alignment scores\n"
-        f"dataset={args.dataset}, similarity={args.similarity_type}, neighbours={args.number_of_neighbours}")
+    ax.set_title(f"Alignment scores\ndataset={args.dataset}, similarity={args.similarity_type}, neighbours={args.number_of_neighbours}")
     ax.set_xlabel("Model / brain")
     ax.set_ylabel("Model / brain")
 

@@ -21,9 +21,7 @@ def parse_p_value_path(path):
     match = re.fullmatch(pattern, filename)
 
     if match is None:
-        raise ValueError(
-            f"Could not parse p-value filename: {path}"
-        )
+        raise ValueError(f"Could not parse p-value filename: {path}")
 
     metadata = match.groupdict()
     metadata["number_of_neighbours"] = int(metadata["number_of_neighbours"])
@@ -44,9 +42,7 @@ def parse_relabelled_alignment_score_path(path):
     match = re.fullmatch(pattern, filename)
 
     if match is None:
-        raise ValueError(
-            f"Could not parse relabelled alignment-score filename: {path}"
-        )
+        raise ValueError(f"Could not parse relabelled alignment-score filename: {path}")
 
     metadata = match.groupdict()
     metadata["number_of_neighbours"] = int(metadata["number_of_neighbours"])
@@ -78,18 +74,14 @@ def read_empirical_p_values(path):
     missing_columns = required_columns - set(empirical_df.columns)
 
     if missing_columns:
-        raise ValueError(
-            f"Empirical p-value file {path} is missing columns: {sorted(missing_columns)}"
-        )
+        raise ValueError(f"Empirical p-value file {path} is missing columns: {sorted(missing_columns)}")
 
     duplicated_concepts = empirical_df[
         empirical_df["concept"].duplicated(keep=False)
     ]["concept"].tolist()
 
     if duplicated_concepts:
-        raise ValueError(
-            f"Empirical p-value file {path} contains duplicated concepts: {duplicated_concepts[:10]}"
-        )
+        raise ValueError(f"Empirical p-value file {path} contains duplicated concepts: {duplicated_concepts[:10]}")
 
     return empirical_df
 
@@ -106,18 +98,14 @@ def read_hypergeometric_p_values(path):
     missing_columns = required_columns - set(hypergeometric_df.columns)
 
     if missing_columns:
-        raise ValueError(
-            f"Hypergeometric p-value file {path} is missing columns: {sorted(missing_columns)}"
-        )
+        raise ValueError(f"Hypergeometric p-value file {path} is missing columns: {sorted(missing_columns)}")
 
     duplicated_concepts = hypergeometric_df[
         hypergeometric_df["concept"].duplicated(keep=False)
     ]["concept"].tolist()
 
     if duplicated_concepts:
-        raise ValueError(
-            f"Hypergeometric p-value file {path} contains duplicated concepts: {duplicated_concepts[:10]}"
-        )
+        raise ValueError(f"Hypergeometric p-value file {path} contains duplicated concepts: {duplicated_concepts[:10]}")
 
     return hypergeometric_df
 
@@ -133,9 +121,7 @@ def read_relabelled_alignment_scores(path):
     missing_columns = required_columns - set(relabelled_df.columns)
 
     if missing_columns:
-        raise ValueError(
-            f"Relabelled alignment-score file {path} is missing columns: {sorted(missing_columns)}"
-        )
+        raise ValueError(f"Relabelled alignment-score file {path} is missing columns: {sorted(missing_columns)}")
 
     duplicated_relabelled_scores = relabelled_df[
         relabelled_df.duplicated(
@@ -153,9 +139,7 @@ def read_relabelled_alignment_scores(path):
     ].head(10).to_dict(orient="records")
 
     if duplicated_relabelled_scores:
-        raise ValueError(
-            f"Relabelled alignment-score file {path} contains duplicated shuffle/concept scores: {duplicated_relabelled_scores}"
-        )
+        raise ValueError(f"Relabelled alignment-score file {path} contains duplicated shuffle/concept scores: {duplicated_relabelled_scores}")
 
     return relabelled_df
 
@@ -177,9 +161,7 @@ def validate_matching_p_values(
         only_empirical = sorted(empirical_concepts - hypergeometric_concepts)
         only_hypergeometric = sorted(hypergeometric_concepts - empirical_concepts)
 
-        raise ValueError(
-            f"Empirical and hypergeometric concept sets differ for {result_description}. Only empirical: {only_empirical[:10]}. Only hypergeometric: {only_hypergeometric[:10]}"
-        )
+        raise ValueError(f"Empirical and hypergeometric concept sets differ for {result_description}. Only empirical: {only_empirical[:10]}. Only hypergeometric: {only_hypergeometric[:10]}")
 
     comparison_df = empirical_df[
         [
@@ -212,9 +194,7 @@ def validate_matching_p_values(
             "concept",
         ].tolist()
 
-        raise ValueError(
-            f"Observed common-neighbour values differ between empirical and hypergeometric files for {result_description}. Mismatching concepts: {mismatching_concepts[:10]}"
-        )
+        raise ValueError(f"Observed common-neighbour values differ between empirical and hypergeometric files for {result_description}. Mismatching concepts: {mismatching_concepts[:10]}")
 
     alignment_scores_match = np.isclose(
         comparison_df["observed_alignment_score"].to_numpy(dtype=float),
@@ -228,9 +208,7 @@ def validate_matching_p_values(
             "concept",
         ].tolist()
 
-        raise ValueError(
-            f"Observed alignment scores differ between empirical and hypergeometric files for {result_description}. Mismatching concepts: {mismatching_concepts[:10]}"
-        )
+        raise ValueError(f"Observed alignment scores differ between empirical and hypergeometric files for {result_description}. Mismatching concepts: {mismatching_concepts[:10]}")
 
 def compute_model_level_empirical_p_value(
     empirical_df,
@@ -250,9 +228,7 @@ def compute_model_level_empirical_p_value(
         only_empirical = sorted(empirical_concepts - relabelled_concepts)
         only_relabelled = sorted(relabelled_concepts - empirical_concepts)
 
-        raise ValueError(
-            f"Empirical p-value and relabelled alignment-score concept sets differ for {result_description}. Only empirical: {only_empirical[:10]}. Only relabelled: {only_relabelled[:10]}"
-        )
+        raise ValueError(f"Empirical p-value and relabelled alignment-score concept sets differ for {result_description}. Only empirical: {only_empirical[:10]}. Only relabelled: {only_relabelled[:10]}")
 
     observed_model_alignment_score = empirical_df["observed_alignment_score"].mean()
 
@@ -264,13 +240,9 @@ def compute_model_level_empirical_p_value(
     number_of_relabellings = len(null_model_alignment_scores)
 
     if number_of_relabellings == 0:
-        raise ValueError(
-            f"No relabelled model-level scores were available for {result_description}"
-        )
+        raise ValueError(f"No relabelled model-level scores were available for {result_description}")
 
-    number_of_null_scores_at_least_as_large = np.sum(
-        null_model_alignment_scores >= observed_model_alignment_score
-    )
+    number_of_null_scores_at_least_as_large = np.sum(null_model_alignment_scores >= observed_model_alignment_score)
 
     model_level_empirical_p_value = (number_of_null_scores_at_least_as_large + 1)/(number_of_relabellings + 1)
 
@@ -307,9 +279,7 @@ def aggregate_model_results(
         hypergeom_expected_alignment_score = np.nan
     else:
         if number_of_neighbours > population_size:
-            raise ValueError(
-                f"Model {model} uses {number_of_neighbours} neighbours, but only {number_of_concepts} concepts are available"
-            )
+            raise ValueError(f"Model {model} uses {number_of_neighbours} neighbours, but only {number_of_concepts} concepts are available")
 
         hypergeom_expected_common_neighbours = number_of_neighbours*number_of_neighbours/population_size
         hypergeom_expected_alignment_score = number_of_neighbours/population_size
@@ -322,16 +292,12 @@ def aggregate_model_results(
     number_of_relabellings_series = pd.to_numeric(empirical_df["number_of_relabellings"], errors="coerce")
 
     if number_of_relabellings_series.isna().any():
-        raise ValueError(
-            f"Invalid number_of_relabellings values for model {model}"
-        )
+        raise ValueError(f"Invalid number_of_relabellings values for model {model}")
 
     number_of_relabellings_values = number_of_relabellings_series.unique()
 
     if len(number_of_relabellings_values) != 1:
-        raise ValueError(
-            f"Expected one number of relabellings for model {model}, but found: {number_of_relabellings_values.tolist()}"
-        )
+        raise ValueError(f"Expected one number of relabellings for model {model}, but found: {number_of_relabellings_values.tolist()}")
 
     number_of_relabellings = int(number_of_relabellings_values[0])
 
@@ -418,9 +384,7 @@ def reshape_summary(summary_df):
             ]
         ].drop_duplicates().to_dict(orient="records")
 
-        raise ValueError(
-            f"Duplicate model results were found: {duplicated_keys[:10]}"
-        )
+        raise ValueError(f"Duplicate model results were found: {duplicated_keys[:10]}")
 
     statistic_order = {
         statistic: index
@@ -455,30 +419,22 @@ def reshape_summary(summary_df):
     return summary_long_df
 
 def main():
-    parser = argparse.ArgumentParser(
-        description=(
-            "Aggregate all concept-level empirical and hypergeometric p-value TSV files into one long model-level summary TSV"
-        )
-    )
-    parser.add_argument(
-        "--empirical_p_values",
-        nargs="+",
-        required=True,
-        help="Concept-level empirical p-value TSV files",)
-    parser.add_argument(
-        "--hypergeometric_p_values",
-        nargs="+",
-        required=True,
-        help="Concept-level hypergeometric p-value TSV files",)
-    parser.add_argument(
-        "--relabelled_alignment_scores",
-        nargs="+",
-        required=True,
-        help="Relabelled alignment-score Parquet files",)
-    parser.add_argument(
-        "--all_alignment_scores_tsv",
-        required=True,
-        help="Output long model-level summary TSV",)
+    parser = argparse.ArgumentParser(description="Aggregate all concept-level empirical and hypergeometric p-value TSV files into one long model-level summary TSV")
+    parser.add_argument("--empirical_p_values",
+                        nargs="+",
+                        required=True,
+                        help="Concept-level empirical p-value TSV files",)
+    parser.add_argument("--hypergeometric_p_values",
+                        nargs="+",
+                        required=True,
+                        help="Concept-level hypergeometric p-value TSV files",)
+    parser.add_argument("--relabelled_alignment_scores",
+                        nargs="+",
+                        required=True,
+                        help="Relabelled alignment-score Parquet files",)
+    parser.add_argument("--all_alignment_scores_tsv",
+                        required=True,
+                        help="Output long model-level summary TSV",)
     args = parser.parse_args()
 
     empirical_paths_by_key = {}
@@ -487,16 +443,12 @@ def main():
         metadata = parse_p_value_path(path)
 
         if metadata["method"] != "empirical":
-            raise ValueError(
-                f"Expected an empirical p-value file, but found: {path}"
-            )
+            raise ValueError(f"Expected an empirical p-value file, but found: {path}")
 
         key = result_key(metadata)
 
         if key in empirical_paths_by_key:
-            raise ValueError(
-                f"Duplicate empirical p-value file for result: {key}"
-            )
+            raise ValueError(f"Duplicate empirical p-value file for result: {key}")
 
         empirical_paths_by_key[key] = path
 
@@ -506,16 +458,12 @@ def main():
         metadata = parse_p_value_path(path)
 
         if metadata["method"] != "hypergeometric":
-            raise ValueError(
-                f"Expected a hypergeometric p-value file, but found: {path}"
-            )
+            raise ValueError(f"Expected a hypergeometric p-value file, but found: {path}")
 
         key = result_key(metadata)
 
         if key in hypergeometric_paths_by_key:
-            raise ValueError(
-                f"Duplicate hypergeometric p-value file for result: {key}"
-            )
+            raise ValueError(f"Duplicate hypergeometric p-value file for result: {key}")
 
         hypergeometric_paths_by_key[key] = path
 
@@ -527,9 +475,7 @@ def main():
         key = result_key(metadata)
 
         if key in relabelled_paths_by_key:
-            raise ValueError(
-                f"Duplicate relabelled alignment-score file for result: {key}"
-            )
+            raise ValueError(f"Duplicate relabelled alignment-score file for result: {key}")
 
         relabelled_paths_by_key[key] = path
 
@@ -541,17 +487,13 @@ def main():
         only_empirical = sorted(empirical_keys - hypergeometric_keys)
         only_hypergeometric = sorted(hypergeometric_keys - empirical_keys)
 
-        raise ValueError(
-            f"Empirical and hypergeometric result sets differ. Only empirical: {only_empirical}. Only hypergeometric: {only_hypergeometric}"
-        )
+        raise ValueError(f"Empirical and hypergeometric result sets differ. Only empirical: {only_empirical}. Only hypergeometric: {only_hypergeometric}")
 
     if empirical_keys != relabelled_keys:
         only_empirical = sorted(empirical_keys - relabelled_keys)
         only_relabelled = sorted(relabelled_keys - empirical_keys)
 
-        raise ValueError(
-            f"Empirical p-value and relabelled alignment-score result sets differ. Only empirical: {only_empirical}. Only relabelled: {only_relabelled}"
-        )
+        raise ValueError(f"Empirical p-value and relabelled alignment-score result sets differ. Only empirical: {only_empirical}. Only relabelled: {only_relabelled}")
 
     summary_rows = []
 
@@ -582,9 +524,7 @@ def main():
     summary_df = pd.DataFrame(summary_rows)
 
     if summary_df.empty:
-        raise ValueError(
-            "No model results were available for aggregation"
-        )
+        raise ValueError("No model results were available for aggregation")
 
     summary_long_df = reshape_summary(summary_df)
 

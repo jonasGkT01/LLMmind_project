@@ -17,18 +17,14 @@ def dataframe_to_embedding_matrix(df: pd.DataFrame) -> np.ndarray:
                 if expected_dim is None:
                     expected_dim = arr.shape[0]
                 elif arr.shape[0] != expected_dim:
-                    raise ValueError(
-                        f"Inconsistent embedding length for '{idx}': expected {expected_dim}, got {arr.shape[0]}"
-                    )
+                    raise ValueError(f"Inconsistent embedding length for '{idx}': expected {expected_dim}, got {arr.shape[0]}")
                 rows.append(arr)
             return np.vstack(rows)
 
     try:
         return df.to_numpy(dtype=np.float64, copy=False)
     except (TypeError, ValueError) as exc:
-        raise TypeError(
-            "Embedding dataframe could not be converted to a numeric matrix. Ensure all embedding values are numeric"
-        ) from exc
+        raise TypeError("Embedding dataframe could not be converted to a numeric matrix. Ensure all embedding values are numeric") from exc
 
 
 def main():

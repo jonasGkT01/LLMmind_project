@@ -39,9 +39,7 @@ def main():
     )
     
     if alignment_score_df.empty:
-        raise ValueError(
-            "No shared concepts found between the two nearest-neighbour files"
-        )
+        raise ValueError("No shared concepts found between the two nearest-neighbour files")
 
     output_path = Path(args.alignment_score)
     output_path.parent.mkdir(parents = True, exist_ok = True)
