@@ -106,16 +106,26 @@ def load_schaefer_fsaverage(
         data_dir=atlas_dir,
         verbose=1,
     )
-
-    scale = (f"{n_rois}Parcels", f"{yeo_networks}Networks")
-
+    
+    scale = f"{n_rois}Parcels{yeo_networks}Networks"
+    
     if scale not in atlas:
-        raise KeyError(f"Schaefer scale {scale} not found.")
-
+        raise KeyError(
+            f"Schaefer scale {scale} not found. "
+            f"Available scales: {list(atlas.keys())}"
+        )
+    
     annotation = atlas[scale]
-
-    lh_labels, _, lh_names = fsio.read_annot(str(annotation.lh))
-    rh_labels, _, rh_names = fsio.read_annot(str(annotation.rh))
+    
+    if hasattr(annotation, "L"):
+        lh_annotation = annotation.L
+        rh_annotation = annotation.R
+    else:
+        lh_annotation = annotation.lh
+        rh_annotation = annotation.rh
+    
+    lh_labels, _, lh_names = fsio.read_annot(str(lh_annotation))
+    rh_labels, _, rh_names = fsio.read_annot(str(rh_annotation))
 
     if n_rois % 2 != 0:
         raise ValueError("Expected an even number of Schaefer parcels.")

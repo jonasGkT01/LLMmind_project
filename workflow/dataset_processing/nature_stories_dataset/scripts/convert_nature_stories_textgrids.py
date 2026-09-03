@@ -9,6 +9,7 @@ def get_word_tier(tg, input_file):
     Prefer tiers named exactly 'word' or 'words', but allow
     other names containing 'word'.
     """
+    
     tier_names = list(tg.tierNames)
 
     for tier_name in tier_names:
@@ -26,12 +27,23 @@ def textgrid_to_txt(input_file, output_file):
 
     word_tier = get_word_tier(tg, input_file,)
 
+    BAD_WORDS = {"sentence_start", "sentence_end", "br", "lg", "ls", "ns", "sp",}
+
     words = []
 
     for interval in word_tier.entries:
         word = interval.label.strip()
 
         if not word:
+            continue
+
+        normalized_word = (
+            word.lower()
+            .strip("{}")
+            .strip()
+        )
+
+        if normalized_word in BAD_WORDS:
             continue
 
         words.append(word)
