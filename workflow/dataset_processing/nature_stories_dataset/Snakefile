@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 
 NATURE_STORIES_DATASET_DIR = config["nature_stories"]["dataset_dir"]
+
 NATURE_STORIES_RESPONSES_DIR = config["nature_stories"]["responses_dir"]
 NATURE_STORIES_MAPPERS_DIR = config["nature_stories"]["mappers_dir"]
 NATURE_STORIES_RUN_ONSETS = config["nature_stories"]["run_onsets"]
@@ -43,7 +44,6 @@ NATURE_STORIES_PARCEL_COVERAGE = f"{NATURE_STORIES_PROCESSING_OUTPUT_DIR}/qc/sch
 def nature_stories_parcel_output(subject, story):
     return f"{NATURE_STORIES_PROCESSING_OUTPUT_DIR}/parcels/{story}/sub-{subject}_task-{story}_parcel_ts.npy"
 
-
 NATURE_STORIES_PARCEL_OUTPUTS = [
     nature_stories_parcel_output(subject, story)
     for subject in NATURE_STORIES_SUBJECTS
@@ -58,10 +58,16 @@ NATURE_STORIES_ISC_DONE = f"{NATURE_STORIES_PROCESSING_OUTPUT_DIR}/manifests/.is
 
 NATURE_STORIES_EXCLUDED_STIMULI = config["nature_stories"]["excluded_stimuli"]
 NATURE_STORIES_STIMULI_READY = config["nature_stories"]["stimuli_ready"]
-NATURE_STORIES_TRANSCRIPT_DIR = config["nature_stories"]["stimuli_dir"]["language"]
 
+NATURE_STORIES_TRANSCRIPT_DIR = config["nature_stories"]["stimuli_dir"]["language"]
 NATURE_STORIES_TRANSCRIPT_FILES = [
     f"{NATURE_STORIES_TRANSCRIPT_DIR}/{story}.txt"
+    for story in NATURE_STORIES_STORIES
+]
+
+NATURE_STORIES_TEXTGRID_DIR = config["nature_stories"]["textgrids_dir"]
+NATURE_STORIES_TEXTGRID_FILES = [
+    f"{NATURE_STORIES_TEXTGRID_DIR}/{story}.TextGrid"
     for story in NATURE_STORIES_STORIES
 ]
 
@@ -156,7 +162,6 @@ def write_nature_stories_isc_manifest(output_tsv):
                     f"{isc_npy}\n"
                 )
 
-
 rule all_nature_stories_dataset:
     input:
         NATURE_STORIES_ISC_NPY_OUTPUTS,
@@ -231,6 +236,16 @@ rule compute_nature_stories_isc:
                 --expected_subjects {params.expected_subjects}
         """
 
+rule convert_nature_stories_textgrids:
+    input:
+        textgrids=NATURE_STORIES_TEXTGRID_FILES
+    output:
+        transcripts=NATURE_STORIES_TRANSCRIPT_FILES
+    conda:
+        "envs/convert_nature_stories_textgrids_environment.yaml"
+    script:
+        "scripts/convert_nature_stories_textgrids.py"
+
 rule verify_nature_stories_stimuli:
     input:
         transcripts=NATURE_STORIES_TRANSCRIPT_FILES
@@ -244,10 +259,7 @@ rule verify_nature_stories_stimuli:
         ]
 
         if missing:
-            raise FileNotFoundError(
-                "Missing Nature Stories transcripts:\n"
-                + "\n".join(missing)
-            )
+            raise FileNotFoundError("Missing Nature Stories transcripts:\n" + "\n".join(missing))
 
 rule write_nature_stories_excluded_stimuli:
     output:

@@ -240,6 +240,7 @@ nature_stories:
   responses_dir: "resources/datasets/nature_stories_dataset/responses"
   mappers_dir: "resources/datasets/nature_stories_dataset/mappers"
   run_onsets: "resources/datasets/nature_stories_dataset/responses/run_onsets.json"
+  textgrids_dir: "resources/datasets/nature_stories_dataset/stimuli/textgrids"
   processing_output_dir: "results/mind/nature_stories"
   stimuli_dir:
     language: "resources/datasets/nature_stories_dataset/stimuli/transcripts"
