@@ -26,7 +26,6 @@ rule download_pretrained_llm:
 rule get_embeddings:
     input:
         stimuli_transcripts_done=lambda wc: config[wc.dataset]["stimuli_ready"],
-        stimuli_dir=lambda wc: config[wc.dataset]["stimuli_dir"][wc.stimuli_type],
         excluded_stimuli=lambda wc: config[wc.dataset]["excluded_stimuli"],
         model="resources/models/{model}"
     output:
@@ -34,6 +33,7 @@ rule get_embeddings:
     resources:
         gpu=1
     params:
+        stimuli_dir=lambda wc: config[wc.dataset]["stimuli_dir"][wc.stimuli_type],
         modality=lambda wc: config["models"][wc.model]["modality"],
         quantization_arg=lambda wc: (
             "" if config["models"][wc.model]["quantization_method"] is None
@@ -44,7 +44,7 @@ rule get_embeddings:
     shell:
         r"""
             python3 workflow/llm_nearest_neighbours/scripts/get_embeddings.py \
-                --stimuli_dir {input.stimuli_dir:q} \
+                --stimuli_dir {params.stimuli_dir:q} \
                 --output {output:q} \
                 --model_path {input.model:q} \
                 --modality {params.modality:q} \

@@ -240,8 +240,7 @@ rule convert_nature_stories_textgrids:
     input:
         textgrids=NATURE_STORIES_TEXTGRID_FILES
     output:
-        transcripts=NATURE_STORIES_TRANSCRIPT_FILES,
-        touch(NATURE_STORIES_STIMULI_READY)
+        transcripts=NATURE_STORIES_TRANSCRIPT_FILES
     conda:
         "envs/convert_nature_stories_textgrids_environment.yaml"
     script:
