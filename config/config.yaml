@@ -141,8 +141,24 @@ similarity_types:
   - "pearson"
 
 datasets:
-  - "narratives"
   - "caption_scene"
+  - "narratives"
+  - "nature_stories"
+
+caption_scene:
+  number_of_neighbours: [5,50,250,500,1000]
+  bold_glob: "resources/datasets/caption_scene_dataset/V1/derivatives/pp_data/sub-*/func/sub-*_ses-*_task-CSD_run-*.nii.gz"
+  processing_output_dir: "results/mind/caption_scene"
+  stimuli_dir: 
+    language: "resources/datasets/caption_scene_dataset/V1/stimuli/transcripts"
+    vision: "resources/datasets/caption_scene_dataset/V1/stimuli/COCO_CN/All_images_480"
+  excluded_stimuli: "resources/datasets/caption_scene_dataset/V1/excluded_stimuli.txt"
+  stimuli_ready: "resources/datasets/caption_scene_dataset/V1/.stimuli_ready"
+  subjects: 8
+  tr: 2.0
+  onset_shift_s: 0.0
+  event_duration_s: 12.0
+  run_table_encoding: "gbk"
 
 narratives:
   number_of_neighbours: 5
@@ -218,20 +234,18 @@ narratives:
     - "notthefalllongscram"
     - "notthefallshortscram"
 
-caption_scene:
-  number_of_neighbours: [5,50,250,500,1000]
-  bold_glob: "resources/datasets/caption_scene_dataset/V1/derivatives/pp_data/sub-*/func/sub-*_ses-*_task-CSD_run-*.nii.gz"
-  processing_output_dir: "results/mind/caption_scene"
-  stimuli_dir: 
-    language: "resources/datasets/caption_scene_dataset/V1/stimuli/transcripts"
-    vision: "resources/datasets/caption_scene_dataset/V1/stimuli/COCO_CN/All_images_480"
-  excluded_stimuli: "resources/datasets/caption_scene_dataset/V1/excluded_stimuli.txt"
-  stimuli_ready: "resources/datasets/caption_scene_dataset/V1/.stimuli_ready"
-  subjects: 8
-  tr: 2.0
-  onset_shift_s: 0.0
-  event_duration_s: 12.0
-  run_table_encoding: "gbk"
+nature_stories:
+  number_of_neighbours: 3
+  dataset_dir: "resources/datasets/nature_stories_dataset"
+  responses_dir: "resources/datasets/nature_stories_dataset/responses"
+  mappers_dir: "resources/datasets/nature_stories_dataset/mappers"
+  run_onsets: "resources/datasets/nature_stories_dataset/responses/run_onsets.json"
+  processing_output_dir: "results/mind/nature_stories"
+  stimuli_dir:
+    language: "resources/datasets/nature_stories_dataset/stimuli/transcripts"
+  excluded_stimuli: "resources/datasets/nature_stories_dataset/excluded_stimuli.txt"
+  stimuli_ready: "resources/datasets/nature_stories_dataset/.stimuli_ready"
+  subjects: 11
 
 atlas:
   atlas_dir: "resources/atlases"

@@ -1,0 +1,260 @@
+import json
+
+from pathlib import Path
+
+NATURE_STORIES_DATASET_DIR = config["nature_stories"]["dataset_dir"]
+NATURE_STORIES_RESPONSES_DIR = config["nature_stories"]["responses_dir"]
+NATURE_STORIES_MAPPERS_DIR = config["nature_stories"]["mappers_dir"]
+NATURE_STORIES_RUN_ONSETS = config["nature_stories"]["run_onsets"]
+
+NATURE_STORIES_PROCESSING_OUTPUT_DIR = config["nature_stories"]["processing_output_dir"]
+
+NATURE_STORIES_SUBJECTS = [
+    f"S{i:02d}"
+    for i in range(1, config["nature_stories"]["subjects"] + 1)
+]
+
+with open(NATURE_STORIES_RUN_ONSETS) as f:
+    NATURE_STORIES_RUN_METADATA = json.load(f)
+
+NATURE_STORIES_TRAIN_STORIES = [
+    x["story"]
+    for x in NATURE_STORIES_RUN_METADATA["train_stories"]
+]
+
+NATURE_STORIES_TEST_STORY = NATURE_STORIES_RUN_METADATA["test_story"]
+
+NATURE_STORIES_STORIES = NATURE_STORIES_TRAIN_STORIES + [NATURE_STORIES_TEST_STORY]
+
+NATURE_STORIES_BOLD_FILES = [
+    f"{NATURE_STORIES_RESPONSES_DIR}/{subject}_BOLD.hdf"
+    for subject in NATURE_STORIES_SUBJECTS
+]
+NATURE_STORIES_MAPPER_FILES = [
+    f"{NATURE_STORIES_MAPPERS_DIR}/{subject}_mappers.hdf"
+    for subject in NATURE_STORIES_SUBJECTS
+]
+
+NATURE_STORIES_PARCEL_MANIFEST = f"{NATURE_STORIES_PROCESSING_OUTPUT_DIR}/manifests/parcel_extraction_manifest.tsv"
+NATURE_STORIES_ISC_MANIFEST = f"{NATURE_STORIES_PROCESSING_OUTPUT_DIR}/manifests/isc_manifest.tsv"
+NATURE_STORIES_COMMON_SUPPORT = f"{NATURE_STORIES_PROCESSING_OUTPUT_DIR}/qc/common_fsaverage_support.npy"
+NATURE_STORIES_PARCEL_COVERAGE = f"{NATURE_STORIES_PROCESSING_OUTPUT_DIR}/qc/schaefer_parcel_coverage.tsv"
+
+def nature_stories_parcel_output(subject, story):
+    return f"{NATURE_STORIES_PROCESSING_OUTPUT_DIR}/parcels/{story}/sub-{subject}_task-{story}_parcel_ts.npy"
+
+
+NATURE_STORIES_PARCEL_OUTPUTS = [
+    nature_stories_parcel_output(subject, story)
+    for subject in NATURE_STORIES_SUBJECTS
+    for story in NATURE_STORIES_STORIES
+]
+NATURE_STORIES_ISC_NPY_OUTPUTS = [
+    f"{NATURE_STORIES_PROCESSING_OUTPUT_DIR}/isc/task-{story}_isc_mean.npy"
+    for story in NATURE_STORIES_STORIES
+]
+NATURE_STORIES_ISC_DONE = f"{NATURE_STORIES_PROCESSING_OUTPUT_DIR}/manifests/.isc_done"
+
+
+NATURE_STORIES_EXCLUDED_STIMULI = config["nature_stories"]["excluded_stimuli"]
+NATURE_STORIES_STIMULI_READY = config["nature_stories"]["stimuli_ready"]
+NATURE_STORIES_TRANSCRIPT_DIR = config["nature_stories"]["stimuli_dir"]["language"]
+
+NATURE_STORIES_TRANSCRIPT_FILES = [
+    f"{NATURE_STORIES_TRANSCRIPT_DIR}/{story}.txt"
+    for story in NATURE_STORIES_STORIES
+]
+
+def write_nature_stories_parcel_manifest(output_tsv):
+    output_tsv = Path(output_tsv)
+    output_tsv.parent.mkdir(parents=True, exist_ok=True)
+
+    train_metadata = {
+        x["story"]: x
+        for x in NATURE_STORIES_RUN_METADATA["train_stories"]
+    }
+
+    with output_tsv.open("w") as f:
+        f.write(
+            "subject\t"
+            "story\t"
+            "bold_file\t"
+            "mapper_file\t"
+            "response_key\t"
+            "onset\t"
+            "length\t"
+            "parcel_ts\n"
+        )
+
+        for subject in NATURE_STORIES_SUBJECTS:
+            bold_file = f"{NATURE_STORIES_RESPONSES_DIR}/{subject}_BOLD.hdf"
+            mapper_file = f"{NATURE_STORIES_MAPPERS_DIR}/{subject}_mappers.hdf"
+
+            # Training stories are slices of zRresp.
+            for story in NATURE_STORIES_TRAIN_STORIES:
+                metadata = train_metadata[story]
+                parcel_ts = nature_stories_parcel_output(
+                    subject,
+                    story,
+                )
+
+                f.write(
+                    f"{subject}\t"
+                    f"{story}\t"
+                    f"{bold_file}\t"
+                    f"{mapper_file}\t"
+                    f"zRresp\t"
+                    f"{metadata['onset']}\t"
+                    f"{metadata['length']}\t"
+                    f"{parcel_ts}\n"
+                )
+
+            # Held-out story is the complete zPresp matrix.
+            story = NATURE_STORIES_TEST_STORY
+
+            parcel_ts = nature_stories_parcel_output(
+                subject,
+                story,
+            )
+
+            f.write(
+                f"{subject}\t"
+                f"{story}\t"
+                f"{bold_file}\t"
+                f"{mapper_file}\t"
+                f"zPresp\t"
+                f"0\t"
+                f"{NATURE_STORIES_RUN_METADATA['test_trs']}\t"
+                f"{parcel_ts}\n"
+            )
+
+def write_nature_stories_isc_manifest(output_tsv):
+    output_tsv = Path(output_tsv)
+    output_tsv.parent.mkdir(parents=True, exist_ok=True)
+
+    with output_tsv.open("w") as f:
+        f.write(
+            "task\t"
+            "subject\t"
+            "parcel_ts\t"
+            "isc_npy\n"
+        )
+
+        for story in NATURE_STORIES_STORIES:
+            isc_npy = f"{NATURE_STORIES_PROCESSING_OUTPUT_DIR}/isc/task-{story}_isc_mean.npy"
+
+            for subject in NATURE_STORIES_SUBJECTS:
+                parcel_ts = nature_stories_parcel_output(
+                    subject,
+                    story,
+                )
+
+                f.write(
+                    f"{story}\t"
+                    f"{subject}\t"
+                    f"{parcel_ts}\t"
+                    f"{isc_npy}\n"
+                )
+
+
+rule all_nature_stories_dataset:
+    input:
+        NATURE_STORIES_ISC_NPY_OUTPUTS,
+        NATURE_STORIES_ISC_DONE,
+        NATURE_STORIES_STIMULI_READY,
+        NATURE_STORIES_EXCLUDED_STIMULI
+
+rule mark_nature_stories_isc_done:
+    input:
+        NATURE_STORIES_ISC_NPY_OUTPUTS
+    output:
+        touch(NATURE_STORIES_ISC_DONE)
+
+rule write_nature_stories_parcel_manifest:
+    input:
+        run_onsets=NATURE_STORIES_RUN_ONSETS
+    output:
+        manifest=NATURE_STORIES_PARCEL_MANIFEST
+    run:
+        write_nature_stories_parcel_manifest(output.manifest)
+
+rule write_nature_stories_isc_manifest:
+    input:
+        parcel_manifest=NATURE_STORIES_PARCEL_MANIFEST
+    output:
+        manifest=NATURE_STORIES_ISC_MANIFEST
+    run:
+        write_nature_stories_isc_manifest(output.manifest)
+
+rule extract_nature_stories_parcels:
+    input:
+        manifest=NATURE_STORIES_PARCEL_MANIFEST,
+        bold_files=NATURE_STORIES_BOLD_FILES,
+        mapper_files=NATURE_STORIES_MAPPER_FILES
+    output:
+        parcel_ts=NATURE_STORIES_PARCEL_OUTPUTS,
+        common_support=NATURE_STORIES_COMMON_SUPPORT,
+        parcel_coverage=NATURE_STORIES_PARCEL_COVERAGE
+    params:
+        n_rois=config["atlas"]["n_rois"],
+        yeo_networks=config["atlas"]["yeo_networks"],
+        atlas_dir=config["atlas"]["atlas_dir"]
+    conda:
+        "envs/extract_nature_stories_parcels_environment.yaml"
+    shell:
+        r"""
+            python3 workflow/dataset_processing/nature_stories_dataset/scripts/extract_nature_stories_parcels.py \
+                --manifest {input.manifest:q} \
+                --n_rois {params.n_rois} \
+                --yeo_networks {params.yeo_networks} \
+                --atlas_dir {params.atlas_dir:q} \
+                --common_support_output {output.common_support:q} \
+                --coverage_output {output.parcel_coverage:q}
+        """
+
+rule compute_nature_stories_isc:
+    input:
+        manifest=NATURE_STORIES_ISC_MANIFEST,
+        parcel_ts=NATURE_STORIES_PARCEL_OUTPUTS
+    output:
+        isc_npy=NATURE_STORIES_ISC_NPY_OUTPUTS
+    params:
+        n_rois=config["atlas"]["n_rois"],
+        expected_subjects=config["nature_stories"]["subjects"]
+    conda:
+        "envs/compute_nature_stories_isc_environment.yaml"
+    shell:
+        r"""
+            python3 workflow/dataset_processing/nature_stories_dataset/scripts/compute_nature_stories_isc.py \
+                --manifest {input.manifest:q} \
+                --n_rois {params.n_rois} \
+                --expected_subjects {params.expected_subjects}
+        """
+
+rule verify_nature_stories_stimuli:
+    input:
+        transcripts=NATURE_STORIES_TRANSCRIPT_FILES
+    output:
+        touch(NATURE_STORIES_STIMULI_READY)
+    run:
+        missing = [
+            path
+            for path in input.transcripts
+            if not Path(path).exists()
+        ]
+
+        if missing:
+            raise FileNotFoundError(
+                "Missing Nature Stories transcripts:\n"
+                + "\n".join(missing)
+            )
+
+rule write_nature_stories_excluded_stimuli:
+    output:
+        txt=NATURE_STORIES_EXCLUDED_STIMULI
+    run:
+        output_path = Path(output.txt)
+        output_path.parent.mkdir(parents=True, exist_ok=True,)
+
+        # All 11 stories are retained.
+        output_path.write_text("")
