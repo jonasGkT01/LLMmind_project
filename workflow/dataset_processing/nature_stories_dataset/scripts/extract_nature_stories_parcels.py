@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 
 from netneurotools.datasets import fetch_schaefer2018
-from scipy.sparse import csr_matrix
+from scipy.sparse import csr_matrix, diags
 
 def load_mapper(path):
     """
@@ -30,6 +30,94 @@ def load_mapper(path):
         )
 
     return mapper
+
+def compute_valid_voxel_mask(
+    bold_file,
+    chunk_size=256,
+):
+    """
+    Return native voxels that are finite for every TR in both
+    zRresp and zPresp.
+
+    The HDF datasets are scanned in chunks to avoid loading
+    the complete response matrix into memory.
+    """
+
+    bold_file = Path(bold_file)
+
+    with h5py.File(bold_file, "r") as f:
+        required_keys = ["zRresp", "zPresp",]
+
+        for key in required_keys:
+            if key not in f:
+                raise KeyError(f"{bold_file} does not contain {key}.")
+
+        n_voxels = f["zRresp"].shape[1]
+
+        if f["zPresp"].shape[1] != n_voxels:
+            raise ValueError(f"{bold_file}: zRresp and zPresp have different voxel dimensions.")
+
+        valid_voxels = np.ones(n_voxels, dtype=bool,)
+
+        for key in required_keys:
+            dataset = f[key]
+
+            if dataset.ndim != 2:
+                raise ValueError(f"{bold_file}:{key} has shape {dataset.shape}; expected time x voxels.")
+
+            for start in range(0, dataset.shape[0], chunk_size,):
+                stop = min(start + chunk_size, dataset.shape[0],)
+
+                block = dataset[start:stop, :]
+
+                valid_voxels &= np.isfinite(block).all(axis=0)
+
+    return valid_voxels
+
+
+def clean_mapper(
+    mapper,
+    valid_voxels,
+):
+    """
+    Remove invalid native-voxel columns from the mapper and
+    renormalize each surviving fsaverage row so that its total
+    interpolation weight is unchanged.
+    """
+
+    if mapper.shape[1] != len(valid_voxels):
+        raise ValueError("Mapper voxel dimension does not match valid-voxel mask.")
+
+    if not np.isfinite(mapper.data).all():
+        raise ValueError("Mapper contains non-finite weights.")
+
+    # The supplied voxel->surface mapper is expected to contain
+    # interpolation weights, not signed coefficients.
+    if np.any(mapper.data < 0):
+        raise ValueError("Mapper contains negative weights; row-sum renormalization is not appropriate.")
+
+    original_row_sums = np.asarray(mapper.sum(axis=1)).ravel()
+
+    cleaned_mapper = mapper[:, valid_voxels,].tocsr()
+
+    cleaned_mapper.eliminate_zeros()
+
+    support = (np.diff(cleaned_mapper.indptr) > 0)
+
+    cleaned_row_sums = np.asarray(cleaned_mapper.sum(axis = 1)).ravel()
+
+    if np.any(cleaned_row_sums[support] <= 0):
+        raise ValueError("Cleaned mapper contains supported rows with non-positive total weight.")
+
+    scale = np.zeros(cleaned_mapper.shape[0], dtype=np.float64,)
+
+    scale[support] = original_row_sums[support]/cleaned_row_sums[support]
+
+    cleaned_mapper = (diags(scale) @ cleaned_mapper).tocsr()
+
+    cleaned_mapper.eliminate_zeros()
+
+    return cleaned_mapper, support
 
 def decode_name(name):
     if isinstance(name, bytes):
@@ -87,7 +175,6 @@ def remap_hemisphere(
         parcel_names.append(name)
 
     return remapped, parcel_names
-
 
 def load_schaefer_fsaverage(
     n_rois,
@@ -160,34 +247,74 @@ def load_schaefer_fsaverage(
 
     return labels, parcel_names
 
-def compute_common_support(mapper_files):
+def compute_common_support(manifest):
     """
-    Return vertices that have a valid voxel mapping in every
-    subject.
+    Compute fsaverage support after excluding native voxels
+    containing non-finite BOLD values.
+
+    Also return one fixed valid-voxel mask per subject.
     """
+
+    subject_sources = (
+        manifest[
+            [
+                "subject",
+                "bold_file",
+                "mapper_file",
+            ]
+        ].drop_duplicates()
+    )
+
+    subject_counts = subject_sources.groupby("subject").size()
+
+    if np.any(subject_counts != 1):
+        raise ValueError("Each subject must correspond to exactly one BOLD file and one mapper file.")
 
     common_support = None
     expected_vertices = None
 
-    for mapper_file in mapper_files:
-        mapper = load_mapper(mapper_file)
+    valid_voxel_masks = {}
+    qc_rows = []
+
+    for row in subject_sources.itertuples(index=False):
+        valid_voxels = compute_valid_voxel_mask(row.bold_file)
+        mapper = load_mapper(row.mapper_file)
+        cleaned_mapper, support = clean_mapper(mapper, valid_voxels,)
 
         if expected_vertices is None:
-            expected_vertices = mapper.shape[0]
-        elif mapper.shape[0] != expected_vertices:
-            raise ValueError(f"Mapper fsaverage dimensions differ across subjects: {mapper_file} has {mapper.shape[0]} vertices; expected {expected_vertices}.")
-
-        support = (np.diff(mapper.indptr) > 0)
+            expected_vertices = cleaned_mapper.shape[0]
+        elif (cleaned_mapper.shape[0] != expected_vertices):
+            raise ValueError("Mapper fsaverage dimensions differ across subjects.")
 
         if common_support is None:
             common_support = support.copy()
         else:
             common_support &= support
 
-    if common_support is None:
-        raise ValueError("No mapper files were provided.")
+        valid_voxel_masks[row.subject] = valid_voxels
 
-    return common_support
+        qc_rows.append(
+            {
+                "subject": row.subject,
+                "total_voxels": len(
+                    valid_voxels
+                ),
+                "valid_voxels": int(
+                    valid_voxels.sum()
+                ),
+                "invalid_voxels": int(
+                    (~valid_voxels).sum()
+                ),
+                "invalid_fraction": float(
+                    (~valid_voxels).mean()
+                ),
+            }
+        )
+
+    if common_support is None:
+        raise ValueError("No subjects were found.")
+
+    return (common_support, valid_voxel_masks, pd.DataFrame(qc_rows),)
 
 def build_parcel_averager(
     vertex_labels,
@@ -250,6 +377,7 @@ def extract_subject(
     subject_df,
     parcel_averager,
     n_rois,
+    valid_voxels,
 ):
     """
     Process all stories for one subject.
@@ -287,6 +415,8 @@ def extract_subject(
 
     mapper = load_mapper(mapper_file)
 
+    mapper, subject_support = clean_mapper(mapper, valid_voxels,)
+
     if parcel_averager.shape[1] != mapper.shape[0]:
         raise ValueError(f"Parcel averager expects {parcel_averager.shape[1]} fsaverage vertices, but {subject} mapper contains {mapper.shape[0]}.")
 
@@ -309,8 +439,8 @@ def extract_subject(
             if dataset.ndim != 2:
                 raise ValueError(f"{bold_file}:{row.response_key} has shape {dataset.shape}; expected time x voxels.")
 
-            if dataset.shape[1] != mapper.shape[1]:
-                raise ValueError(f"{subject}: BOLD contains {dataset.shape[1]} voxels, but mapper expects {mapper.shape[1]}.")
+            if dataset.shape[1] != len(valid_voxels):
+                raise ValueError(f"{subject}: BOLD contains {dataset.shape[1]} voxels, but the valid-voxel mask expects {len(valid_voxels)}.")
 
             start = int(row.onset)
             length = int(row.length)
@@ -319,7 +449,10 @@ def extract_subject(
             if stop > dataset.shape[0]:
                 raise ValueError(f"{subject}/{row.story}: requested TRs [{start}:{stop}], but {row.response_key} contains only {dataset.shape[0]} TRs.")
 
-            response = dataset[start:stop, :]
+            response = dataset[start:stop, valid_voxels]
+
+            if not np.isfinite(response).all():
+                raise ValueError(f"{subject}/{row.story}: non-finite values remain after valid-voxel masking.")
 
             if response.shape[0] != length:
                 raise ValueError(f"{subject}/{row.story}: expected {length} TRs, obtained {response.shape[0]}.")
@@ -328,10 +461,10 @@ def extract_subject(
 
             parcel_ts = (voxel_to_parcel @ response.T).T
 
-            if parcel_ts.shape != (
-                length,
-                n_rois,
-            ):
+            if not np.isfinite(parcel_ts).all():
+                raise ValueError(f"{subject}/{row.story}: non-finite parcel values produced.")
+
+            if parcel_ts.shape != (length, n_rois,):
                 raise ValueError(f"Unexpected parcel shape for {subject}/{row.story}: {parcel_ts.shape}")
 
             output_path = Path(row.parcel_ts)
@@ -342,7 +475,7 @@ def extract_subject(
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument( "--manifest", required=True,)
+    parser.add_argument("--manifest", required=True,)
     parser.add_argument("--n_rois", type=int, required=True,)
     parser.add_argument("--yeo_networks", type=int, required=True,)
     parser.add_argument("--atlas_dir", required=True,)
@@ -359,11 +492,9 @@ def main():
     if missing_columns:
         raise ValueError(f"Manifest is missing columns: {sorted(missing_columns)}")
 
-    mapper_files = sorted(manifest["mapper_file"].unique())
+    print(f"Computing fsaverage support shared across {manifest['subject'].nunique()} subjects")
 
-    print(f"Computing fsaverage support shared across {len(mapper_files)} subjects")
-
-    common_support = compute_common_support(mapper_files)
+    common_support, valid_voxel_masks, voxel_qc = compute_common_support(manifest)
 
     print(f"Common fsaverage support: {common_support.sum()} / {len(common_support)} ({100 * common_support.mean():.2f}%)")
 
@@ -371,6 +502,17 @@ def main():
     common_support_output.parent.mkdir(parents=True, exist_ok=True,)
 
     np.save(common_support_output, common_support,)
+
+    voxel_qc_output = common_support_output.parent / "valid_voxel_counts.tsv"
+
+    voxel_qc.to_csv(
+        voxel_qc_output,
+        sep="\t",
+        index=False,
+    )
+
+    print("Native-voxel QC:")
+    print(voxel_qc.to_string(index=False))
 
     vertex_labels, parcel_names = load_schaefer_fsaverage(
         n_rois=args.n_rois,
@@ -407,6 +549,7 @@ def main():
             subject_df=subject_df,
             parcel_averager=parcel_averager,
             n_rois=args.n_rois,
+            valid_voxels=valid_voxel_masks[subject],
         )
 
 if __name__ == "__main__":
