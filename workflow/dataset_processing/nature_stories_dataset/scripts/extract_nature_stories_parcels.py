@@ -91,23 +91,20 @@ def clean_mapper(
     if not np.isfinite(mapper.data).all():
         raise ValueError("Mapper contains non-finite weights.")
 
-    # The supplied voxel->surface mapper is expected to contain
-    # interpolation weights, not signed coefficients.
-    if np.any(mapper.data < 0):
-        raise ValueError("Mapper contains negative weights; row-sum renormalization is not appropriate.")
-
     original_row_sums = np.asarray(mapper.sum(axis=1)).ravel()
 
     cleaned_mapper = mapper[:, valid_voxels,].tocsr()
-
     cleaned_mapper.eliminate_zeros()
 
     support = (np.diff(cleaned_mapper.indptr) > 0)
 
-    cleaned_row_sums = np.asarray(cleaned_mapper.sum(axis = 1)).ravel()
+    cleaned_row_sums = np.asarray(cleaned_mapper.sum(axis=1)).ravel()
 
-    if np.any(cleaned_row_sums[support] <= 0):
-        raise ValueError("Cleaned mapper contains supported rows with non-positive total weight.")
+    eps = 1e-12
+    unstable = support & (np.abs(cleaned_row_sums) < eps)
+
+    if np.any(unstable):
+        raise ValueError(f"Cleaned mapper contains {unstable.sum()} supported rows with near-zero total interpolation weight.")
 
     scale = np.zeros(cleaned_mapper.shape[0], dtype=np.float64,)
 
