@@ -148,4 +148,9 @@ rule all:
         [
             f"results/alignment_enrichment_plots/dataset-{pair['dataset']}_{pair['similarity_type']}-concept_alignment_enrichment_{pair['number_of_neighbours']}NN.png"
             for pair in HEATMAP_PAIRINGS
-        ]
+        ],
+        #[
+        #    f"results/alignment_lineplots/dataset-{dataset}_{similarity_type}-brain_model_alignment.png"
+        #    for dataset in DATASETS
+        #    for similarity_type in SIMILARITY_TYPES
+        #]

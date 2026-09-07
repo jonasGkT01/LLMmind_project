@@ -7,6 +7,7 @@ dependencies:
   - nilearn
   - numpy
   - pandas
+  - pip
   - praatio
   - python
   - scipy

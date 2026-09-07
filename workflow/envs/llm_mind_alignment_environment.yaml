@@ -4,6 +4,7 @@ channels:
   - nodefaults
 dependencies:
   - bawk
+  - coreutils
   - matrix_reduce
   - numpy
   - pandas

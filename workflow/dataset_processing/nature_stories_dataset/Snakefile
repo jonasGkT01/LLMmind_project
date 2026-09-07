@@ -55,7 +55,6 @@ NATURE_STORIES_ISC_NPY_OUTPUTS = [
 ]
 NATURE_STORIES_ISC_DONE = f"{NATURE_STORIES_PROCESSING_OUTPUT_DIR}/manifests/.isc_done"
 
-
 NATURE_STORIES_EXCLUDED_STIMULI = config["nature_stories"]["excluded_stimuli"]
 NATURE_STORIES_STIMULI_READY = config["nature_stories"]["stimuli_ready"]
 
@@ -243,8 +242,12 @@ rule convert_nature_stories_textgrids:
         transcripts=NATURE_STORIES_TRANSCRIPT_FILES
     conda:
         "envs/convert_nature_stories_textgrids_environment.yaml"
-    script:
-        "scripts/convert_nature_stories_textgrids.py"
+    shell:
+        r"""
+            python3 workflow/dataset_processing/nature_stories_dataset/scripts/convert_nature_stories_textgrids.py \
+                --textgrids {input.textgrids:q} \
+                --transcripts {output.transcripts:q}
+        """
 
 rule verify_nature_stories_stimuli:
     input:

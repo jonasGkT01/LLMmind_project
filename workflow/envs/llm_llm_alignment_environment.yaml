@@ -1,24 +1,8 @@
 channels:
   - conda-forge
-  - main
   - nodefaults
 dependencies:
-  - accelerate
-  - bitsandbytes
-  - datasets
-  - huggingface_hub
   - numpy
   - pandas
-  - pillow
-  - protobuf
   - pyarrow
-  - python=3.12
-  - pytorch
-  - scikit-learn
-  - sentencepiece
-  - tiktoken
-  - timm
-  - torchaudio
-  - torchvision
-  - tqdm
-  - transformers
+  - python
