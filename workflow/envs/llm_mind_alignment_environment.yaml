@@ -1,12 +1,12 @@
 channels:
   - conda-forge
+  - molinerislab
   - nodefaults
 dependencies:
-  - python
+  - bawk
+  - matrix_reduce
   - numpy
-  - scipy
   - pandas
-  - h5py
-  - nibabel
-  - pip:
-    - netneurotools
+  - pyarrow
+  - python
+  - scipy

@@ -2,11 +2,8 @@ channels:
   - conda-forge
   - nodefaults
 dependencies:
-  - python
+  - matplotlib
   - numpy
-  - scipy
   - pandas
-  - h5py
-  - nibabel
-  - pip:
-    - netneurotools
+  - pyarrow
+  - python
