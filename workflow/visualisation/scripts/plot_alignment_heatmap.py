@@ -165,18 +165,18 @@ def main():
 
     image = ax.imshow(matrix, vmin=0, vmax=1)
 
-    ## Write the alignment score inside each heatmap cell
-    #for i in range(matrix.shape[0]):
-    #    for j in range(matrix.shape[1]):
-    #        value = matrix[i, j]
-    #
-    #        if np.isnan(value):
-    #            continue
-    #
-    #        # Use contrasting text colour for readability
-    #        text_color = "white" if value < 0.5 else "black"
-    #
-    #        ax.text(j, i, f"{value:.2f}", ha="center", va="center", color=text_color, fontsize=7,)
+    # Write the alignment score inside each heatmap cell
+    for i in range(matrix.shape[0]):
+        for j in range(matrix.shape[1]):
+            value = matrix[i, j]
+    
+            if np.isnan(value):
+                continue
+    
+            # Use contrasting text colour for readability
+            text_color = "white" if value < 0.5 else "black"
+    
+            ax.text(j, i, f"{value:.2f}", ha="center", va="center", color=text_color, fontsize=7,)
 
     ax.set_xticks(np.arange(len(labels)))
     ax.set_yticks(np.arange(len(labels)))
