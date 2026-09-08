@@ -7,6 +7,8 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import pandas as pd
 
+from libraries.manage_model_metadata import model_family, model_label, parse_model_parameters
+
 def parse_alignment_score_path(path):
     filename = Path(path).name
     pattern = (
@@ -22,25 +24,6 @@ def parse_alignment_score_path(path):
     metadata = match.groupdict()
     metadata["number_of_neighbours"] = int(metadata["number_of_neighbours"])
     return metadata
-
-def parse_model_parameters(model_parameters):
-    parameters_by_model = {}
-    for model_parameter in model_parameters:
-        if "=" not in model_parameter:
-            raise ValueError(f"Invalid model-parameter specification: {model_parameter}")
-        model, number_of_parameters = model_parameter.split("=", 1)
-        if model in parameters_by_model:
-            raise ValueError(f"Parameters were provided more than once for model {model}")
-        parameters_by_model[model] = float(number_of_parameters)
-    return parameters_by_model
-
-def model_family(model):
-    if "_" not in model:
-        return model
-    return model.rsplit("_", 1)[0]
-
-def model_label(model, stimuli_type):
-    return f"{model}-{stimuli_type}"
 
 def model_sort_key(label, model_metadata, parameters_by_model):
     metadata = model_metadata[label]
