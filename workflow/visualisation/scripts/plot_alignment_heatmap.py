@@ -114,14 +114,8 @@ def main():
     for path in args.llm_llm_alignment_scores:
         metadata = parse_llm_llm_path(path)
 
-        label_1 = model_label(
-            metadata["model_1"],
-            metadata["stimuli_type_1"],
-        )
-        label_2 = model_label(
-            metadata["model_2"],
-            metadata["stimuli_type_2"],
-        )
+        label_1 = model_label(metadata["model_1"], metadata["stimuli_type_1"],)
+        label_2 = model_label(metadata["model_2"], metadata["stimuli_type_2"],)
 
         score = read_mean_alignment_score(path)
 
@@ -164,12 +158,25 @@ def main():
     output_path = Path(args.heatmap)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    fig_width = max(8, 0.45 * len(labels))
-    fig_height = max(7, 0.45 * len(labels))
+    fig_width = max(8, 0.55 * len(labels))
+    fig_height = max(7, 0.55 * len(labels))
 
     fig, ax = plt.subplots(figsize=(fig_width, fig_height))
 
     image = ax.imshow(matrix, vmin=0, vmax=1)
+
+    ## Write the alignment score inside each heatmap cell
+    #for i in range(matrix.shape[0]):
+    #    for j in range(matrix.shape[1]):
+    #        value = matrix[i, j]
+    #
+    #        if np.isnan(value):
+    #            continue
+    #
+    #        # Use contrasting text colour for readability
+    #        text_color = "white" if value < 0.5 else "black"
+    #
+    #        ax.text(j, i, f"{value:.2f}", ha="center", va="center", color=text_color, fontsize=7,)
 
     ax.set_xticks(np.arange(len(labels)))
     ax.set_yticks(np.arange(len(labels)))
