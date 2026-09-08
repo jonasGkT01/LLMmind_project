@@ -74,7 +74,6 @@ def compute_valid_voxel_mask(
 
     return valid_voxels
 
-
 def clean_mapper(
     mapper,
     valid_voxels,
@@ -293,18 +292,10 @@ def compute_common_support(manifest):
         qc_rows.append(
             {
                 "subject": row.subject,
-                "total_voxels": len(
-                    valid_voxels
-                ),
-                "valid_voxels": int(
-                    valid_voxels.sum()
-                ),
-                "invalid_voxels": int(
-                    (~valid_voxels).sum()
-                ),
-                "invalid_fraction": float(
-                    (~valid_voxels).mean()
-                ),
+                "total_voxels": len(valid_voxels),
+                "valid_voxels": int(valid_voxels.sum()),
+                "invalid_voxels": int((~valid_voxels).sum()),
+                "invalid_fraction": float((~valid_voxels).mean()),
             }
         )
 
