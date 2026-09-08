@@ -3,5 +3,5 @@
 .snakemake
 resources/
 results/
-workflow/libraries/_pycache_/
+workflow/libraries/__pycache__/
 workflow/envs/LLMmind_project/
