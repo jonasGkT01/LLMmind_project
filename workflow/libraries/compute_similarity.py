@@ -12,9 +12,7 @@ def normalize_l2(x):
         return x / norm
 
     if x.ndim != 2:
-        raise ValueError(
-            f"Expected 1D or 2D array, got {x.ndim}D"
-        )
+        raise ValueError(f"Expected 1D or 2D array, got {x.ndim}D")
 
     norm = np.linalg.norm(x, 2, axis=1, keepdims=True,)
 
@@ -24,9 +22,7 @@ def pearson_normalize(x):
     x = np.asarray(x, dtype=np.float64)
 
     if x.ndim != 2:
-        raise ValueError(
-            f"Expected 2D embedding matrix, got {x.ndim}D"
-        )
+        raise ValueError(f"Expected 2D embedding matrix, got {x.ndim}D")
 
     x = x - np.mean(x, axis=1, keepdims=True,)
 

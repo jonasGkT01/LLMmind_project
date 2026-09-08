@@ -33,10 +33,7 @@ def compute_alignment_scores(
             }
         )
 
-    return pd.DataFrame(
-        rows,
-        columns=["concept", "common_neighbours", "alignment_score", "alignment_score_percentage",],
-    )
+    return pd.DataFrame(rows, columns=["concept", "common_neighbours", "alignment_score", "alignment_score_percentage",],)
 
 def compute_common_neighbours(
     neighbours,
@@ -52,9 +49,7 @@ def compute_mean_alignment_score(
     number_of_neighbours,
 ):
     if neighbour_mask.shape[0] != neighbours.shape[0]:
-        raise ValueError(
-            "The two nearest-neighbour representations have different numbers of concepts"
-        )
+        raise ValueError("The two nearest-neighbour representations have different numbers of concepts")
 
     common_neighbours = compute_common_neighbours(neighbours = neighbours, neighbour_mask = neighbour_mask, concept_indices = concept_indices,)
 

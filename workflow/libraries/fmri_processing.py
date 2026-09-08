@@ -16,23 +16,14 @@ def build_parcel_matrix(labels_3d, n_rois):
 
     if np.any(counts == 0):
         missing = np.where(counts == 0)[0] + 1
-        raise ValueError(
-            f"Atlas has empty parcels after resampling: {missing.tolist()}"
-        )
+        raise ValueError(f"Atlas has empty parcels after resampling: {missing.tolist()}")
 
     weights = 1.0/counts[parcel_idx]
 
-    return sparse.csr_matrix(
-        (weights, (parcel_idx, voxel_idx)),
-        shape=(n_rois, labels.size),
-        dtype=np.float32,
-    )
+    return sparse.csr_matrix((weights, (parcel_idx, voxel_idx)), shape=(n_rois, labels.size), dtype=np.float32,)
 
 def bold_grid_key(img):
-    return (
-        img.shape[:3],
-        tuple(np.round(img.affine.ravel(), 6)),
-    )
+    return (img.shape[:3], tuple(np.round(img.affine.ravel(), 6)),)
 
 def get_resampled_parcel_matrix(img, atlas_img, n_rois, cache):
     key = bold_grid_key(img)
@@ -60,9 +51,7 @@ def extract_parcels(
     img = nib.load(str(bold_file))
 
     if img.ndim != 4:
-        raise ValueError(
-            f"Expected 4D BOLD image, got shape {img.shape}: {bold_file}"
-        )
+        raise ValueError(f"Expected 4D BOLD image, got shape {img.shape}: {bold_file}")
 
     parcel_matrix = get_resampled_parcel_matrix(
         img=img,
@@ -86,23 +75,13 @@ def safe_pearsonr(x, y):
 
     r, _ = pearsonr(x, y)
 
-    return float(
-        np.nan_to_num(
-            r,
-            nan=0.0,
-            posinf=0.0,
-            neginf=0.0,
-        )
-    )
+    return float(np.nan_to_num(r, nan=0.0, posinf=0.0, neginf=0.0,))
 
 def compute_leave_one_out_isc(data):
     n_subjects = data.shape[0]
     n_parcels = data.shape[2]
 
-    isc = np.zeros(
-        (n_subjects, n_parcels),
-        dtype=np.float32,
-    )
+    isc = np.zeros((n_subjects, n_parcels), dtype=np.float32,)
 
     for subject_idx in range(n_subjects):
         other_subjects = np.arange(n_subjects) != subject_idx

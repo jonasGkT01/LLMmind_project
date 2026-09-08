@@ -6,9 +6,7 @@ def compute_topk_indices(
     number_of_neighbours,
 ):
     if similarity.shape[1] - 1 < number_of_neighbours:
-        raise ValueError(
-            f"Requested {number_of_neighbours} neighbours, but only {similarity.shape[1] - 1} candidates are available"
-        )
+        raise ValueError(f"Requested {number_of_neighbours} neighbours, but only {similarity.shape[1] - 1} candidates are available")
 
     similarity = similarity.copy()
     np.fill_diagonal(similarity, -np.inf)
@@ -19,7 +17,6 @@ def compute_topk_indices(
     idx_topk = np.take_along_axis(idx_part, order, axis = 1,)
 
     return idx_topk.astype(np.int64)
-
 
 def create_nearest_neighbours_dataframe(
     similarity_df,
