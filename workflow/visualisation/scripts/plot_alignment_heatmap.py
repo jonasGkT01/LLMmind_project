@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 
 from libraries.manage_model_metadata import model_family, model_label, parse_model_parameters
+from libraries.visualisation_utilis import contrasting_text_color
 
 def parse_llm_brain_path(path):
     filename = Path(path).name
@@ -85,15 +86,6 @@ def model_sort_key(label, model_metadata, parameters_by_model):
         parameters_by_model[model],
         model,
     )
-
-def contrasting_text_color(image, value):
-    rgba = image.cmap(image.norm(value))
-    r, g, b = rgba[:3]
-
-    # Relative perceived luminance of the rendered cell background
-    luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b
-
-    return "black" if luminance > 0.5 else "white"
 
 def main():
     parser = argparse.ArgumentParser()
