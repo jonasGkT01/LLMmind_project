@@ -16,7 +16,11 @@ rule all_visualisation:
             f"results/alignment_lineplots/dataset-{dataset}_{similarity_type}-brain_model_alignment.png"
             for dataset in DATASETS
             for similarity_type in SIMILARITY_TYPES
-        ]
+        ],
+        #[
+        #    f"results/global_geometry_alignment/concept_level_plots/dataset-{pair['dataset']}_{pair['similarity_type']}-concept_spearman_coefficients.png"
+        #    for pair in GLOBAL_GEOMETRY_PLOT_PAIRINGS
+        #],
 
 rule plot_alignment_heatmap:
     input:
@@ -147,3 +151,32 @@ rule plot_brain_model_alignment_lineplot:
                 --similarity_type {wildcards.similarity_type:q} \
                 --plot {output.plot:q}
         """
+
+#rule plot_concept_spearman_coefficients:
+#    input:
+#        concept_spearman_scores=lambda wc: [
+#            f"results/global_geometry_alignment/concept_level/dataset-{wc.dataset}_model-{pair['model']}-{pair['stimuli_type']}_brain_{wc.similarity_type}-similarity_spearman-alignment.parquet"
+#            for pair in GLOBAL_GEOMETRY_PAIRINGS
+#            if pair["dataset"] == wc.dataset
+#            and pair["similarity_type"] == wc.similarity_type
+#        ]
+#    output:
+#        plot="results/global_geometry_alignment/concept_level_plots/dataset-{dataset}_{similarity_type}-concept_spearman_coefficients.png"
+#    params:
+#        model_parameters=[
+#            f"{model}={config['models'][model]['parameters_millions']}"
+#            for model in MODEL_KEYS
+#        ],
+#        dataset=lambda wc: wc.dataset,
+#        similarity_type=lambda wc: wc.similarity_type
+#    conda:
+#        "envs/visualisation_environment.yaml"
+#    shell:
+#        r"""
+#            python3 workflow/visualisation/scripts/plot_concept_spearman_coefficients.py \
+#                --concept_spearman_scores {input.concept_spearman_scores:q} \
+#                --model_parameters {params.model_parameters:q} \
+#                --dataset {params.dataset:q} \
+#                --similarity_type {params.similarity_type:q} \
+#                --plot {output.plot:q}
+#        """
