@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 
 from libraries.manage_model_metadata import model_family, model_label, parse_model_parameters
-from libraries.visualisation_utilis import contrasting_text_color
+from libraries.visualisation_utils import contrasting_text_color
 
 def parse_llm_brain_path(path):
     filename = Path(path).name
