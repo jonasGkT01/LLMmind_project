@@ -1,0 +1,48 @@
+rule all_global_geometry_alignment:
+    input:
+        [
+            f"results/global_geometry_alignment/dataset-{pair['dataset']}_model-{pair['model']}-{pair['stimuli_type']}_brain_{pair['similarity_type']}-similarity_spearman-alignment_empirical.p_value.tsv"
+            for pair in GLOBAL_GEOMETRY_PAIRINGS
+        ]
+    output:
+        "results/global_geometry_alignment/.done"
+    shell:
+        "touch {output:q}"
+
+rule compute_spearman_alignment:
+    input:
+        brain_similarity="results/mind/{dataset}/isc_{similarity_type}_similarity.parquet",
+        model_similarity="results/{stimuli_type}_models/{dataset}/{similarity_type}_similarity/{model}_{similarity_type}_similarity.parquet"
+    output:
+        observed_alignment="results/global_geometry_alignment/dataset-{dataset}_model-{model}-{stimuli_type}_brain_{similarity_type}-similarity_spearman-alignment.parquet",
+        relabelled_alignment="results/global_geometry_alignment/dataset-{dataset}_model-{model}-{stimuli_type}_brain_{similarity_type}-similarity_spearman-alignment_relabelled.parquet"
+    params:
+        number_of_relabellings=NUMBER_OF_RELABELLINGS,
+        random_seed=RANDOM_SEED
+    conda:
+        "envs/compute_spearman_alignment_environment.yaml"
+    shell:
+        r"""
+            python3 workflow/global_geometry_alignment/scripts/compute_spearman_alignment.py \
+                --brain_similarity {input.brain_similarity:q} \
+                --model_similarity {input.model_similarity:q} \
+                --observed_alignment {output.observed_alignment:q} \
+                --relabelled_alignment {output.relabelled_alignment:q} \
+                --number_of_relabellings {params.number_of_relabellings} \
+                --random_seed {params.random_seed}
+        """
+
+rule compute_spearman_empirical_p_value:
+    input:
+        observed_alignment="results/global_geometry_alignment/dataset-{dataset}_model-{model}-{stimuli_type}_brain_{similarity_type}-similarity_spearman-alignment.parquet",
+        relabelled_alignment="results/global_geometry_alignment/dataset-{dataset}_model-{model}-{stimuli_type}_brain_{similarity_type}-similarity_spearman-alignment_relabelled.parquet"
+    output:
+        empirical_p_value="results/global_geometry_alignment/dataset-{dataset}_model-{model}-{stimuli_type}_brain_{similarity_type}-similarity_spearman-alignment_empirical.p_value.tsv"
+    conda:
+        "envs/compute_empirical_p_value_environment.yaml"
+    shell:
+        r"""
+            python3 workflow/global_geometry_alignment/scripts/compute_empirical_p_value.py \
+                --observed_alignment {input.observed_alignment:q} \
+                --relabelled_alignment {input.relabelled_alignment:q} > {output.empirical_p_value:q}
+        """

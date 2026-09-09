@@ -46,13 +46,26 @@ def parse_llm_llm_path(path):
 
     return match.groupdict()
 
-def read_mean_alignment_score(path):
-    df = pd.read_parquet(path, engine = "pyarrow")
+def read_alignment_score(path, number_of_neighbours):
+    df = pd.read_parquet(path, engine="pyarrow")
 
     if "alignment_score" not in df.columns:
         raise ValueError(f"{path} does not contain an 'alignment_score' column")
 
-    return float(df["alignment_score"].mean())
+    number_of_concepts = len(df)
+    population_size = number_of_concepts - 1
+
+    if number_of_neighbours > population_size:
+        raise ValueError(f"{path}: number_of_neighbours={number_of_neighbours} exceeds the available population size {population_size}")
+
+    mean_alignment_score = float(df["alignment_score"].mean())
+
+    # Under the hypergeometric null:
+    # E[common_neighbours] = k^2 / (n_concepts - 1)
+    # and alignment_score = common_neighbours / k.
+    expected_alignment_score = number_of_neighbours/population_size
+
+    return mean_alignment_score, expected_alignment_score
 
 def model_sort_key(label, model_metadata, parameters_by_model):
     if label == "brain":
@@ -73,6 +86,15 @@ def model_sort_key(label, model_metadata, parameters_by_model):
         model,
     )
 
+def contrasting_text_color(image, value):
+    rgba = image.cmap(image.norm(value))
+    r, g, b = rgba[:3]
+
+    # Relative perceived luminance of the rendered cell background
+    luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b
+
+    return "black" if luminance > 0.5 else "white"
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--llm_brain_alignment_scores", nargs="*", default=[], help="LLM-brain alignment score parquet files",)
@@ -89,16 +111,15 @@ def main():
     values = {}
     labels = set()
     model_metadata = {}
+    expected_alignment_scores = []
 
     for path in args.llm_brain_alignment_scores:
         metadata = parse_llm_brain_path(path)
 
-        label = model_label(
-            metadata["model"],
-            metadata["stimuli_type"],
-        )
+        label = model_label(metadata["model"], metadata["stimuli_type"],)
 
-        score = read_mean_alignment_score(path)
+        score, expected_score = read_alignment_score(path, args.number_of_neighbours,)
+        expected_alignment_scores.append(expected_score)
 
         labels.add(label)
         labels.add("brain")
@@ -117,7 +138,8 @@ def main():
         label_1 = model_label(metadata["model_1"], metadata["stimuli_type_1"],)
         label_2 = model_label(metadata["model_2"], metadata["stimuli_type_2"],)
 
-        score = read_mean_alignment_score(path)
+        score, expected_score = read_alignment_score(path, args.number_of_neighbours,)
+        expected_alignment_scores.append(expected_score)
 
         labels.add(label_1)
         labels.add(label_2)
@@ -133,6 +155,14 @@ def main():
 
         values[(label_1, label_2)] = score
         values[(label_2, label_1)] = score
+
+    if not expected_alignment_scores:
+        raise ValueError("No theoretical alignment scores could be computed")
+
+    expected_alignment_score = expected_alignment_scores[0]
+
+    if not np.allclose(expected_alignment_scores, expected_alignment_score,):
+        raise ValueError("Alignment-score files contain different numbers of concepts, so they do not have a common hypergeometric expectation")
 
     if not labels:
         raise ValueError("No alignment score files were provided")
@@ -150,16 +180,18 @@ def main():
 
     for i, row_label in enumerate(labels):
         for j, col_label in enumerate(labels):
+
             if row_label == col_label:
                 matrix[i, j] = 1.0
+
             elif (row_label, col_label) in values:
                 matrix[i, j] = values[(row_label, col_label)]
 
     output_path = Path(args.heatmap)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    fig_width = max(8, 0.55 * len(labels))
-    fig_height = max(7, 0.55 * len(labels))
+    fig_width = max(8, 0.55*len(labels))
+    fig_height = max(7, 0.55*len(labels))
 
     fig, ax = plt.subplots(figsize=(fig_width, fig_height))
 
@@ -174,9 +206,9 @@ def main():
                 continue
     
             # Use contrasting text colour for readability
-            text_color = "white" if value < 0.5 else "black"
-    
-            ax.text(j, i, f"{value:.2f}", ha="center", va="center", color=text_color, fontsize=7,)
+            text_color = contrasting_text_color(image, value)
+
+            ax.text(j, i, f"{value:.4f}", ha="center", va="center", color=text_color, fontsize=7,)
 
     ax.set_xticks(np.arange(len(labels)))
     ax.set_yticks(np.arange(len(labels)))
@@ -184,7 +216,9 @@ def main():
     ax.set_xticklabels(labels, rotation=90)
     ax.set_yticklabels(labels)
 
-    ax.set_title(f"Alignment scores\ndataset={args.dataset}, similarity={args.similarity_type}, neighbours={args.number_of_neighbours}")
+    ax.set_title(f"Alignment scores\n"
+                 f"dataset={args.dataset}, similarity={args.similarity_type}, neighbours={args.number_of_neighbours}\n"
+                 f"expected alignment score={expected_alignment_score:.4f}")
     ax.set_xlabel("Model / brain")
     ax.set_ylabel("Model / brain")
 

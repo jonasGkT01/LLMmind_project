@@ -81,6 +81,35 @@ def llm_llm_pairings():
 
 LLM_LLM_PAIRINGS = llm_llm_pairings()
 
+#def global_geometry_pairings():
+#    global_geometry_pairs = []
+#    seen = set()
+#
+#    for pair in PAIRINGS:
+#        key = (
+#            pair["dataset"],
+#            pair["stimuli_type"],
+#            pair["model"],
+#            pair["similarity_type"],
+#        )
+#
+#        if key in seen:
+#            continue
+#
+#        seen.add(key)
+#        global_geometry_pairs.append(
+#            {
+#                "dataset": pair["dataset"],
+#                "stimuli_type": pair["stimuli_type"],
+#                "model": pair["model"],
+#                "similarity_type": pair["similarity_type"],
+#            }
+#        )
+#
+#    return global_geometry_pairs
+#
+#GLOBAL_GEOMETRY_PAIRINGS = global_geometry_pairings()
+
 HEATMAP_PAIRINGS = [
     {
         "dataset": dataset,
@@ -149,8 +178,8 @@ rule all:
             f"results/alignment_enrichment_plots/dataset-{pair['dataset']}_{pair['similarity_type']}-concept_alignment_enrichment_{pair['number_of_neighbours']}NN.png"
             for pair in HEATMAP_PAIRINGS
         ],
-        #[
-        #    f"results/alignment_lineplots/dataset-{dataset}_{similarity_type}-brain_model_alignment.png"
-        #    for dataset in DATASETS
-        #    for similarity_type in SIMILARITY_TYPES
-        #]
+        [
+            f"results/alignment_lineplots/dataset-{dataset}_{similarity_type}-brain_model_alignment.png"
+            for dataset in DATASETS
+            for similarity_type in SIMILARITY_TYPES
+        ]
