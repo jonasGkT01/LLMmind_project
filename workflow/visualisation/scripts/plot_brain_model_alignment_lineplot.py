@@ -139,7 +139,7 @@ def main():
         ax.text(midpoint, 1.015, family.replace("_", " "), transform=ax.get_xaxis_transform(), ha="center", va="bottom", fontweight="bold")
 
     model_labels = [
-        f"{model}\n({format_parameter_count(parameters_by_model[model])})"
+        f"{model}"
         for model in models
     ]
 
@@ -147,7 +147,9 @@ def main():
     ax.set_xticklabels(model_labels, rotation=55, ha="right")
     ax.set_xlabel("Model")
     ax.set_ylabel("Mean brain-model alignment")
-    ax.set_title(f"Brain-model alignment\ndataset={args.dataset}, similarity={args.similarity_type}", pad=32)
+    ax.set_title(f"Brain-model alignment\n"
+                 f"dataset={args.dataset}, similarity={args.similarity_type}", 
+                 pad=32)
     ax.set_ylim(bottom=0)
     ax.grid(axis="y", alpha=0.25)
 

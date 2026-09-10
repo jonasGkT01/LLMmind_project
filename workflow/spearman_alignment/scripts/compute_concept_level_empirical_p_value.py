@@ -38,10 +38,7 @@ def main():
         raise ValueError("Observed and relabelled alignment dataframes contain different concepts")
 
     number_of_relabellings = relabelled_df["shuffle_id"].nunique()
-    counts_by_concept = relabelled_df.groupby(
-        "concept",
-        observed=False,
-    ).size()
+    counts_by_concept = relabelled_df.groupby("concept", observed=False,).size()
 
     if (counts_by_concept != number_of_relabellings).any():
         raise ValueError("Each concept must have exactly one coefficient per relabelling")
@@ -56,10 +53,7 @@ def main():
             suffixes=("", "_observed"),
         )
         .assign(
-            exceeds_observed=lambda df: (
-                df["spearman_coefficient"]
-                >= df["spearman_coefficient_observed"]
-            )
+            exceeds_observed=lambda df: (df["spearman_coefficient"] >= df["spearman_coefficient_observed"])
         )
         .groupby("concept", sort=False, observed=False)
         .agg(
@@ -75,9 +69,7 @@ def main():
         number_of_relabellings=number_of_relabellings,
     )
     summary_df = summary_df.reset_index().rename(
-        columns={
-            "spearman_coefficient": "observed_spearman_coefficient",
-        }
+        columns={"spearman_coefficient": "observed_spearman_coefficient",}
     )
 
     print(

@@ -24,13 +24,7 @@ def model_sort_key(label, model_metadata):
     
     metadata = model_metadata[label]
 
-    return (
-        0,
-        metadata["stimuli_type"],
-        model_family(metadata["model"]),
-        metadata["number_of_parameters"],
-        metadata["model"],
-    )
+    return (0, metadata["stimuli_type"], model_family(metadata["model"]), metadata["number_of_parameters"], metadata["model"],)
 
 def read_llm_llm_records(paths, parameters_by_model):
     required_columns = {

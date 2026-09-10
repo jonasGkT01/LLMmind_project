@@ -47,6 +47,7 @@ def main():
 
     brain_similarity_df = pd.read_parquet(args.brain_similarity, engine="pyarrow")
     model_similarity_df = pd.read_parquet(args.model_similarity, engine="pyarrow")
+
     brain_similarity, model_similarity, concepts = align_similarity_dataframes(
         brain_similarity_df=brain_similarity_df,
         model_similarity_df=model_similarity_df,
@@ -64,13 +65,8 @@ def main():
     if not np.array_equal(row_indices, model_row_indices) or not np.array_equal(column_indices, model_column_indices):
         raise ValueError("Brain and model upper-triangle indices do not match")
 
-    observed_coefficient = float(
-        np.clip(
-            np.dot(brain_rank_geometry, model_rank_geometry),
-            -1.0,
-            1.0,
-        )
-    )
+    observed_coefficient = float(np.clip(np.dot(brain_rank_geometry, model_rank_geometry), -1.0, 1.0,))
+
     relabelled_coefficients = compute_relabelled_coefficients(
         brain_rank_geometry=brain_rank_geometry,
         model_rank_geometry=model_rank_geometry,

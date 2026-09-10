@@ -14,7 +14,10 @@ def compute_alignment_scores(
     nearest_neighbours_dict_1 = nearest_neighbours_to_dict(nearest_neighbours_df_1)
     nearest_neighbours_dict_2 = nearest_neighbours_to_dict(nearest_neighbours_df_2)
 
-    concepts = sorted(set(nearest_neighbours_dict_1) & set(nearest_neighbours_dict_2))
+    if set(nearest_neighbours_dict_1) != set(nearest_neighbours_dict_2):
+        raise ValueError("The two representations have different concepts, and therefore cannot be compared.")
+
+    concepts = set(nearest_neighbours_dict_1)
 
     rows = []
 

@@ -33,20 +33,11 @@ def model_sort_key(label, model_metadata, parameters_by_model):
     if model not in parameters_by_model:
         raise ValueError(f"No number of parameters was provided for model {model}")
 
-    return (
-        stimuli_type,
-        model_family(model),
-        parameters_by_model[model],
-        model,
-    )
+    return (stimuli_type, model_family(model), parameters_by_model[model], model,)
 
 def deterministic_jitter(label, concept, width=0.5):
-    digest = hashlib.sha256(
-        f"{label}\0{concept}".encode("utf-8")
-    ).digest()
-    unit_interval_value = (
-        int.from_bytes(digest[:8], byteorder="big")/(2**64 - 1)
-    )
+    digest = hashlib.sha256(f"{label}\0{concept}".encode("utf-8")).digest()
+    unit_interval_value = int.from_bytes(digest[:8], byteorder="big")/(2**64 - 1)
 
     return (unit_interval_value - 0.5)*width
 
@@ -77,51 +68,28 @@ def read_model_coefficients(path, expected_dataset, expected_similarity_type):
     if duplicated_concepts:
         raise ValueError(f"Spearman file {path} contains duplicated concepts: {duplicated_concepts[:10]}")
 
-    coefficients = pd.to_numeric(
-        coefficient_df["spearman_coefficient"],
-        errors="coerce",
-    )
+    coefficients = pd.to_numeric(coefficient_df["spearman_coefficient"], errors="coerce",)
 
     if coefficients.isna().any():
-        invalid_concepts = coefficient_df.loc[
-            coefficients.isna(),
-            "concept",
-        ].tolist()
+        invalid_concepts = coefficient_df.loc[coefficients.isna(), "concept",].tolist()
         raise ValueError(f"Spearman file {path} contains invalid coefficients for concepts: {invalid_concepts[:10]}")
 
     if ((coefficients < -1) | (coefficients > 1)).any():
-        invalid_concepts = coefficient_df.loc[
-            (coefficients < -1)
-            | (coefficients > 1),
-            "concept",
-        ].tolist()
+        invalid_concepts = coefficient_df.loc[(coefficients < -1) | (coefficients > 1), "concept",].tolist()
         raise ValueError(f"Spearman file {path} contains coefficients outside [-1, 1] for concepts: {invalid_concepts[:10]}")
 
     output_df = coefficient_df[["concept"]].copy()
     output_df["spearman_coefficient"] = coefficients
     output_df["model"] = metadata["model"]
     output_df["stimuli_type"] = metadata["stimuli_type"]
-    output_df["label"] = model_label(
-        metadata["model"],
-        metadata["stimuli_type"],
-    )
+    output_df["label"] = model_label(metadata["model"], metadata["stimuli_type"],)
 
     return output_df, metadata
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--concept_spearman_scores",
-        nargs="+",
-        required=True,
-        help="LLM-brain concept-level Spearman-alignment Parquet files",
-    )
-    parser.add_argument(
-        "--model_parameters",
-        nargs="+",
-        required=True,
-        help="Model parameter counts formatted as model=parameters_millions",
-    )
+    parser.add_argument("--concept_spearman_scores", nargs="+", required=True, help="LLM-brain concept-level Spearman-alignment Parquet files",)
+    parser.add_argument("--model_parameters", nargs="+", required=True, help="Model parameter counts formatted as model=parameters_millions",)
     parser.add_argument("--dataset", required=True)
     parser.add_argument("--similarity_type", required=True)
     parser.add_argument("--plot", required=True)
@@ -151,10 +119,7 @@ def main():
     if not model_dataframes:
         raise ValueError("No concept-level Spearman files were provided")
 
-    coefficient_df = pd.concat(
-        model_dataframes,
-        ignore_index=True,
-    )
+    coefficient_df = pd.concat(model_dataframes, ignore_index=True,)
     labels = sorted(
         model_metadata,
         key=lambda label: model_sort_key(
@@ -168,59 +133,32 @@ def main():
         for position, label in enumerate(labels)
     }
     x_values = [
-        (
-            x_positions[row.label]
-            + deterministic_jitter(
-                row.label,
-                str(row.concept),
-            )
-        )
+        x_positions[row.label] + deterministic_jitter(row.label, str(row.concept),)
         for row in coefficient_df.itertuples(index=False)
     ]
 
     output_path = Path(args.plot)
-    output_path.parent.mkdir(
-        parents=True,
-        exist_ok=True,
-    )
-    fig_width = max(
-        10,
-        0.6*len(labels),
-    )
-    fig, ax = plt.subplots(
-        figsize=(
-            fig_width,
-            7,
-        )
-    )
-    ax.scatter(
-        x_values,
-        coefficient_df["spearman_coefficient"],
-        s=18,
-        alpha=0.45,
-        edgecolors="none",
-    )
-    ax.axhline(
-        0.0,
-        linestyle="--",
-        linewidth=1.2,
-        label="No rank correlation",
-    )
+    output_path.parent.mkdir(parents=True, exist_ok=True,)
+
+    fig_width = max(10, 0.6*len(labels),)
+    fig, ax = plt.subplots(figsize=(fig_width, 7,))
+    
+    ax.scatter(x_values, coefficient_df["spearman_coefficient"], s=18, alpha=0.45, edgecolors="none",)
+    ax.axhline(0.0, linestyle="--", linewidth=1.2, label="No rank correlation",)
+    
     ax.set_xticks(range(len(labels)))
-    ax.set_xticklabels(
-        labels,
-        rotation=90,
-    )
+    ax.set_xticklabels(labels, rotation=90,)
+    
     ax.set_xlim(-0.6, len(labels) - 0.4)
     ax.set_ylim(-1.0, 1.0)
-    ax.set_title(
-        f"Concept-level LLM-brain Spearman alignment\n"
-        f"dataset={args.dataset}, similarity={args.similarity_type}"
-    )
+    
+    ax.set_title(f"Concept-level LLM-brain Spearman alignment\n"
+                 f"dataset={args.dataset}, similarity={args.similarity_type}")
     ax.set_xlabel("Model")
     ax.set_ylabel("Spearman's rank correlation coefficient")
     ax.grid(axis="y", alpha=0.25)
     ax.legend()
+    
     fig.tight_layout()
     fig.savefig(
         output_path,

@@ -128,7 +128,7 @@ rule all:
         #    f"results/alignment_scores/dataset-{pair['dataset']}_model-{pair['model']}-{pair['stimuli_type']}_brain_{pair['similarity_type']}-alignment_score_{pair['number_of_neighbours']}NN.observed.tsv"
         #    for pair in PAIRINGS
         #],
-        "results/tsv_summary.tsv",
+        #"results/tsv_summary.tsv",
         "results/all_alignment_scores.tsv",
         [
             f"results/alignment_scores/dataset-{pair['dataset']}_model-{pair['model_1']}-{pair['stimuli_type_1']}_model-{pair['model_2']}-{pair['stimuli_type_2']}_{pair['similarity_type']}-alignment_score_{pair['number_of_neighbours']}NN.parquet"

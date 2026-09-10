@@ -38,9 +38,8 @@ def main():
         raise ValueError("Expected exactly one relabelled coefficient per shuffle")
 
     observed_coefficient = float(observed_df["spearman_coefficient"].iloc[0])
-    number_at_least_as_large = int(
-        (relabelled_df["spearman_coefficient"] >= observed_coefficient).sum()
-    )
+    number_at_least_as_large = int((relabelled_df["spearman_coefficient"] >= observed_coefficient).sum())
+    
     empirical_p_value = empirical_upper_tail_p_value(
         number_at_least_as_large=number_at_least_as_large,
         number_of_relabellings=number_of_relabellings,

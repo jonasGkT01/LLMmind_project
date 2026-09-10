@@ -45,19 +45,15 @@ def main():
 
     brain_similarity_df = pd.read_parquet(args.brain_similarity, engine="pyarrow")
     model_similarity_df = pd.read_parquet(args.model_similarity, engine="pyarrow")
+
     brain_similarity, model_similarity, concepts = align_similarity_dataframes(
         brain_similarity_df=brain_similarity_df,
         model_similarity_df=model_similarity_df,
     )
 
-    brain_rank_matrix = rank_similarity_rows(
-        similarity=brain_similarity,
-        name="brain",
-    )
-    model_rank_matrix = rank_similarity_rows(
-        similarity=model_similarity,
-        name="model",
-    )
+    brain_rank_matrix = rank_similarity_rows(similarity=brain_similarity, name="brain",)
+    model_rank_matrix = rank_similarity_rows(similarity=model_similarity, name="model",)
+    
     observed_coefficients = np.clip(
         np.einsum(
             "ij,ij->i",
