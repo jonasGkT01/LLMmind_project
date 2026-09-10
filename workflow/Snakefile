@@ -106,7 +106,7 @@ include: "isc_nearest_neighbours/Snakefile"
 include: "llm_nearest_neighbours/Snakefile"
 include: "llm_mind_alignment/Snakefile"
 include: "llm_llm_alignment/Snakefile"
-#include: "global_geometry_alignment/Snakefile"
+include: "spearman_alignment/Snakefile"
 include: "visualisation/Snakefile"
 
 rule all:
@@ -155,8 +155,13 @@ rule all:
             for dataset in DATASETS
             for similarity_type in SIMILARITY_TYPES
         ],
-        #"results/global_geometry_alignment/.done",
-        #[
-        #    f"results/global_geometry_alignment/concept_level_plots/dataset-{pair['dataset']}_{pair['similarity_type']}-concept_spearman_coefficients.png"
-        #    for pair in GLOBAL_GEOMETRY_PLOT_PAIRINGS
-        #],
+        [
+            f"results/spearman_alignment/model_level_plots/dataset-{dataset}_{similarity_type}-brain_model_spearman.png"
+            for dataset in DATASETS
+            for similarity_type in SIMILARITY_TYPES
+        ],
+        [
+            f"results/spearman_alignment/concept_level_plots/dataset-{dataset}_{similarity_type}-concept_spearman_coefficients.png"
+            for dataset in DATASETS
+            for similarity_type in SIMILARITY_TYPES
+        ],

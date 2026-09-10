@@ -17,10 +17,16 @@ rule all_visualisation:
             for dataset in DATASETS
             for similarity_type in SIMILARITY_TYPES
         ],
-        #[
-        #    f"results/global_geometry_alignment/concept_level_plots/dataset-{pair['dataset']}_{pair['similarity_type']}-concept_spearman_coefficients.png"
-        #    for pair in GLOBAL_GEOMETRY_PLOT_PAIRINGS
-        #],
+        [
+            f"results/spearman_alignment/model_level_plots/dataset-{dataset}_{similarity_type}-brain_model_spearman.png"
+            for dataset in DATASETS
+            for similarity_type in SIMILARITY_TYPES
+        ],
+        [
+            f"results/spearman_alignment/concept_level_plots/dataset-{dataset}_{similarity_type}-concept_spearman_coefficients.png"
+            for dataset in DATASETS
+            for similarity_type in SIMILARITY_TYPES
+        ],
 
 rule plot_alignment_heatmap:
     input:
@@ -152,31 +158,38 @@ rule plot_brain_model_alignment_lineplot:
                 --plot {output.plot:q}
         """
 
-#rule plot_concept_spearman_coefficients:
-#    input:
-#        concept_spearman_scores=lambda wc: [
-#            f"results/global_geometry_alignment/concept_level/dataset-{wc.dataset}_model-{pair['model']}-{pair['stimuli_type']}_brain_{wc.similarity_type}-similarity_spearman-alignment.parquet"
-#            for pair in GLOBAL_GEOMETRY_PAIRINGS
-#            if pair["dataset"] == wc.dataset
-#            and pair["similarity_type"] == wc.similarity_type
-#        ]
-#    output:
-#        plot="results/global_geometry_alignment/concept_level_plots/dataset-{dataset}_{similarity_type}-concept_spearman_coefficients.png"
-#    params:
-#        model_parameters=[
-#            f"{model}={config['models'][model]['parameters_millions']}"
-#            for model in MODEL_KEYS
-#        ],
-#        dataset=lambda wc: wc.dataset,
-#        similarity_type=lambda wc: wc.similarity_type
-#    conda:
-#        "envs/visualisation_environment.yaml"
-#    shell:
-#        r"""
-#            python3 workflow/visualisation/scripts/plot_concept_spearman_coefficients.py \
-#                --concept_spearman_scores {input.concept_spearman_scores:q} \
-#                --model_parameters {params.model_parameters:q} \
-#                --dataset {params.dataset:q} \
-#                --similarity_type {params.similarity_type:q} \
-#                --plot {output.plot:q}
-#        """
+rule plot_spearman_alignment:
+    input:
+        model_level_spearman_scores=lambda wc: [
+            f"results/spearman_alignment/model_level/dataset-{wc.dataset}_model-{pair['model']}-{pair['stimuli_type']}_brain_{wc.similarity_type}-similarity_spearman-alignment_empirical.p_value.tsv"
+            for pair in SPEARMAN_PAIRINGS
+            if pair["dataset"] == wc.dataset
+            and pair["similarity_type"] == wc.similarity_type
+        ],
+        concept_level_spearman_scores=lambda wc: [
+            f"results/spearman_alignment/concept_level/dataset-{wc.dataset}_model-{pair['model']}-{pair['stimuli_type']}_brain_{wc.similarity_type}-similarity_spearman-alignment_empirical.p_value.tsv"
+            for pair in SPEARMAN_PAIRINGS
+            if pair["dataset"] == wc.dataset
+            and pair["similarity_type"] == wc.similarity_type
+        ]
+    output:
+        model_level_plot="results/spearman_alignment/model_level_plots/dataset-{dataset}_{similarity_type}-brain_model_spearman.png",
+        concept_level_plot="results/spearman_alignment/concept_level_plots/dataset-{dataset}_{similarity_type}-concept_spearman_coefficients.png"
+    params:
+        model_parameters=[
+            f"{model}={config['models'][model]['parameters_millions']}"
+            for model in MODEL_KEYS
+        ]
+    conda:
+        "envs/visualisation_environment.yaml"
+    shell:
+        r"""
+            python3 workflow/visualisation/scripts/plot_spearman_alignment.py \
+                --model_level_spearman_scores {input.model_level_spearman_scores:q} \
+                --concept_level_spearman_scores {input.concept_level_spearman_scores:q} \
+                --model_parameters {params.model_parameters:q} \
+                --dataset {wildcards.dataset:q} \
+                --similarity_type {wildcards.similarity_type:q} \
+                --model_level_plot {output.model_level_plot:q} \
+                --concept_level_plot {output.concept_level_plot:q}
+        """
