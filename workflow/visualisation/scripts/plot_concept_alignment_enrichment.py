@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 import argparse
-import hashlib
 import re
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 import pandas as pd
 
-from libraries.manage_model_metadata import model_family, model_label, parse_model_parameters
+from libraries.manage_model_metadata import model_label, model_sort_key, parse_model_parameters
+from libraries.visualisation_utils import deterministic_jitter
 
 def parse_alignment_score_path(path):
     filename = Path(path).name
@@ -27,22 +27,6 @@ def parse_alignment_score_path(path):
     metadata["number_of_neighbours"] = int(metadata["number_of_neighbours"])
 
     return metadata
-
-def model_sort_key(label, model_metadata, parameters_by_model):
-    metadata = model_metadata[label]
-    model = metadata["model"]
-    stimuli_type = metadata["stimuli_type"]
-
-    if model not in parameters_by_model:
-        raise ValueError(f"No number of parameters was provided for model {model}")
-
-    return (stimuli_type, model_family(model), parameters_by_model[model], model,)
-
-def deterministic_jitter(label, concept, width=0.5):
-    digest = hashlib.sha256(f"{label}\0{concept}".encode("utf-8")).digest()
-    unit_interval_value = int.from_bytes(digest[:8], byteorder="big")/(2**64 - 1)
-
-    return (unit_interval_value - 0.5)*width
 
 def read_model_enrichments(
     path,
@@ -147,9 +131,9 @@ def main():
     labels = sorted(
         model_metadata,
         key=lambda label: model_sort_key(
-            label,
-            model_metadata,
-            parameters_by_model,
+            model=model_metadata[label]["model"],
+            stimuli_type=model_metadata[label]["stimuli_type"],
+            parameters_by_model=parameters_by_model,
         ),
     )
 

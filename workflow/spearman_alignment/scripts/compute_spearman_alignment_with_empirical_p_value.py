@@ -5,6 +5,9 @@ import numpy as np
 import pandas as pd
 from scipy.stats import rankdata
 
+from libraries.compute_statistics import empirical_upper_tail_p_value
+from libraries.validate_data import validate_similarity_dataframe
+
 def rank_and_normalize(values, name):
     ranks = rankdata(values, method="average")
     ranks = ranks - ranks.mean()
@@ -32,32 +35,14 @@ def main():
     if args.number_of_relabellings <= 0:
         raise ValueError("--number_of_relabellings must be a positive integer")
 
-    brain_similarity_df = pd.read_parquet(args.brain_similarity, engine="pyarrow")
-    model_similarity_df = pd.read_parquet(args.model_similarity, engine="pyarrow")
-
-    for name, similarity_df in [
-        ("brain", brain_similarity_df),
-        ("model", model_similarity_df),
-    ]:
-        if similarity_df.shape[0] != similarity_df.shape[1]:
-            raise ValueError(f"The {name} similarity matrix is not square: shape={similarity_df.shape}")
-
-        if similarity_df.index.has_duplicates or similarity_df.columns.has_duplicates:
-            raise ValueError(f"The {name} similarity matrix contains duplicate labels")
-
-        if set(similarity_df.index) != set(similarity_df.columns):
-            raise ValueError(f"The {name} similarity matrix contains different row and column concepts")
-
-        similarity = similarity_df.loc[
-            similarity_df.index,
-            similarity_df.index,
-        ].to_numpy(dtype=np.float64, copy=False)
-
-        if not np.isfinite(similarity).all():
-            raise ValueError(f"The {name} similarity matrix contains non-finite values")
-
-        if not np.allclose(similarity, similarity.T, rtol=1e-10, atol=1e-12):
-            raise ValueError(f"The {name} similarity matrix is not symmetric")
+    brain_similarity_df = validate_similarity_dataframe(
+        similarity_df=pd.read_parquet(args.brain_similarity, engine="pyarrow",),
+        source=args.brain_similarity,
+    )
+    model_similarity_df = validate_similarity_dataframe(
+        similarity_df=pd.read_parquet(args.model_similarity, engine="pyarrow",),
+        source=args.model_similarity,
+    )
 
     concepts = brain_similarity_df.index.to_numpy()
 
@@ -124,8 +109,9 @@ def main():
     concept_null_sum = np.zeros(number_of_concepts, dtype=np.float64)
     concept_exceedances = np.zeros(number_of_concepts, dtype=np.int64)
 
+    rng = np.random.default_rng(args.random_seed)
+
     for shuffle_i in range(args.number_of_relabellings):
-        rng = np.random.default_rng(args.random_seed + shuffle_i)
         permutation = rng.permutation(number_of_concepts)
 
         relabelled_model_rank = model_global_rank_matrix[
@@ -160,6 +146,15 @@ def main():
         if shuffle_i == 0 or (shuffle_i + 1) % 100 == 0 or shuffle_i + 1 == args.number_of_relabellings:
             print(f"completed relabelling {shuffle_i + 1}/{args.number_of_relabellings}")
 
+    model_empirical_p_value = empirical_upper_tail_p_value(
+        number_at_least_as_large=model_exceedances,
+        number_of_relabellings=args.number_of_relabellings,
+    )
+    concept_empirical_p_values = empirical_upper_tail_p_value(
+        number_at_least_as_large=concept_exceedances,
+        number_of_relabellings=args.number_of_relabellings,
+    )
+
     model_level_df = pd.DataFrame(
         {
             "dataset": [args.dataset],
@@ -172,7 +167,7 @@ def main():
             "empirical_null_mean_spearman_coefficient": [model_null_sum/args.number_of_relabellings],
             "number_of_relabellings": [args.number_of_relabellings],
             "number_of_null_scores_at_least_as_large": [model_exceedances],
-            "empirical_upper_tail_p_value": [(model_exceedances + 1)/(args.number_of_relabellings + 1)],
+            "empirical_upper_tail_p_value": [model_empirical_p_value],
         }
     )
     concept_level_df = pd.DataFrame(
@@ -187,7 +182,7 @@ def main():
             "empirical_null_mean_spearman_coefficient": concept_null_sum/args.number_of_relabellings,
             "number_of_relabellings": args.number_of_relabellings,
             "number_of_null_scores_at_least_as_large": concept_exceedances,
-            "empirical_upper_tail_p_value": (concept_exceedances + 1)/(args.number_of_relabellings + 1),
+            "empirical_upper_tail_p_value": concept_empirical_p_values,
         }
     )
 

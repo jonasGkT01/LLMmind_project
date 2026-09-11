@@ -6,7 +6,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from libraries.manage_model_metadata import model_family, model_label, parse_model_parameters
+from libraries.manage_model_metadata import model_label, model_sort_key, parse_model_parameters
+from libraries.validate_data import validate_required_columns
+from libraries.visualisation_utils import deterministic_jitter
 
 def main():
     parser = argparse.ArgumentParser()
@@ -35,10 +37,7 @@ def main():
         ignore_index=True,
     )
 
-    for name, df in [
-        ("model-level", model_df),
-        ("concept-level", concept_df),
-    ]:
+    for name, df in [("model-level", model_df), ("concept-level", concept_df),]:
         required_columns = {
             "dataset",
             "model",
@@ -50,10 +49,7 @@ def main():
         if name == "concept-level":
             required_columns.add("concept")
 
-        missing_columns = required_columns - set(df.columns)
-
-        if missing_columns:
-            raise ValueError(f"{name} Spearman data is missing columns: {sorted(missing_columns)}")
+        validate_required_columns(df=df, required_columns=required_columns, source=f"{name} Spearman data",)
 
         if set(df["dataset"]) != {args.dataset}:
             raise ValueError(f"{name} Spearman data contains an unexpected dataset")
@@ -72,10 +68,7 @@ def main():
         df["observed_spearman_coefficient"] = coefficients
         df["label"] = [
             model_label(model, stimuli_type)
-            for model, stimuli_type in zip(
-                df["model"],
-                df["stimuli_type"],
-            )
+            for model, stimuli_type in zip(df["model"], df["stimuli_type"],)
         ]
 
     if model_df["label"].duplicated().any():
@@ -89,15 +82,18 @@ def main():
     if missing_parameters:
         raise ValueError(f"No number of parameters was provided for models: {sorted(missing_parameters)}")
 
-    model_df["family"] = model_df["model"].map(model_family)
-    model_df["parameters"] = model_df["model"].map(parameters_by_model)
     model_df = model_df.sort_values(
-        [
-            "stimuli_type",
-            "family",
-            "parameters",
-            "model",
-        ]
+        "label",
+        key=lambda labels: labels.map(
+            {
+                row.label: model_sort_key(
+                    model=row.model,
+                    stimuli_type=row.stimuli_type,
+                    parameters_by_model=parameters_by_model,
+                )
+                for row in model_df.itertuples(index=False)
+            }
+        ),
     ).reset_index(drop=True)
 
     labels = model_df["label"].tolist()
@@ -182,13 +178,11 @@ def main():
     plt.close(fig)
 
     concept_df["x_position"] = concept_df["label"].map(x_positions)
-    hashes = pd.util.hash_pandas_object(
-        concept_df[["label", "concept"]].astype(str),
-        index=False,
-    ).to_numpy(dtype=np.uint64)
-    jitter = (
-        hashes.astype(np.float64)/np.iinfo(np.uint64).max - 0.5
-    )*0.5
+
+    jitter = [
+        deterministic_jitter(label=row.label, concept=str(row.concept),)
+        for row in concept_df.itertuples(index=False)
+    ]
 
     concept_level_path = Path(args.concept_level_plot)
     concept_level_path.parent.mkdir(parents=True, exist_ok=True)

@@ -32,12 +32,6 @@ def read_mean_alignment_score(path):
 
     return float(df["alignment_score"].mean())
 
-def format_parameter_count(parameters_millions):
-    if parameters_millions >= 1000:
-        return f"{parameters_millions / 1000:g}B"
-
-    return f"{parameters_millions:g}M"
-
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--llm_brain_alignment_scores", nargs="+", required=True, help="LLM-brain alignment score parquet files")
