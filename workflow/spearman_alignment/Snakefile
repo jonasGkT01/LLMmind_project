@@ -15,11 +15,11 @@ SPEARMAN_PAIRINGS = [
 rule all_spearman_alignment:
     input:
         [
-            "results/spearman_alignment/model_level/dataset-{dataset}_model-{model}-{stimuli_type}_brain_{similarity_type}-similarity_spearman_alignment_empirical.p_value.tsv"
+            "results/spearman_alignment/model_level/dataset-{pair['dataset']}_model-{pair['model']}-{pair['stimuli_type']}_brain_{pair['similarity_type']}-similarity_spearman_alignment_empirical.p_value.tsv"
             for pair in SPEARMAN_PAIRINGS
         ],
         [
-            "results/spearman_alignment/concept_level/dataset-{dataset}_model-{model}-{stimuli_type}_brain_{similarity_type}-similarity_spearman_alignment_empirical.p_value.tsv"
+            "results/spearman_alignment/concept_level/dataset-{pair['dataset']}_model-{pair['model']}-{pair['stimuli_type']}_brain_{pair['similarity_type']}-similarity_spearman_alignment_empirical.p_value.tsv"
             for pair in SPEARMAN_PAIRINGS
         ]
 
