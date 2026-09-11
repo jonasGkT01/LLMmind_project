@@ -171,7 +171,7 @@ checkpoint make_caption_scene_manifest:
         onset_shift_s=config["caption_scene"]["onset_shift_s"],
         run_table_encoding=config["caption_scene"].get("run_table_encoding", "gbk"),
     conda:
-        "envs/make_caption_scene_manifest_environment.yaml"
+        "envs/caption_scene_dataset_processing_environment.yaml"
     shell:
         r"""
             python workflow/dataset_processing/caption_scene_dataset/scripts/make_caption_scene_manifest.py \
@@ -198,7 +198,7 @@ rule split_caption_scene_bold_by_run_manifest:
     params:
         run_manifest=lambda wildcards: f"{CAPTION_SCENE_RUN_MANIFEST_DIR}/{wildcards.run_key}.tsv"
     conda:
-        "envs/split_caption_scene_bold_by_run_manifest_environment.yaml"
+        "envs/caption_scene_dataset_processing_environment.yaml"
     shell:
         r"""
             python workflow/dataset_processing/caption_scene_dataset/scripts/split_caption_scene_bold_by_run_manifest.py \
@@ -227,10 +227,7 @@ def caption_scene_parcel_paths(wildcards):
     ]
 
     if len(parcel_paths) < 2:
-        raise ValueError(
-            f"Stimulus {wildcards.stimulus_id} has only "
-            f"{len(parcel_paths)} parcel time-series files in the manifest"
-        )
+        raise ValueError(f"Stimulus {wildcards.stimulus_id} has only {len(parcel_paths)} parcel time-series files in the manifest")
 
     return parcel_paths
 
@@ -246,7 +243,7 @@ rule extract_caption_scene_parcels:
         atlas_dir=config["atlas"]["atlas_dir"],
         output_root=CAPTION_SCENE_PROCESSING_OUTPUT_DIR
     conda:
-        "envs/extract_caption_scene_parcels_environment.yaml"
+        "envs/caption_scene_dataset_processing_environment.yaml"
     shell:
         r"""
             python3 workflow/dataset_processing/caption_scene_dataset/scripts/extract_caption_scene_parcels.py \
@@ -269,7 +266,7 @@ rule compute_caption_scene_isc:
         yeo_networks=config["atlas"]["yeo_networks"],
         atlas_dir=config["atlas"]["atlas_dir"]
     conda:
-        "envs/compute_caption_scene_isc_environment.yaml"
+        "envs/caption_scene_dataset_processing_environment.yaml"
     shell:
         r"""
             python3 workflow/dataset_processing/caption_scene_dataset/scripts/compute_caption_scene_isc.py \
@@ -289,7 +286,7 @@ rule write_caption_scene_stimuli_transcripts:
         stimuli_dir=directory(config["caption_scene"]["stimuli_dir"]["language"]),
         transcripts_done=touch(CAPTION_SCENE_STIMULI_READY)
     conda:
-        "envs/write_caption_scene_stimuli_transcripts_environment.yaml"
+        "envs/caption_scene_dataset_processing_environment.yaml"
     shell:
         r"""
             python3 workflow/dataset_processing/caption_scene_dataset/scripts/write_caption_scene_stimuli_transcripts.py \

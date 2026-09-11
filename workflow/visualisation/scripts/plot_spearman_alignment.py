@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from libraries.manage_model_metadata import model_label, model_sort_key, parse_model_parameters
+from libraries.manage_model_metadata import model_family, model_label, model_sort_key, parse_model_parameters
 from libraries.validate_data import validate_required_columns
 from libraries.visualisation_utils import deterministic_jitter
 
@@ -125,13 +125,13 @@ def main():
 
     while start < len(model_df):
         stimuli_type = model_df.loc[start, "stimuli_type"]
-        family = model_df.loc[start, "family"]
+        family = model_family(model_df.loc[start, "model"])
         end = start + 1
 
         while (
             end < len(model_df)
             and model_df.loc[end, "stimuli_type"] == stimuli_type
-            and model_df.loc[end, "family"] == family
+            and model_family(model_df.loc[end, "model"]) == family
         ):
             end += 1
 

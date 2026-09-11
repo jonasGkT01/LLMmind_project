@@ -18,7 +18,7 @@ rule compute_llm_llm_alignment_score:
     params:
         number_of_neighbours=lambda wc: wc.number_of_neighbours
     conda:
-        "envs/compute_llm_llm_alignment_score_environment.yaml"
+        "envs/llm_llm_alignment_environment.yaml"
     shell:
         r"""
             python3 workflow/llm_llm_alignment/scripts/compute_llm_llm_alignment_score.py \
@@ -46,7 +46,7 @@ rule compute_llm_llm_empirical_p_value:
         number_of_parameters_1=lambda wc: config["models"][wc.model_1]["parameters_millions"],
         number_of_parameters_2=lambda wc: config["models"][wc.model_2]["parameters_millions"]
     conda:
-        "envs/compute_llm_llm_empirical_p_value_environment.yaml"
+        "envs/llm_llm_alignment_environment.yaml"
     shell:
         r"""
             python3 workflow/llm_llm_alignment/scripts/compute_llm_llm_empirical_p_value.py \

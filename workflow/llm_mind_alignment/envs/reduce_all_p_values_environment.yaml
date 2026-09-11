@@ -1,8 +1,0 @@
-channels:
-  - conda-forge
-  - molinerislab
-  - nodefaults
-dependencies:
-  - python
-  - matrix_reduce
-  - bawk

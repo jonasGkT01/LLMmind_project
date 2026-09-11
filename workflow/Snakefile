@@ -96,6 +96,20 @@ HEATMAP_PAIRINGS = [
     )
 ]
 
+SPEARMAN_PAIRINGS = [
+    {
+        "dataset": dataset,
+        "stimuli_type": stimuli_type,
+        "model": model,
+        "similarity_type": similarity_type,
+    }
+    for dataset in DATASETS
+    for stimuli_type in config[dataset]["stimuli_dir"]
+    for model in MODEL_KEYS
+    if config["models"][model]["modality"] in [stimuli_type, "multimodal"]
+    for similarity_type in SIMILARITY_TYPES
+]
+
 # include dataset processing files
 include: "dataset_processing/narratives_dataset/Snakefile"
 include: "dataset_processing/caption_scene_dataset/Snakefile"
@@ -156,12 +170,10 @@ rule all:
             for similarity_type in SIMILARITY_TYPES
         ],
         [
-            f"results/spearman_alignment/model_level_plots/dataset-{dataset}_{similarity_type}-brain_model_spearman.png"
-            for dataset in DATASETS
-            for similarity_type in SIMILARITY_TYPES
+            f"results/spearman_alignment/model_level/dataset-{pair['dataset']}_model-{pair['model']}-{pair['stimuli_type']}_brain_{pair['similarity_type']}-similarity_spearman_alignment_empirical.p_value.tsv"
+            for pair in SPEARMAN_PAIRINGS
         ],
         [
-            f"results/spearman_alignment/concept_level_plots/dataset-{dataset}_{similarity_type}-concept_spearman_coefficients.png"
-            for dataset in DATASETS
-            for similarity_type in SIMILARITY_TYPES
-        ],
+            f"results/spearman_alignment/concept_level/dataset-{pair['dataset']}_model-{pair['model']}-{pair['stimuli_type']}_brain_{pair['similarity_type']}-similarity_spearman_alignment_empirical.p_value.tsv"
+            for pair in SPEARMAN_PAIRINGS
+        ]

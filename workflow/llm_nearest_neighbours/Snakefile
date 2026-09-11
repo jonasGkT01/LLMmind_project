@@ -17,7 +17,7 @@ rule download_pretrained_llm:
     params:
         hf_name=lambda wc: config["models"][wc.model]["hf_name"]
     conda:
-        "envs/download_pretrained_llm_environment.yaml"
+        "envs/llm_nearest_neighbours_environment.yaml"
     shell:
         r"""
             python3 workflow/llm_nearest_neighbours/scripts/download_pretrained_llm.py {params.hf_name:q} {output.model_dir:q}
@@ -40,7 +40,7 @@ rule get_embeddings:
             else f"--quantization_method {config['models'][wc.model]['quantization_method']}"
         )
     conda:
-        "envs/get_embeddings_environment.yaml"
+        "envs/llm_nearest_neighbours_environment.yaml"
     shell:
         r"""
             python3 workflow/llm_nearest_neighbours/scripts/get_embeddings.py \
@@ -59,7 +59,7 @@ rule compute_llm_similarity:
         cosine_similarity_dataframe="results/{stimuli_type}_models/{dataset}/cosine_similarity/{model}_cosine_similarity.parquet",
         pearson_similarity_dataframe="results/{stimuli_type}_models/{dataset}/pearson_similarity/{model}_pearson_similarity.parquet"
     conda:
-        "envs/compute_llm_similarity_environment.yaml"
+        "envs/llm_nearest_neighbours_environment.yaml"
     shell:
         r"""
             python3 workflow/llm_nearest_neighbours/scripts/compute_llm_similarity.py \
@@ -76,7 +76,7 @@ rule compute_llm_nearest_neighbours:
     params:
         number_of_neighbours=lambda wc: wc.number_of_neighbours
     conda:
-        "envs/compute_llm_nearest_neighbours_environment.yaml"
+        "envs/llm_nearest_neighbours_environment.yaml"
     shell:
         r"""
             python3 workflow/llm_nearest_neighbours/scripts/compute_llm_nearest_neighbours.py \

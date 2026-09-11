@@ -29,7 +29,7 @@ rule compute_llm_mind_alignment_score:
     params:
         number_of_neighbours=lambda wc: wc.number_of_neighbours
     conda:
-        "envs/compute_llm_mind_alignment_score_environment.yaml"
+        "envs/llm_mind_alignment_environment.yaml"
     shell:
         r"""
             python3 workflow/llm_mind_alignment/scripts/compute_llm_mind_alignment_score.py \
@@ -51,7 +51,7 @@ rule relabel_llm_similarity_and_compute_relabelled_llm_alignment_score:
         number_of_relabellings=NUMBER_OF_RELABELLINGS,
         random_seed=RANDOM_SEED
     conda:
-        "envs/relabel_llm_similarity_and_compute_relabelled_llm_alignment_score_environment.yaml"
+        "envs/llm_mind_alignment_environment.yaml"
     shell:
         r"""
             python3 workflow/llm_mind_alignment/scripts/relabel_llm_similarity_and_compute_relabelled_llm_alignment_score.py \
@@ -71,7 +71,7 @@ rule compute_empirical_p_value:
     output:
         empirical_p_value="results/alignment_scores/dataset-{dataset}_model-{model}-{stimuli_type}_brain_empirical_{similarity_type}-alignment_score_{number_of_neighbours}NN.p_value.tsv"
     conda:
-        "envs/compute_empirical_p_value_environment.yaml"
+        "envs/llm_mind_alignment_environment.yaml"
     shell:
         r"""
             python3 workflow/llm_mind_alignment/scripts/compute_empirical_p_value.py \
@@ -87,7 +87,7 @@ rule compute_hypergeometric_p_value:
     params:
         number_of_neighbours=lambda wc: wc.number_of_neighbours
     conda:
-        "envs/compute_hypergeometric_p_value_environment.yaml"
+        "envs/llm_mind_alignment_environment.yaml"
     shell:
         r"""
             python3 workflow/llm_mind_alignment/scripts/compute_hypergeometric_p_value.py \
@@ -143,7 +143,7 @@ rule aggregate_all_p_value_outputs:
     output:
         all_alignment_scores_tsv="results/all_alignment_scores.tsv"
     conda:
-        "envs/aggregate_all_p_value_outputs_environment.yaml"
+        "envs/llm_mind_alignment_environment.yaml"
     shell:
         r"""
             python3 workflow/llm_mind_alignment/scripts/aggregate_all_p_value_outputs.py \

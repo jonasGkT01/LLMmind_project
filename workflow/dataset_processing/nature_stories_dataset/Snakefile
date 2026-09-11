@@ -204,7 +204,7 @@ rule extract_nature_stories_parcels:
         yeo_networks=config["atlas"]["yeo_networks"],
         atlas_dir=config["atlas"]["atlas_dir"]
     conda:
-        "envs/extract_nature_stories_parcels_environment.yaml"
+        "envs/nature_stories_dataset_processing_environment.yaml"
     shell:
         r"""
             python3 workflow/dataset_processing/nature_stories_dataset/scripts/extract_nature_stories_parcels.py \
@@ -226,7 +226,7 @@ rule compute_nature_stories_isc:
         n_rois=config["atlas"]["n_rois"],
         expected_subjects=config["nature_stories"]["subjects"]
     conda:
-        "envs/compute_nature_stories_isc_environment.yaml"
+        "envs/nature_stories_dataset_processing_environment.yaml"
     shell:
         r"""
             python3 workflow/dataset_processing/nature_stories_dataset/scripts/compute_nature_stories_isc.py \
@@ -241,7 +241,7 @@ rule convert_nature_stories_textgrids:
     output:
         transcripts=NATURE_STORIES_TRANSCRIPT_FILES
     conda:
-        "envs/convert_nature_stories_textgrids_environment.yaml"
+        "envs/nature_stories_dataset_processing_environment.yaml"
     shell:
         r"""
             python3 workflow/dataset_processing/nature_stories_dataset/scripts/convert_nature_stories_textgrids.py \

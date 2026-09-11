@@ -265,7 +265,7 @@ rule extract_narratives_parcels:
         yeo_networks=config["atlas"]["yeo_networks"],
         atlas_dir=config["atlas"]["atlas_dir"]
     conda:
-        "envs/extract_narratives_parcels_environment.yaml"
+        "envs/narratives_dataset_processing_environment.yaml"
     shell:
         r"""
             python3 workflow/dataset_processing/narratives_dataset/scripts/extract_narratives_parcels.py \
@@ -287,7 +287,7 @@ rule compute_narratives_isc:
         yeo_networks=config["atlas"]["yeo_networks"],
         atlas_dir=config["atlas"]["atlas_dir"]
     conda:
-        "envs/compute_narratives_isc_environment.yaml"
+        "envs/narratives_dataset_processing_environment.yaml"
     shell:
         r"""
             python3 workflow/dataset_processing/narratives_dataset/scripts/compute_narratives_isc.py \
@@ -331,6 +331,4 @@ rule write_narratives_problematic_stimuli:
             for stimulus in sorted(set(params.problematic_stimuli)):
                 f.write(f"{stimulus}\n")
 
-        print(
-            f"wrote {len(set(params.problematic_stimuli))} problematic stimuli to {output_path}"
-        )
+        print(f"wrote {len(set(params.problematic_stimuli))} problematic stimuli to {output_path}")
