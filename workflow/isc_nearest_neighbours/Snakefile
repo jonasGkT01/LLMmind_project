@@ -23,7 +23,7 @@ checkpoint create_isc_manifest:
         dataset="{dataset}",
         isc_dir=isc_dir_for_dataset
     conda:
-        "envs/create_isc_manifest_environment.yaml"
+        "envs/isc_nearest_neighbours_environment.yaml"
     shell:
         r"""
             python3 workflow/isc_nearest_neighbours/scripts/create_isc_manifest.py \
