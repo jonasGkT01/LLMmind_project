@@ -176,4 +176,14 @@ rule all:
         [
             f"results/spearman_alignment/concept_level/dataset-{pair['dataset']}_model-{pair['model']}-{pair['stimuli_type']}_brain_{pair['similarity_type']}-similarity_spearman_alignment_empirical.p_value.tsv"
             for pair in SPEARMAN_PAIRINGS
-        ]
+        ],
+        [
+            f"results/spearman_alignment/model_level_plots/dataset-{dataset}_{similarity_type}-brain_model_spearman.png"
+            for dataset in DATASETS
+            for similarity_type in SIMILARITY_TYPES
+        ],
+        [
+            f"results/spearman_alignment/concept_level_plots/dataset-{dataset}_{similarity_type}-concept_spearman_coefficients.png"
+            for dataset in DATASETS
+            for similarity_type in SIMILARITY_TYPES
+        ],
