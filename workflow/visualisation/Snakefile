@@ -161,13 +161,13 @@ rule plot_brain_model_alignment_lineplot:
 rule plot_spearman_alignment:
     input:
         model_level_spearman_scores=lambda wc: [
-            f"results/spearman_alignment/model_level/dataset-{wc.dataset}_model-{pair['model']}-{pair['stimuli_type']}_brain_{wc.similarity_type}-similarity_spearman-alignment_empirical.p_value.tsv"
+            f"results/spearman_alignment/model_level/dataset-{wc.dataset}_model-{pair['model']}-{pair['stimuli_type']}_brain_{wc.similarity_type}-similarity_spearman_alignment_empirical.p_value.tsv"
             for pair in SPEARMAN_PAIRINGS
             if pair["dataset"] == wc.dataset
             and pair["similarity_type"] == wc.similarity_type
         ],
         concept_level_spearman_scores=lambda wc: [
-            f"results/spearman_alignment/concept_level/dataset-{wc.dataset}_model-{pair['model']}-{pair['stimuli_type']}_brain_{wc.similarity_type}-similarity_spearman-alignment_empirical.p_value.tsv"
+            f"results/spearman_alignment/concept_level/dataset-{wc.dataset}_model-{pair['model']}-{pair['stimuli_type']}_brain_{wc.similarity_type}-similarity_spearman_alignment_empirical.p_value.tsv"
             for pair in SPEARMAN_PAIRINGS
             if pair["dataset"] == wc.dataset
             and pair["similarity_type"] == wc.similarity_type
