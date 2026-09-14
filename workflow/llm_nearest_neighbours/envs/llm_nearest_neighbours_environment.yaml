@@ -18,7 +18,6 @@ dependencies:
   - sentencepiece
   - tiktoken
   - timm
-  - torchaudio
   - torchvision
   - tqdm
   - transformers
