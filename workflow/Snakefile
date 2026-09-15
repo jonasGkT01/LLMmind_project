@@ -165,9 +165,8 @@ rule all:
             for pair in HEATMAP_PAIRINGS
         ],
         [
-            f"results/alignment_lineplots/dataset-{dataset}_{similarity_type}-brain_model_alignment.png"
-            for dataset in DATASETS
-            for similarity_type in SIMILARITY_TYPES
+            f"results/alignment_lineplots/dataset-{pair['dataset']}_{pair['similarity_type']}-brain_model_alignment_{pair['number_of_neighbours']}NN.png"
+            for pair in HEATMAP_PAIRINGS
         ],
         [
             f"results/spearman_alignment/model_level/dataset-{pair['dataset']}_model-{pair['model']}-{pair['stimuli_type']}_brain_{pair['similarity_type']}-similarity_spearman_alignment_empirical.p_value.tsv"

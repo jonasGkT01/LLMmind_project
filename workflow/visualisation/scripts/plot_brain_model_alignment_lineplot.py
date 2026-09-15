@@ -45,7 +45,6 @@ def main():
     parameters_by_model = parse_model_parameters(args.model_parameters)
     alignment_scores = {}
     available_models = set()
-    numbers_of_neighbours = set()
 
     for path in args.llm_brain_alignment_scores:
         metadata = parse_alignment_score_path(path)
@@ -58,6 +57,9 @@ def main():
 
         model = metadata["model"]
         number_of_neighbours = int(metadata["number_of_neighbours"])
+
+        if number_of_neighbours != args.number_of_neighbours:
+            raise ValueError(f"{path} uses k={number_of_neighbours}, expected k={args.number_of_neighbours}")
 
         if model not in parameters_by_model:
             raise ValueError(f"No number of parameters was provided for model {model}")
@@ -122,7 +124,10 @@ def main():
     fig_width = max(10, 0.75 * len(models))
     fig, ax = plt.subplots(figsize=(fig_width, 7))
 
-    values = [alignment_scores[model] for model in models]
+    values = [
+        alignment_scores[(model, args.number_of_neighbours)]
+        for model in models
+    ]
 
     ax.plot(x, values, marker="o", linewidth=1.8,)
 
