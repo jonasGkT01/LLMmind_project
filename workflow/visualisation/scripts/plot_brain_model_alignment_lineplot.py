@@ -71,7 +71,6 @@ def main():
 
         alignment_scores[key] = read_mean_alignment_score(path)
         available_models.add(model)
-        numbers_of_neighbours.add(number_of_neighbours)
 
     if not alignment_scores:
         raise ValueError("No alignment score files were provided")
@@ -92,17 +91,6 @@ def main():
             model,
         ),
     )
-    numbers_of_neighbours = sorted(numbers_of_neighbours)
-
-    missing_scores = [
-        (model, number_of_neighbours)
-        for model in models
-        for number_of_neighbours in numbers_of_neighbours
-        if (model, number_of_neighbours) not in alignment_scores
-    ]
-
-    if missing_scores:
-        raise ValueError(f"Missing alignment scores for model/k combinations: {missing_scores}")
 
     family_ranges = []
     start = 0
