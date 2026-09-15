@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from libraries.manage_model_metadata import model_family, model_label, model_sort_key, parse_model_parameters
+from libraries.manage_model_metadata import model_family, model_sort_key, parse_model_parameters
 from libraries.validate_data import validate_required_columns
 from libraries.visualisation_utils import deterministic_jitter
 
@@ -92,7 +92,6 @@ def main():
             {
                 row.label: model_sort_key(
                     model=row.model,
-                    stimuli_type=row.stimuli_type,
                     parameters_by_model=parameters_by_model,
                 )
                 for row in model_df.itertuples(index=False)
@@ -164,12 +163,14 @@ def main():
     concept_level_path = Path(args.concept_level_plot)
     concept_level_path.parent.mkdir(parents=True, exist_ok=True)
 
-    fig_width = max(10, 0.6*len(labels))
+    fig_width = max(10, 0.75*len(labels))
     fig, ax = plt.subplots(figsize=(fig_width, 7))
+
     ax.scatter(concept_df["x_position"] + jitter, concept_df["observed_spearman_coefficient"], s=18, alpha=0.45, edgecolors="none",)
     ax.axhline(0.0, linestyle="--", linewidth=1.2, label="No rank correlation",)
     ax.set_xticks(range(len(labels)))
     ax.set_xticklabels(labels, rotation=90,)
+    
     ax.set_xlim(-0.6, len(labels) - 0.4)
     ax.set_ylim(*spearman_ylim(concept_df["observed_spearman_coefficient"],))
 
@@ -184,6 +185,7 @@ def main():
     fig.savefig(
         concept_level_path,
         dpi=300,
+        bbox_inches="tight",
     )
     plt.close(fig)
 

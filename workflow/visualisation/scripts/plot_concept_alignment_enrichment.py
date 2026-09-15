@@ -6,7 +6,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import pandas as pd
 
-from libraries.manage_model_metadata import model_label, model_sort_key, parse_model_parameters
+from libraries.manage_model_metadata import model_sort_key, parse_model_parameters
 from libraries.visualisation_utils import deterministic_jitter
 
 def parse_alignment_score_path(path):
@@ -133,7 +133,6 @@ def main():
         model_metadata,
         key=lambda label: model_sort_key(
             model=model_metadata[label]["model"],
-            stimuli_type=model_metadata[label]["stimuli_type"],
             parameters_by_model=parameters_by_model,
         ),
     )
