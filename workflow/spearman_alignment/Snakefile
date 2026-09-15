@@ -21,7 +21,8 @@ rule all_spearman_alignment:
         [
             f"results/spearman_alignment/concept_level/dataset-{pair['dataset']}_model-{pair['model']}-{pair['stimuli_type']}_brain_{pair['similarity_type']}-similarity_spearman_alignment_empirical.p_value.tsv"
             for pair in SPEARMAN_PAIRINGS
-        ]
+        ],
+        "results/all_spearman_alignment_scores.tsv"
 
 rule compute_spearman_alignmentwith_empirical_p_value:
     input:
@@ -48,4 +49,21 @@ rule compute_spearman_alignmentwith_empirical_p_value:
                 --similarity_type {wildcards.similarity_type:q} \
                 --number_of_relabellings {params.number_of_relabellings} \
                 --random_seed {params.random_seed}
+        """
+
+rule aggregate_all_spearman_alignment_scores:
+    input:
+        model_level_scores=[
+            f"results/spearman_alignment/model_level/dataset-{pair['dataset']}_model-{pair['model']}-{pair['stimuli_type']}_brain_{pair['similarity_type']}-similarity_spearman_alignment_empirical.p_value.tsv"
+            for pair in SPEARMAN_PAIRINGS
+        ]
+    output:
+        all_spearman_alignment_scores_tsv="results/all_spearman_alignment_scores.tsv"
+    conda:
+        "envs/spearman_alignment_environment.yaml"
+    shell:
+        r"""
+            python3 workflow/spearman_alignment/scripts/aggregate_all_spearman_outputs.py \
+                --model_level_scores {input.model_level_scores:q} \
+                --all_spearman_alignment_scores_tsv {output.all_spearman_alignment_scores_tsv:q}
         """

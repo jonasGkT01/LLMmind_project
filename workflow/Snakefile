@@ -187,3 +187,4 @@ rule all:
             for dataset in DATASETS
             for similarity_type in SIMILARITY_TYPES
         ],
+        "results/all_spearman_alignment_scores.tsv"
