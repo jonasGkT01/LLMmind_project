@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from libraries.manage_model_metadata import model_family, model_label, parse_model_parameters
+from libraries.manage_model_metadata import model_family, parse_model_parameters
 from libraries.compute_statistics import benjamini_hochberg
 from libraries.visualisation_utils import contrasting_text_color
 
@@ -171,11 +171,8 @@ def main():
     pair_values = {}
 
     for record, q_value in zip(records, q_values):
-        label_1 = model_label(record["model_1"], record["stimuli_type_1"])
-        label_2 = "brain" if record["model_2"] == "brain" else model_label(
-            record["model_2"],
-            record["stimuli_type_2"],
-        )
+        label_1 = record["model_1"]
+        label_2 = "brain" if record["model_2"] == "brain" else record["model_2"]
 
         for model, stimuli_type, label in [(record["model_1"], record["stimuli_type_1"], label_1), (record["model_2"], record["stimuli_type_2"], label_2),]:
             if label == "brain":

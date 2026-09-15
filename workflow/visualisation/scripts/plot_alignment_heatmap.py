@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from libraries.manage_model_metadata import model_family, model_label, parse_model_parameters
+from libraries.manage_model_metadata import model_family, parse_model_parameters
 from libraries.visualisation_utils import contrasting_text_color
 
 def parse_llm_brain_path(path):
@@ -101,7 +101,7 @@ def main():
     for path in args.llm_brain_alignment_scores:
         metadata = parse_llm_brain_path(path)
 
-        label = model_label(metadata["model"], metadata["stimuli_type"],)
+        label = metadata["model"]
 
         score, expected_score = read_alignment_score(path, args.number_of_neighbours,)
         expected_alignment_scores.append(expected_score)
@@ -120,8 +120,8 @@ def main():
     for path in args.llm_llm_alignment_scores:
         metadata = parse_llm_llm_path(path)
 
-        label_1 = model_label(metadata["model_1"], metadata["stimuli_type_1"],)
-        label_2 = model_label(metadata["model_2"], metadata["stimuli_type_2"],)
+        label_1 = metadata["model_1"]
+        label_2 = metadata["model_2"]
 
         score, expected_score = read_alignment_score(path, args.number_of_neighbours,)
         expected_alignment_scores.append(expected_score)
