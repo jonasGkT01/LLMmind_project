@@ -28,10 +28,9 @@ def model_label(model, stimuli_type=None):
 
 def model_sort_key(
     model,
-    stimuli_type,
     parameters_by_model,
 ):
     if model not in parameters_by_model:
         raise ValueError(f"No number of parameters was provided for model {model}")
 
-    return (stimuli_type, model_family(model), parameters_by_model[model], model,)
+    return (model_family(model), parameters_by_model[model], model,)

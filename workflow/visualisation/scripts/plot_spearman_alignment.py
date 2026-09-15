@@ -73,10 +73,7 @@ def main():
             raise ValueError(f"{name} Spearman data contains invalid coefficients")
 
         df["observed_spearman_coefficient"] = coefficients
-        df["label"] = [
-            model_label(model, stimuli_type)
-            for model, stimuli_type in zip(df["model"], df["stimuli_type"],)
-        ]
+        df["label"] = df["model"].astype(str)
 
     if model_df["label"].duplicated().any():
         raise ValueError("More than one model-level Spearman coefficient was provided for the same model/stimuli type")
@@ -121,13 +118,11 @@ def main():
     start = 0
 
     while start < len(model_df):
-        stimuli_type = model_df.loc[start, "stimuli_type"]
         family = model_family(model_df.loc[start, "model"])
         end = start + 1
 
         while (
             end < len(model_df)
-            and model_df.loc[end, "stimuli_type"] == stimuli_type
             and model_family(model_df.loc[end, "model"]) == family
         ):
             end += 1
@@ -141,6 +136,7 @@ def main():
 
     ax.set_xticks(x)
     ax.set_xticklabels(labels, rotation=55, ha="right",)
+
     ax.set_xlabel("Model")
     ax.set_ylabel("Spearman's rank correlation coefficient")
     ax.set_title(f"Brain-model Spearman alignment\n"
@@ -148,6 +144,7 @@ def main():
                  pad=32,)
     ax.set_ylim(*spearman_ylim(model_df["observed_spearman_coefficient"],))
     ax.grid(axis="y", alpha=0.25)
+
     fig.tight_layout()
     fig.subplots_adjust(bottom=0.24, top=0.82)
     fig.savefig(

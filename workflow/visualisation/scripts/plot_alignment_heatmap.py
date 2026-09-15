@@ -74,18 +74,11 @@ def model_sort_key(label, model_metadata, parameters_by_model):
 
     metadata = model_metadata[label]
     model = metadata["model"]
-    stimuli_type = metadata["stimuli_type"]
 
     if model not in parameters_by_model:
         raise ValueError(f"No number of parameters was provided for model {model}")
 
-    return (
-        0,
-        stimuli_type,
-        model_family(model),
-        parameters_by_model[model],
-        model,
-    )
+    return (0, model_family(model), parameters_by_model[model], model,)
 
 def main():
     parser = argparse.ArgumentParser()

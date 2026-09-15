@@ -87,7 +87,7 @@ def read_model_enrichments(
     output_df["enrichment"] = alignment_scores/expected_alignment_score
     output_df["model"] = metadata["model"]
     output_df["stimuli_type"] = metadata["stimuli_type"]
-    output_df["label"] = model_label(metadata["model"], metadata["stimuli_type"],)
+    output_df["label"] = metadata["model"]
 
     return output_df, metadata
 
@@ -105,6 +105,7 @@ def main():
 
     model_dataframes = []
     model_metadata = {}
+
     for path in args.llm_brain_alignment_scores:
         enrichment_df, metadata = read_model_enrichments(
             path=path,
@@ -142,13 +143,7 @@ def main():
         for position, label in enumerate(labels)
     }
     x_values = [
-        (
-            x_positions[row.label]
-            + deterministic_jitter(
-                row.label,
-                str(row.concept),
-            )
-        )
+        x_positions[row.label] + deterministic_jitter(row.label, str(row.concept),)
         for row in enrichment_df.itertuples(index=False)
     ]
 
