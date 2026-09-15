@@ -13,9 +13,8 @@ rule all_visualisation:
             for pair in HEATMAP_PAIRINGS
         ],
         [
-            f"results/alignment_lineplots/dataset-{dataset}_{similarity_type}-brain_model_alignment.png"
-            for dataset in DATASETS
-            for similarity_type in SIMILARITY_TYPES
+            f"results/alignment_lineplots/dataset-{pair['dataset']}_{pair['similarity_type']}-brain_model_alignment_{pair['number_of_neighbours']}NN.png"
+            for pair in HEATMAP_PAIRINGS
         ],
         [
             f"results/spearman_alignment/model_level_plots/dataset-{dataset}_{similarity_type}-brain_model_spearman.png"
@@ -134,13 +133,14 @@ rule plot_concept_alignment_enrichment:
 rule plot_brain_model_alignment_lineplot:
     input:
         llm_brain_alignment_scores=lambda wc: [
-            f"results/alignment_scores/dataset-{wc.dataset}_model-{pair['model']}-{pair['stimuli_type']}_brain_{wc.similarity_type}-alignment_score_{pair['number_of_neighbours']}NN.parquet"
+            f"results/alignment_scores/dataset-{wc.dataset}_model-{pair['model']}-{pair['stimuli_type']}_brain_{wc.similarity_type}-alignment_score_{wc.number_of_neighbours}NN.parquet"
             for pair in PAIRINGS
             if pair["dataset"] == wc.dataset
             and pair["similarity_type"] == wc.similarity_type
+            and str(pair["number_of_neighbours"]) == str(wc.number_of_neighbours)
         ]
     output:
-        plot="results/alignment_lineplots/dataset-{dataset}_{similarity_type}-brain_model_alignment.png"
+        plot="results/alignment_lineplots/dataset-{dataset}_{similarity_type}-brain_model_alignment_{number_of_neighbours}NN.png"
     params:
         model_parameters=[
             f"{model}={config['models'][model]['parameters_millions']}"
@@ -155,6 +155,7 @@ rule plot_brain_model_alignment_lineplot:
                 --model_parameters {params.model_parameters:q} \
                 --dataset {wildcards.dataset:q} \
                 --similarity_type {wildcards.similarity_type:q} \
+                --number_of_neighbours {wildcards.number_of_neighbours} \
                 --plot {output.plot:q}
         """
 

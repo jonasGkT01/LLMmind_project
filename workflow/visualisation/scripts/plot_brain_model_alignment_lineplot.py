@@ -38,6 +38,7 @@ def main():
     parser.add_argument("--model_parameters", nargs="+", required=True, help="Model parameter counts formatted as model=parameters_millions")
     parser.add_argument("--dataset", required=True)
     parser.add_argument("--similarity_type", required=True)
+    parser.add_argument("--number_of_neighbours", type=int, required=True)
     parser.add_argument("--plot", required=True)
     args = parser.parse_args()
 
@@ -121,9 +122,9 @@ def main():
     fig_width = max(10, 0.75 * len(models))
     fig, ax = plt.subplots(figsize=(fig_width, 7))
 
-    for number_of_neighbours in numbers_of_neighbours:
-        values = [alignment_scores[(model, number_of_neighbours)] for model in models]
-        ax.plot(x, values, marker="o", linewidth=1.8, label=f"k={number_of_neighbours}")
+    values = [alignment_scores[model] for model in models]
+
+    ax.plot(x, values, marker="o", linewidth=1.8,)
 
     for family, start, end in family_ranges:
         if start > 0:
@@ -142,13 +143,10 @@ def main():
     ax.set_xlabel("Model")
     ax.set_ylabel("Mean brain-model alignment")
     ax.set_title(f"Brain-model alignment\n"
-                 f"dataset={args.dataset}, similarity={args.similarity_type}", 
+                 f"dataset={args.dataset}, similarity={args.similarity_type}, number_of_neighbours={args.number_of_neighbours}", 
                  pad=32)
     ax.set_ylim(bottom=0)
     ax.grid(axis="y", alpha=0.25)
-
-    if len(numbers_of_neighbours) > 1:
-        ax.legend(title="Number of neighbours")
 
     fig.tight_layout()
     fig.subplots_adjust(bottom=0.24, top=0.82)

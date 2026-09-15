@@ -20,8 +20,11 @@ def model_family(model):
 
     return model.rsplit("_", 1)[0]
 
-def model_label(model, stimuli_type):
-    return f"{model}"#-{stimuli_type}"
+def model_key(model, stimuli_type):
+    return f"{model}-{stimuli_type}"
+
+def model_label(model, stimuli_type=None):
+    return model
 
 def model_sort_key(
     model,

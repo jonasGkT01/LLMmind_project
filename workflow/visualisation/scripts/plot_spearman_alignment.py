@@ -10,6 +10,16 @@ from libraries.manage_model_metadata import model_family, model_label, model_sor
 from libraries.validate_data import validate_required_columns
 from libraries.visualisation_utils import deterministic_jitter
 
+def spearman_ylim(values, padding=0.10, minimum_limit=0.10, step=0.05):
+    values = np.asarray(values, dtype=float)
+
+    max_abs = np.max(np.abs(values))
+    limit = max(minimum_limit, max_abs * (1.0 + padding))
+    limit = np.ceil(limit / step) * step
+    limit = min(1.0, limit)
+
+    return -limit, limit
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--model_level_spearman_scores", nargs="+", required=True)
@@ -57,10 +67,7 @@ def main():
         if set(df["similarity_type"]) != {args.similarity_type}:
             raise ValueError(f"{name} Spearman data contains an unexpected similarity type")
 
-        coefficients = pd.to_numeric(
-            df["observed_spearman_coefficient"],
-            errors="coerce",
-        )
+        coefficients = pd.to_numeric(df["observed_spearman_coefficient"], errors="coerce",)
 
         if coefficients.isna().any() or ((coefficients < -1) | (coefficients > 1)).any():
             raise ValueError(f"{name} Spearman data contains invalid coefficients")
@@ -108,18 +115,8 @@ def main():
 
     fig_width = max(10, 0.75*len(labels))
     fig, ax = plt.subplots(figsize=(fig_width, 7))
-    ax.plot(
-        x,
-        model_df["observed_spearman_coefficient"],
-        marker="o",
-        linewidth=1.8,
-    )
-    ax.axhline(
-        0.0,
-        linewidth=1,
-        linestyle="--",
-        alpha=0.6,
-    )
+    ax.plot(x, model_df["observed_spearman_coefficient"], marker="o", linewidth=1.8,)
+    ax.axhline(0.0, linewidth=1, linestyle="--", alpha=0.6,)
 
     start = 0
 
@@ -136,37 +133,20 @@ def main():
             end += 1
 
         if start > 0:
-            ax.axvline(
-                start - 0.5,
-                linewidth=1,
-                linestyle="--",
-                alpha=0.6,
-            )
+            ax.axvline(start - 0.5, linewidth=1, linestyle="--", alpha=0.6,)
 
         midpoint = (start + end - 1)/2
-        ax.text(
-            midpoint,
-            1.015,
-            family.replace("_", " "),
-            transform=ax.get_xaxis_transform(),
-            ha="center",
-            va="bottom",
-            fontweight="bold",
-        )
+        ax.text(midpoint, 1.015, family.replace("_", " "), transform=ax.get_xaxis_transform(), ha="center", va="bottom", fontweight="bold",)
         start = end
 
     ax.set_xticks(x)
-    ax.set_xticklabels(
-        labels,
-        rotation=55,
-        ha="right",
-    )
+    ax.set_xticklabels(labels, rotation=55, ha="right",)
     ax.set_xlabel("Model")
     ax.set_ylabel("Spearman's rank correlation coefficient")
     ax.set_title(f"Brain-model Spearman alignment\n"
                  f"dataset={args.dataset}, similarity={args.similarity_type}",
                  pad=32,)
-    ax.set_ylim(-1, 1)
+    ax.set_ylim(*spearman_ylim(model_df["observed_spearman_coefficient"],))
     ax.grid(axis="y", alpha=0.25)
     fig.tight_layout()
     fig.subplots_adjust(bottom=0.24, top=0.82)
@@ -189,31 +169,19 @@ def main():
 
     fig_width = max(10, 0.6*len(labels))
     fig, ax = plt.subplots(figsize=(fig_width, 7))
-    ax.scatter(
-        concept_df["x_position"] + jitter,
-        concept_df["observed_spearman_coefficient"],
-        s=18,
-        alpha=0.45,
-        edgecolors="none",
-    )
-    ax.axhline(
-        0.0,
-        linestyle="--",
-        linewidth=1.2,
-        label="No rank correlation",
-    )
+    ax.scatter(concept_df["x_position"] + jitter, concept_df["observed_spearman_coefficient"], s=18, alpha=0.45, edgecolors="none",)
+    ax.axhline(0.0, linestyle="--", linewidth=1.2, label="No rank correlation",)
     ax.set_xticks(range(len(labels)))
-    ax.set_xticklabels(
-        labels,
-        rotation=90,
-    )
+    ax.set_xticklabels(labels, rotation=90,)
     ax.set_xlim(-0.6, len(labels) - 0.4)
-    ax.set_ylim(-1, 1)
+    ax.set_ylim(*spearman_ylim(concept_df["observed_spearman_coefficient"],))
+
     ax.set_title(f"Concept-level LLM-brain Spearman alignment\n"
                  f"dataset={args.dataset}, similarity={args.similarity_type}")
     ax.set_xlabel("Model")
     ax.set_ylabel("Spearman's rank correlation coefficient")
     ax.grid(axis="y", alpha=0.25)
+
     ax.legend()
     fig.tight_layout()
     fig.savefig(
