@@ -155,8 +155,13 @@ def main():
 
     concept_df["x_position"] = concept_df["label"].map(x_positions)
 
+    boxplot_values = [
+        concept_df.loc[concept_df["label"] == label, "observed_spearman_coefficient",].to_numpy(dtype=float)
+        for label in labels
+    ]
+
     jitter = [
-        deterministic_jitter(label=row.label, concept=str(row.concept),)
+        deterministic_jitter(label=row.label, concept=str(row.concept), width=0.35)
         for row in concept_df.itertuples(index=False)
     ]
 
@@ -166,22 +171,29 @@ def main():
     fig_width = max(10, 0.75*len(labels))
     fig, ax = plt.subplots(figsize=(fig_width, 7))
 
-    ax.scatter(concept_df["x_position"] + jitter, concept_df["observed_spearman_coefficient"], s=18, alpha=0.45, edgecolors="none",)
+    ax.boxplot(boxplot_values, positions=range(len(labels)), widths=0.55, showfliers=False,)
+    ax.scatter(concept_df["x_position"] + jitter, concept_df["observed_spearman_coefficient"], s=10, alpha=0.20, edgecolors="none",)
     ax.axhline(0.0, linestyle="--", linewidth=1.2, label="No rank correlation",)
-    ax.set_xticks(range(len(labels)))
-    ax.set_xticklabels(labels, rotation=90,)
     
+    ax.set_xticks(range(len(labels)))
+    ax.set_xticklabels(labels, rotation=55, ha="right",)
+
     ax.set_xlim(-0.6, len(labels) - 0.4)
     ax.set_ylim(*spearman_ylim(concept_df["observed_spearman_coefficient"],))
 
     ax.set_title(f"Concept-level LLM-brain Spearman alignment\n"
-                 f"dataset={args.dataset}, similarity={args.similarity_type}")
+                 f"dataset={args.dataset}, similarity={args.similarity_type}",
+                 pad=32,)
     ax.set_xlabel("Model")
     ax.set_ylabel("Spearman's rank correlation coefficient")
     ax.grid(axis="y", alpha=0.25)
 
     ax.legend()
     fig.tight_layout()
+    fig.subplots_adjust(
+        bottom=0.24,
+        top=0.82,
+    )
     fig.savefig(
         concept_level_path,
         dpi=300,

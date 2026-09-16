@@ -7,26 +7,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from libraries.manage_model_metadata import model_family, parse_model_parameters
+from libraries.manage_model_metadata import model_sort_key, parse_model_parameters
 from libraries.visualisation_utils import contrasting_text_color
-
-def parse_llm_brain_path(path):
-    filename = Path(path).name
-
-    pattern = (
-        r"dataset-(?P<dataset>.+?)"
-        r"_model-(?P<model>.+?)-(?P<stimuli_type>[^_]+)"
-        r"_brain_(?P<similarity_type>.+?)"
-        r"-alignment_score_(?P<number_of_neighbours>\d+)NN"
-        r"\.parquet$"
-    )
-
-    match = re.fullmatch(pattern, filename)
-
-    if match is None:
-        raise ValueError(f"Could not parse LLM-brain filename: {filename}")
-
-    return match.groupdict()
+from libraries.path_metadata import parse_llm_brain_alignment_score_path
 
 def parse_llm_llm_path(path):
     filename = Path(path).name
@@ -68,17 +51,13 @@ def read_alignment_score(path, number_of_neighbours):
 
     return mean_alignment_score, expected_alignment_score
 
-def model_sort_key(label, model_metadata, parameters_by_model):
+def heatmap_label_sort_key(label, model_metadata, parameters_by_model):
     if label == "brain":
-        return (1, "", "", float("inf"), "")
+        return (1,)
 
     metadata = model_metadata[label]
-    model = metadata["model"]
 
-    if model not in parameters_by_model:
-        raise ValueError(f"No number of parameters was provided for model {model}")
-
-    return (0, model_family(model), parameters_by_model[model], model,)
+    return (0, model_sort_key(model=metadata["model"], parameters_by_model=parameters_by_model,),)
 
 def main():
     parser = argparse.ArgumentParser()
@@ -99,7 +78,7 @@ def main():
     expected_alignment_scores = []
 
     for path in args.llm_brain_alignment_scores:
-        metadata = parse_llm_brain_path(path)
+        metadata = parse_llm_brain_alignment_score_path(path)
 
         label = metadata["model"]
 

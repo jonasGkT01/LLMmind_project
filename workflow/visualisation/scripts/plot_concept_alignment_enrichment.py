@@ -1,32 +1,13 @@
 #!/usr/bin/env python3
 import argparse
-import re
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 import pandas as pd
 
 from libraries.manage_model_metadata import model_sort_key, parse_model_parameters
+from libraries.path_metadata import parse_llm_brain_alignment_score_path
 from libraries.visualisation_utils import deterministic_jitter
-
-def parse_alignment_score_path(path):
-    filename = Path(path).name
-    pattern = (
-        r"dataset-(?P<dataset>.+?)"
-        r"_model-(?P<model>.+?)-(?P<stimuli_type>[^_]+)"
-        r"_brain_(?P<similarity_type>.+?)"
-        r"-alignment_score_(?P<number_of_neighbours>\d+)NN"
-        r"\.parquet$"
-    )
-    match = re.fullmatch(pattern, filename)
-
-    if match is None:
-        raise ValueError(f"Could not parse LLM-brain alignment-score filename: {filename}")
-
-    metadata = match.groupdict()
-    metadata["number_of_neighbours"] = int(metadata["number_of_neighbours"])
-
-    return metadata
 
 def read_model_enrichments(
     path,
@@ -34,7 +15,7 @@ def read_model_enrichments(
     expected_similarity_type,
     expected_number_of_neighbours,
 ):
-    metadata = parse_alignment_score_path(path)
+    metadata = parse_llm_brain_alignment_score_path(path)
 
     if metadata["dataset"] != expected_dataset:
         raise ValueError(f"Unexpected dataset in {path}: {metadata['dataset']}")
@@ -141,38 +122,49 @@ def main():
         label: position
         for position, label in enumerate(labels)
     }
+    boxplot_values = [
+        enrichment_df.loc[enrichment_df["label"] == label, "enrichment",].to_numpy(dtype=float)
+        for label in labels
+    ]
     x_values = [
-        x_positions[row.label] + deterministic_jitter(row.label, str(row.concept),)
+        x_positions[row.label] + deterministic_jitter(row.label, str(row.concept), width=0.35)
         for row in enrichment_df.itertuples(index=False)
     ]
 
     output_path = Path(args.plot)
     output_path.parent.mkdir(parents=True, exist_ok=True,)
 
-    fig_width = max(10, 0.6*len(labels),)
+    fig_width = max(10, 0.75*len(labels),)
     fig, ax = plt.subplots(figsize=(fig_width, 7,))
 
-    ax.scatter(x_values, enrichment_df["enrichment"], s=18, alpha=0.45, edgecolors="none",)
+    ax.boxplot(boxplot_values, positions=range(len(labels)), widths=0.55, showfliers=False,)
+    ax.scatter(x_values, enrichment_df["enrichment"], s=10, alpha=0.20, edgecolors="none",)
     ax.axhline(1.0, linestyle="--", linewidth=1.2, label="Hypergeometric expectation",)
 
     ax.set_xticks(range(len(labels)))
-    ax.set_xticklabels(labels, rotation=90,)
+    ax.set_xticklabels(labels, rotation=55, ha="right",)
 
     ax.set_xlim(-0.6, len(labels) - 0.4,)
     ax.set_ylim(bottom=0,)
 
-    ax.set_title(f"Concept-level LLM-brain alignment enrichment\ndataset={args.dataset}, similarity={args.similarity_type}, neighbours={args.number_of_neighbours}")
+    ax.set_title(f"Concept-level LLM-brain alignment enrichment\n"
+                 f"dataset={args.dataset}, similarity={args.similarity_type}, neighbours={args.number_of_neighbours}",
+                 pad=32,)
     ax.set_xlabel("Model")
     ax.set_ylabel("Observed alignment / hypergeometric expected alignment")
     ax.grid(axis="y", alpha=0.25,)
     ax.legend()
 
     fig.tight_layout()
+    fig.subplots_adjust(
+        bottom=0.24,
+        top=0.82,
+    )
     fig.savefig(
         output_path,
         dpi=300,
+        bbox_inches="tight",
     )
-    plt.close(fig)
 
 if __name__ == "__main__":
     main()

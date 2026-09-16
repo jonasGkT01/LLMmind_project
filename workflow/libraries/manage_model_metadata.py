@@ -23,6 +23,18 @@ def model_family(model):
 def model_key(model, stimuli_type):
     return f"{model}-{stimuli_type}"
 
+def model_family_order(parameters_by_model):
+    family_order = {}
+
+    for model in parameters_by_model:
+        family = model_family(model)
+
+        if family not in family_order:
+            family_order[family] = len(family_order)
+
+    return family_order
+
+
 def model_sort_key(
     model,
     parameters_by_model,
@@ -30,4 +42,7 @@ def model_sort_key(
     if model not in parameters_by_model:
         raise ValueError(f"No number of parameters was provided for model {model}")
 
-    return (model_family(model), parameters_by_model[model], model,)
+    family_order = model_family_order(parameters_by_model)
+    family = model_family(model)
+
+    return (family_order[family], parameters_by_model[model], model,)

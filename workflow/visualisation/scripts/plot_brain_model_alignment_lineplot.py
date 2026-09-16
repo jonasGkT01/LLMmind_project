@@ -1,40 +1,46 @@
 #!/usr/bin/env python3
 import argparse
-import re
 from pathlib import Path
 
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 
-from libraries.manage_model_metadata import model_family, parse_model_parameters
+from libraries.manage_model_metadata import model_family, model_sort_key, parse_model_parameters
+from libraries.path_metadata import parse_llm_brain_alignment_score_path
 
-def parse_alignment_score_path(path):
-    filename = Path(path).name
-    pattern = (
-        r"dataset-(?P<dataset>.+?)"
-        r"_model-(?P<model>.+?)-(?P<stimuli_type>[^_]+)"
-        r"_brain_(?P<similarity_type>.+?)"
-        r"-alignment_score_(?P<number_of_neighbours>\d+)NN"
-        r"\.parquet$"
+def read_alignment_score_summary(path):
+    df = pd.read_parquet(
+        path,
+        engine="pyarrow",
     )
-    match = re.fullmatch(pattern, filename)
-
-    if match is None:
-        raise ValueError(f"Could not parse LLM-brain alignment-score filename: {filename}")
-
-    return match.groupdict()
-
-def read_mean_alignment_score(path):
-    df = pd.read_parquet(path, engine="pyarrow")
 
     if "alignment_score" not in df.columns:
         raise ValueError(f"{path} does not contain an 'alignment_score' column")
 
-    return float(df["alignment_score"].mean())
+    alignment_scores = pd.to_numeric(df["alignment_score"], errors="coerce",)
+
+    if alignment_scores.isna().any():
+        raise ValueError(f"{path} contains non-numeric alignment scores")
+
+    if ((alignment_scores < 0) | (alignment_scores > 1)).any():
+        raise ValueError(f"{path} contains alignment scores outside [0, 1]")
+
+    number_of_concepts = len(alignment_scores)
+
+    if number_of_concepts < 2:
+        raise ValueError(f"{path} contains fewer than two concepts")
+
+    mean_alignment_score = float(alignment_scores.mean())
+
+    standard_error = float(alignment_scores.std(ddof = 1)/np.sqrt(number_of_concepts))
+
+    return mean_alignment_score, standard_error
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--llm_brain_alignment_scores", nargs="+", required=True, help="LLM-brain alignment score parquet files")
+    parser.add_argument("--model_level_statistics", required=True, help="TSV file containing model-level statistics")
     parser.add_argument("--model_parameters", nargs="+", required=True, help="Model parameter counts formatted as model=parameters_millions")
     parser.add_argument("--dataset", required=True)
     parser.add_argument("--similarity_type", required=True)
@@ -43,11 +49,31 @@ def main():
     args = parser.parse_args()
 
     parameters_by_model = parse_model_parameters(args.model_parameters)
+    statistics_df = pd.read_csv(
+        args.model_level_statistics,
+        sep="\t",
+    )
+
+    required_statistic_columns = {"dataset", "stimuli_type", "similarity_type", "number_of_neighbours", "model", "statistic", "value",}
+
+    missing_statistic_columns = required_statistic_columns - set(statistics_df.columns)
+
+    if missing_statistic_columns:
+        raise ValueError(f"Model-level statistics file is missing columns: {sorted(missing_statistic_columns)}")
+
+    statistics_df["number_of_neighbours"] = pd.to_numeric(statistics_df["number_of_neighbours"], errors="raise",).astype(int)
+    selected_statistics = statistics_df[
+        (statistics_df["dataset"].astype(str) == args.dataset)
+        & statistics_df["similarity_type"].astype(str) == args.similarity_type
+        & statistics_df["number_of_neighbours"] == args.number_of_neighbours
+        & statistics_df["statistic"].astype(str) == "model_level_empirical_p_value"
+    ].copy()
+
     alignment_scores = {}
     available_models = set()
 
     for path in args.llm_brain_alignment_scores:
-        metadata = parse_alignment_score_path(path)
+        metadata = parse_llm_brain_alignment_score_path(path)
 
         if metadata["dataset"] != args.dataset:
             raise ValueError(f"{path} belongs to dataset {metadata['dataset']}, expected {args.dataset}")
@@ -56,7 +82,7 @@ def main():
             raise ValueError(f"{path} uses similarity type {metadata['similarity_type']}, expected {args.similarity_type}")
 
         model = metadata["model"]
-        number_of_neighbours = int(metadata["number_of_neighbours"])
+        number_of_neighbours = metadata["number_of_neighbours"]
 
         if number_of_neighbours != args.number_of_neighbours:
             raise ValueError(f"{path} uses k={number_of_neighbours}, expected k={args.number_of_neighbours}")
@@ -69,26 +95,22 @@ def main():
         if key in alignment_scores:
             raise ValueError(f"More than one alignment score was found for model {model} and k={number_of_neighbours}")
 
-        alignment_scores[key] = read_mean_alignment_score(path)
+        mean_alignment_score, standard_error = read_alignment_score_summary(path)
+        alignment_scores[key] = {
+            "mean": mean_alignment_score,
+            "standard_error": standard_error,
+        }
+
         available_models.add(model)
 
     if not alignment_scores:
         raise ValueError("No alignment score files were provided")
 
-    family_order = {}
-
-    for model in parameters_by_model:
-        family = model_family(model)
-
-        if family not in family_order:
-            family_order[family] = len(family_order)
-
     models = sorted(
         available_models,
-        key=lambda model: (
-            family_order[model_family(model)],
-            parameters_by_model[model],
-            model,
+        key=lambda model: model_sort_key(
+            model=model,
+            parameters_by_model=parameters_by_model,
         ),
     )
 
@@ -113,11 +135,15 @@ def main():
     fig, ax = plt.subplots(figsize=(fig_width, 7))
 
     values = [
-        alignment_scores[(model, args.number_of_neighbours)]
+        alignment_scores[(model, args.number_of_neighbours)]["mean"]
+        for model in models
+    ]
+    errors = [
+        alignment_scores[(model, args.number_of_neighbours)]["standard_error"]
         for model in models
     ]
 
-    ax.plot(x, values, marker="o", linewidth=1.8,)
+    ax.errorbar(x, values, yerr=errors, marker="o", linewidth=1.8, capsize=3,)
 
     for family, start, end in family_ranges:
         if start > 0:
