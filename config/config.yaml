@@ -98,13 +98,13 @@ models:
     hf_name: "google/gemma-2b"
     modality: "language"
     quantization_method: null
-    parameters_millions: 2000
+    parameters_millions: 2510
   gemma_7b:
     name: "Gemma 7B"
     hf_name: "google/gemma-7b"
     modality: "language"
     quantization_method: null
-    parameters_millions: 7000
+    parameters_millions: 8540
   i21k_t:
     name: "ViT-Tiny/16 ImageNet-21K"
     hf_name: "timm/vit_tiny_patch16_224.augreg_in21k"
