@@ -133,7 +133,7 @@ def main():
 
     labels = sorted(
         labels,
-        key=lambda label: model_sort_key(
+        key=lambda label: heatmap_label_sort_key(
             label,
             model_metadata,
             parameters_by_model,

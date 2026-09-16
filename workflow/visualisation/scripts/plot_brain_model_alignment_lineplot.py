@@ -6,8 +6,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+from libraries.compute_statistics import benjamini_hochberg
 from libraries.manage_model_metadata import model_family, model_sort_key, parse_model_parameters
 from libraries.path_metadata import parse_llm_brain_alignment_score_path
+from libraries.visualisation_utils import significance_label
 
 def read_alignment_score_summary(path):
     df = pd.read_parquet(
@@ -64,10 +66,25 @@ def main():
     statistics_df["number_of_neighbours"] = pd.to_numeric(statistics_df["number_of_neighbours"], errors="raise",).astype(int)
     selected_statistics = statistics_df[
         (statistics_df["dataset"].astype(str) == args.dataset)
-        & statistics_df["similarity_type"].astype(str) == args.similarity_type
-        & statistics_df["number_of_neighbours"] == args.number_of_neighbours
-        & statistics_df["statistic"].astype(str) == "model_level_empirical_p_value"
+        & (statistics_df["similarity_type"].astype(str) == args.similarity_type)
+        & (statistics_df["number_of_neighbours"] == args.number_of_neighbours)
+        & (statistics_df["statistic"].astype(str) == "model_level_empirical_p_value")
     ].copy()
+
+    if selected_statistics.empty:
+        raise ValueError(f"No model-level empirical p-values were found for dataset={args.dataset}, similarity_type={args.similarity_type}, number_of_neighbours={args.number_of_neighbours}")
+
+    selected_statistics["value"] = pd.to_numeric(selected_statistics["value"], errors="raise",)
+
+    invalid_p_values = ((selected_statistics["value"] <= 0) | (selected_statistics["value"] > 1))
+
+    if invalid_p_values.any():
+        raise ValueError("Model-level statistics contain invalid empirical p-values")
+
+    if selected_statistics["model"].duplicated().any():
+        duplicated_models = selected_statistics.loc[selected_statistics["model"].duplicated(keep=False), "model",].unique()
+
+        raise ValueError(f"More than one model-level empirical p-value was found for: {sorted(duplicated_models)}")
 
     alignment_scores = {}
     available_models = set()
@@ -114,6 +131,21 @@ def main():
         ),
     )
 
+    p_value_by_model = dict(zip(selected_statistics["model"].astype(str), selected_statistics["value"],))
+
+    missing_p_values = set(models) - set(p_value_by_model)
+
+    if missing_p_values:
+        raise ValueError(f"Missing model-level empirical p-values for models: {sorted(missing_p_values)}")
+
+    p_values = np.asarray(
+        [
+            p_value_by_model[model]
+            for model in models
+        ], dtype=float,)
+
+    q_values = benjamini_hochberg(p_values)
+
     family_ranges = []
     start = 0
 
@@ -144,6 +176,12 @@ def main():
     ]
 
     ax.errorbar(x, values, yerr=errors, marker="o", linewidth=1.8, capsize=3,)
+
+    for (x_position, value, error, q_value,) in zip(x, values, errors, q_values,):
+        significance = significance_label(q_value)
+
+        if significance:
+            ax.annotate(significance, xy=(x_position, value + error,), xytext=(0, 4), textcoords="offset points", ha="center", va="bottom",)
 
     for family, start, end in family_ranges:
         if start > 0:

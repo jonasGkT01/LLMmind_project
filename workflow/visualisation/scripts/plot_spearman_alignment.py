@@ -6,9 +6,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+from libraries.compute_statistics import benjamini_hochberg
 from libraries.manage_model_metadata import model_family, model_sort_key, parse_model_parameters
 from libraries.validate_data import validate_required_columns
-from libraries.visualisation_utils import deterministic_jitter
+from libraries.visualisation_utils import significance_label, deterministic_jitter
 
 def spearman_ylim(values, padding=0.10, minimum_limit=0.10, step=0.05):
     values = np.asarray(values, dtype=float)
@@ -59,7 +60,18 @@ def main():
         if name == "concept-level":
             required_columns.add("concept")
 
+        if name == "model-level":
+            required_columns.add("empirical_upper_tail_p_value")
+
         validate_required_columns(df=df, required_columns=required_columns, source=f"{name} Spearman data",)
+
+        if name == "model-level":
+            p_values = pd.to_numeric(df["empirical_upper_tail_p_value"], errors="coerce",)
+
+            if (p_values.isna().any() or (p_values <= 0).any() or (p_values > 1).any()):
+                raise ValueError("Model-level Spearman data contains invalid empirical p-values")
+
+            df["empirical_upper_tail_p_value"] = p_values
 
         if set(df["dataset"]) != {args.dataset}:
             raise ValueError(f"{name} Spearman data contains an unexpected dataset")
@@ -99,6 +111,8 @@ def main():
         ),
     ).reset_index(drop=True)
 
+    model_df["q_value"] = benjamini_hochberg(model_df["empirical_upper_tail_p_value"].to_numpy(dtype=float))
+
     labels = model_df["label"].tolist()
     x_positions = {
         label: position
@@ -112,6 +126,13 @@ def main():
     fig_width = max(10, 0.75*len(labels))
     fig, ax = plt.subplots(figsize=(fig_width, 7))
     ax.plot(x, model_df["observed_spearman_coefficient"], marker="o", linewidth=1.8,)
+
+    for (x_position, coefficient, q_value,) in zip(x, model_df["observed_spearman_coefficient"], model_df["q_value"],):
+        significance = significance_label(q_value)
+
+        if significance:
+            ax.annotate(significance, xy=(x_position, coefficient,), xytext=(0, 6), textcoords="offset points", ha="center", va="bottom",)
+
     ax.axhline(0.0, linewidth=1, linestyle="--", alpha=0.6,)
 
     start = 0
@@ -174,7 +195,7 @@ def main():
     ax.boxplot(boxplot_values, positions=range(len(labels)), widths=0.55, showfliers=False,)
     ax.scatter(concept_df["x_position"] + jitter, concept_df["observed_spearman_coefficient"], s=10, alpha=0.20, edgecolors="none",)
     ax.axhline(0.0, linestyle="--", linewidth=1.2, label="No rank correlation",)
-    
+
     ax.set_xticks(range(len(labels)))
     ax.set_xticklabels(labels, rotation=55, ha="right",)
 

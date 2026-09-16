@@ -5,6 +5,18 @@ import numpy as np
 
 from libraries.manage_model_metadata import model_family
 
+def significance_label(q_value):
+    if q_value < 0.001:
+        return "***"
+
+    if q_value < 0.01:
+        return "**"
+
+    if q_value < 0.05:
+        return "*"
+
+    return ""
+
 def contrasting_text_color(image, value):
     rgba = image.cmap(image.norm(value))
     r, g, b = rgba[:3]

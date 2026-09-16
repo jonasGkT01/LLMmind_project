@@ -165,6 +165,7 @@ def main():
         dpi=300,
         bbox_inches="tight",
     )
+    plt.close(fig)
 
 if __name__ == "__main__":
     main()
