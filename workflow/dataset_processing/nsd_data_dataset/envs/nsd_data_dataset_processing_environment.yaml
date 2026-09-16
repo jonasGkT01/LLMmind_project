@@ -1,0 +1,17 @@
+channels:
+  - conda-forge
+  - nodefaults
+dependencies:
+  - git
+  - h5py
+  - nibabel
+  - nilearn
+  - numpy
+  - pandas
+  - pillow
+  - pip
+  - python
+  - scipy
+  - tqdm
+  - pip:
+      - git+https://github.com/cvnlab/nsdcode.git
