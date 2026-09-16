@@ -326,7 +326,7 @@ def embed_image(
     inputs = move_inputs_to_device(inputs=inputs, device=device,)
 
     with torch.inference_mode():
-        model_output = model(**inputs, output_hidden_states=True, return_dict=True,)
+        model_output = model(**inputs, return_dict=True,)
 
     embedding = extract_embedding_from_output(output=model_output, pool=pool, attention_mask=None,)
 
