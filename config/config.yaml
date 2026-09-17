@@ -269,7 +269,6 @@ nsd_data:
   excluded_stimuli: "resources/datasets/nsd_data_dataset/excluded_stimuli.txt"
   stimuli_ready: "resources/datasets/nsd_data_dataset/.stimuli_ready"
   subjects: 8
-  functional_space: "func1pt8mm"
   tr: 1.3333333333333333
   event_duration_s: 4.0
   onset_shift_volumes: 0

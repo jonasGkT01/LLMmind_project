@@ -1,143 +1,253 @@
 import pandas as pd
 
-NSD_CFG = config["nsd_data"]
-NSD_DATASET_DIR = NSD_CFG["dataset_dir"]
-NSD_OUTPUT_DIR = NSD_CFG["processing_output_dir"]
+from pathlib import Path
 
-NSD_MANIFEST_DIR = f"{NSD_OUTPUT_DIR}/manifests"
-NSD_MANIFEST = f"{NSD_MANIFEST_DIR}/nsd_occurrence_manifest.tsv"
+NSD_DATASET_DIR = config["nsd_data"]["dataset_dir"]
+NSD_PROCESSING_OUTPUT_DIR = config["nsd_data"]["processing_output_dir"]
+
+NSD_SUBJECTS = list(range(1, int(config["nsd_data"]["subjects"]) + 1))
+
+NSD_MANIFEST_DIR = f"{NSD_PROCESSING_OUTPUT_DIR}/manifests"
+
+NSD_OCCURRENCE_MANIFEST = f"{NSD_MANIFEST_DIR}/nsd_occurrence_manifest.tsv"
+
 NSD_STIMULUS_MANIFEST = f"{NSD_MANIFEST_DIR}/nsd_stimulus_manifest.tsv"
+
+NSD_PARCEL_MANIFEST = f"{NSD_MANIFEST_DIR}/parcel_extraction_manifest.tsv"
+
+NSD_ISC_MANIFEST = f"{NSD_MANIFEST_DIR}/isc_manifest.tsv"
+
+NSD_RUN_LENGTH_QC = f"{NSD_MANIFEST_DIR}/run_length_qc.tsv"
+
+NSD_MANIFEST_METADATA = f"{NSD_MANIFEST_DIR}/manifest_metadata.json"
 
 NSD_BOLD_DONE = f"{NSD_MANIFEST_DIR}/.bold_done"
 NSD_PARCELS_DONE = f"{NSD_MANIFEST_DIR}/.parcels_done"
 NSD_ISC_DONE = f"{NSD_MANIFEST_DIR}/.isc_done"
 
-NSD_PARCEL_ROOT = f"{NSD_OUTPUT_DIR}/parcels"
-NSD_ISC_ROOT = f"{NSD_OUTPUT_DIR}/isc"
-NSD_STIMULI_READY = NSD_CFG["stimuli_ready"]
-NSD_EXCLUDED_STIMULI = NSD_CFG["excluded_stimuli"]
+NSD_ISC_ROOT = f"{NSD_PROCESSING_OUTPUT_DIR}/isc"
+
+NSD_STIMULI_READY = config["nsd_data"]["stimuli_ready"]
+NSD_EXCLUDED_STIMULI = config["nsd_data"]["excluded_stimuli"]
+
+def nsd_parcel_output(subject, stimulus_id):
+    return f"{NSD_PROCESSING_OUTPUT_DIR}/parcels/task-{stimulus_id}/sub-{int(subject):02d}_task-{stimulus_id}_parcel_ts.npy"
+
+def write_nsd_parcel_manifest(occurrence_manifest, output_tsv,):
+    manifest = pd.read_csv(occurrence_manifest, sep="\t",)
+
+    required_columns = {
+        "subject",
+        "stimulus_id",
+        "output_bold",
+    }
+
+    missing_columns = required_columns - set(manifest.columns)
+
+    if missing_columns:
+        raise ValueError(f"Occurrence manifest is missing columns: {sorted(missing_columns)}")
+
+    samples = (
+        manifest[
+            [
+                "subject",
+                "stimulus_id",
+                "output_bold",
+            ]
+        ]
+        .drop_duplicates()
+        .sort_values(
+            [
+                "stimulus_id",
+                "subject",
+            ]
+        )
+    )
+
+    sample_counts = samples.groupby(
+        [
+            "subject",
+            "stimulus_id",
+        ]
+    ).size()
+
+    invalid_samples = sample_counts[sample_counts != 1]
+
+    if not invalid_samples.empty:
+        raise ValueError("Found subject/stimulus pairs with multiple BOLD outputs:\n" + invalid_samples.to_string())
+
+    output_tsv = Path(output_tsv)
+    output_tsv.parent.mkdir(parents=True, exist_ok=True,)
+
+    with output_tsv.open("w") as f:
+        f.write(f"subject\tstimulus_id\tbold_file\tparcel_ts\n")
+
+        for row in samples.itertuples(index=False):
+            parcel_ts = nsd_parcel_output(row.subject, row.stimulus_id,)
+
+            f.write(f"{int(row.subject)}\t{row.stimulus_id}\t{row.output_bold}\t{parcel_ts}\n")
+
+def write_nsd_isc_manifest(parcel_manifest, output_tsv,):
+    manifest = pd.read_csv(parcel_manifest, sep="\t",)
+
+    required_columns = {
+        "subject",
+        "stimulus_id",
+        "parcel_ts",
+    }
+
+    missing_columns = required_columns - set(manifest.columns)
+
+    if missing_columns:
+        raise ValueError(f"Parcel manifest is missing columns: {sorted(missing_columns)}")
+
+    output_tsv = Path(output_tsv)
+    output_tsv.parent.mkdir(parents=True, exist_ok=True,)
+
+    with output_tsv.open("w") as f:
+        f.write(f"task\tsubject\tparcel_ts\tisc_npy\tisc_nii\n")
+
+        for stimulus_id, stimulus_df in manifest.groupby("stimulus_id", sort=True,):
+            isc_npy = f"{NSD_ISC_ROOT}/task-{stimulus_id}_isc_mean.npy"
+
+            isc_nii = f"{NSD_ISC_ROOT}/task-{stimulus_id}_isc_mean.nii.gz"
+
+            stimulus_df = stimulus_df.sort_values("subject")
+
+            for row in stimulus_df.itertuples(index=False):
+                f.write(f"{stimulus_id}\t{int(row.subject)}\t{row.parcel_ts}\t{isc_npy}\t{isc_nii}\n")
 
 rule all_nsd_data_dataset:
     input:
-        NSD_BOLD_DONE,
-        NSD_PARCELS_DONE,
         NSD_ISC_DONE,
         NSD_STIMULI_READY,
         NSD_EXCLUDED_STIMULI
 
 rule make_nsd_manifest:
     output:
-        manifest=NSD_MANIFEST, 
-        stimulus_manifest=NSD_STIMULUS_MANIFEST, 
-        excluded_stimuli=NSD_EXCLUDED_STIMULI
+        occurrence_manifest=NSD_OCCURRENCE_MANIFEST,
+        stimulus_manifest=NSD_STIMULUS_MANIFEST,
+        excluded_stimuli=NSD_EXCLUDED_STIMULI,
+        run_length_qc=NSD_RUN_LENGTH_QC,
+        metadata=NSD_MANIFEST_METADATA
     params:
-        dataset_dir=NSD_DATASET_DIR, 
-        subjects=" ".join(str(x) for x in NSD_CFG["subjects"]), 
-        functional_space=NSD_CFG.get("functional_space","func1pt8mm"), 
-        tr=NSD_CFG["tr"], 
-        event_duration_s=NSD_CFG["event_duration_s"], 
-        onset_shift_volumes=NSD_CFG.get("onset_shift_volumes",0), 
-        min_repetitions_per_subject=NSD_CFG["min_repetitions_per_subject"], 
-        repetitions_to_use=NSD_CFG["repetitions_to_use"]
+        dataset_dir=NSD_DATASET_DIR,
+        subjects=" ".join(str(subject) for subject in NSD_SUBJECTS),
+        tr=config["nsd_data"]["tr"],
+        event_duration_s=config["nsd_data"]["event_duration_s"],
+        onset_shift_volumes=config["nsd_data"]["onset_shift_volumes"],
+        min_repetitions_per_subject=config["nsd_data"]["min_repetitions_per_subject"],
+        repetitions_to_use=config["nsd_data"]["repetitions_to_use"]
     conda:
         "envs/nsd_data_dataset_processing_environment.yaml"
     shell:
-        r'''
+        r"""
             python3 workflow/dataset_processing/nsd_data_dataset/scripts/make_nsd_manifest.py \
                 --dataset_dir {params.dataset_dir:q} \
                 --subjects {params.subjects} \
-                --functional_space {params.functional_space:q} \
                 --tr {params.tr} \
                 --event_duration_s {params.event_duration_s} \
                 --onset_shift_volumes {params.onset_shift_volumes} \
                 --min_repetitions_per_subject {params.min_repetitions_per_subject} \
                 --repetitions_to_use {params.repetitions_to_use} \
-                --output_manifest {output.manifest:q} \
+                --output_manifest {output.occurrence_manifest:q} \
                 --output_stimulus_manifest {output.stimulus_manifest:q} \
-                --output_excluded_stimuli {output.excluded_stimuli:q}
-        '''
+                --output_excluded_stimuli {output.excluded_stimuli:q} \
+                --output_run_length_qc {output.run_length_qc:q} \
+                --output_metadata {output.metadata:q}
+        """
+
+rule write_nsd_parcel_manifest:
+    input:
+        occurrence_manifest=NSD_OCCURRENCE_MANIFEST
+    output:
+        manifest=NSD_PARCEL_MANIFEST
+    run:
+        write_nsd_parcel_manifest(input.occurrence_manifest, output.manifest,)
 
 rule assemble_nsd_bold:
     input:
-        manifest=NSD_MANIFEST
+        manifest=NSD_OCCURRENCE_MANIFEST
     output:
         touch(NSD_BOLD_DONE)
     params:
-        dataset_dir=NSD_DATASET_DIR, 
-        interpolation=NSD_CFG.get("map_interpolation","cubic")
+        dataset_dir=NSD_DATASET_DIR,
+        interpolation=config["nsd_data"]["map_interpolation"]
     conda:
         "envs/nsd_data_dataset_processing_environment.yaml"
     shell:
-        r'''
+        r"""
             python3 workflow/dataset_processing/nsd_data_dataset/scripts/assemble_nsd_bold.py \
                 --manifest {input.manifest:q} \
                 --dataset_dir {params.dataset_dir:q} \
                 --interpolation {params.interpolation:q}
-        '''
+        """
 
 rule extract_nsd_parcels:
     input:
-        manifest=NSD_MANIFEST,
+        manifest=NSD_PARCEL_MANIFEST,
         bold_done=NSD_BOLD_DONE
     output:
         touch(NSD_PARCELS_DONE)
     params:
-        output_root=NSD_OUTPUT_DIR,
         n_rois=config["atlas"]["n_rois"],
         yeo_networks=config["atlas"]["yeo_networks"],
         atlas_dir=config["atlas"]["atlas_dir"]
     conda:
         "envs/nsd_data_dataset_processing_environment.yaml"
     shell:
-        r'''
+        r"""
             python3 workflow/dataset_processing/nsd_data_dataset/scripts/extract_nsd_parcels.py \
                 --manifest {input.manifest:q} \
-                --output_root {params.output_root:q} \
                 --n_rois {params.n_rois} \
                 --yeo_networks {params.yeo_networks} \
                 --atlas_dir {params.atlas_dir:q}
-        '''
+        """
+
+rule write_nsd_isc_manifest:
+    input:
+        parcel_manifest=NSD_PARCEL_MANIFEST
+    output:
+        manifest=NSD_ISC_MANIFEST
+    run:
+        write_nsd_isc_manifest(input.parcel_manifest, output.manifest,)
 
 rule compute_nsd_isc:
     input:
-        manifest=NSD_MANIFEST,
+        manifest=NSD_ISC_MANIFEST,
         parcels_done=NSD_PARCELS_DONE
     output:
         isc_dir=directory(NSD_ISC_ROOT),
         done=touch(NSD_ISC_DONE)
     params:
-        parcel_root=NSD_PARCEL_ROOT,
-        isc_root=NSD_ISC_ROOT,
         n_rois=config["atlas"]["n_rois"],
         yeo_networks=config["atlas"]["yeo_networks"],
         atlas_dir=config["atlas"]["atlas_dir"]
     conda:
         "envs/nsd_data_dataset_processing_environment.yaml"
     shell:
-        r'''
+        r"""
             python3 workflow/dataset_processing/nsd_data_dataset/scripts/compute_nsd_isc.py \
                 --manifest {input.manifest:q} \
-                --parcel_root {params.parcel_root:q} \
-                --isc_root {params.isc_root:q} \
                 --n_rois {params.n_rois} \
                 --yeo_networks {params.yeo_networks} \
                 --atlas_dir {params.atlas_dir:q}
-        '''
+        """
 
 rule export_nsd_stimuli:
     input:
         stimulus_manifest=NSD_STIMULUS_MANIFEST
     output:
-        stimuli_dir=directory(NSD_CFG["stimuli_dir"]["vision"]), 
+        stimuli_dir=directory(config["nsd_data"]["stimuli_dir"]["vision"]),
         ready=touch(NSD_STIMULI_READY)
     params:
-        stimuli_hdf5=NSD_CFG["stimuli_hdf5"]
-    conda: 
+        stimuli_hdf5=config["nsd_data"]["stimuli_hdf5"]
+    conda:
         "envs/nsd_data_dataset_processing_environment.yaml"
     shell:
-        r'''
+        r"""
             python3 workflow/dataset_processing/nsd_data_dataset/scripts/export_nsd_stimuli.py \
                 --stimulus_manifest {input.stimulus_manifest:q} \
                 --stimuli_hdf5 {params.stimuli_hdf5:q} \
                 --output_dir {output.stimuli_dir:q}
-        '''
+        """
