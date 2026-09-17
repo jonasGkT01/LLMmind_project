@@ -1,30 +1,62 @@
 import argparse
+
 from pathlib import Path
+
 import h5py
 import numpy as np
 import pandas as pd
 from PIL import Image
 
-def rgb(a):
-    a=np.asarray(a)
-    if a.ndim!=3: raise ValueError(f'Expected 3D image, got {a.shape}')
-    if a.shape[-1]==3: x=a
-    elif a.shape[0]==3: x=np.moveaxis(a,0,-1)
-    else: raise ValueError(f'Cannot identify RGB axis: {a.shape}')
-    if x.dtype!=np.uint8:
-        if np.issubdtype(x.dtype,np.floating) and x.max()<=1: x=x*255
-        x=np.clip(x,0,255).astype(np.uint8)
-    return x
-
 def main():
-    p=argparse.ArgumentParser(); p.add_argument('--stimulus_manifest',required=True); p.add_argument('--stimuli_hdf5',required=True); p.add_argument('--output_dir',required=True); a=p.parse_args()
-    df=pd.read_csv(a.stimulus_manifest,sep='\t'); out=Path(a.output_dir); out.mkdir(parents=True,exist_ok=True)
-    with h5py.File(a.stimuli_hdf5,'r') as h:
-        b=h['imgBrick']; shape=b.shape
-        for r in df.itertuples(index=False):
-            idx=int(r.hdf5_index)
-            arr=b[idx] if shape[0]>10000 else b[...,idx] if shape[-1]>10000 else None
-            if arr is None: raise ValueError(f'Cannot identify image axis: {shape}')
-            Image.fromarray(rgb(arr)).save(out/f'{r.stimulus_id}.png')
-    print(f'Exported {len(df)} images')
-if __name__=='__main__': main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--stimulus_manifest", required=True)
+    parser.add_argument("--stimuli_hdf5", required=True)
+    parser.add_argument("--output_dir", required=True)
+    arguments = parser.parse_args()
+
+    stimulus_manifest = pd.read_csv(arguments.stimulus_manifest, sep="\t")
+
+    required_columns = {
+        "stimulus_id",
+        "hdf5_index",
+    }
+
+    missing_columns = required_columns - set(stimulus_manifest.columns)
+
+    if missing_columns:
+        raise ValueError(f"Stimulus manifest is missing columns: {sorted(missing_columns)}")
+
+    if stimulus_manifest.empty:
+        raise ValueError(f"Stimulus manifest is empty: {arguments.stimulus_manifest}")
+
+    if stimulus_manifest["stimulus_id"].duplicated().any():
+        raise ValueError("Stimulus manifest contains duplicated stimulus identifiers")
+
+    output_directory = Path(arguments.output_dir)
+    output_directory.mkdir(parents=True, exist_ok=True)
+
+    with h5py.File(arguments.stimuli_hdf5, "r") as stimulus_file:
+        if "imgBrick" not in stimulus_file:
+            raise KeyError(f"Dataset 'imgBrick' was not found in {arguments.stimuli_hdf5}")
+
+        image_dataset = stimulus_file["imgBrick"]
+
+        for manifest_row in stimulus_manifest.itertuples(index=False):
+            image_index = int(manifest_row.hdf5_index)
+
+            if image_index < 0 or image_index >= len(image_dataset):
+                raise IndexError(f"HDF5 image index {image_index} is outside imgBrick with {len(image_dataset)} images")
+
+            image_array = np.asarray(image_dataset[image_index])
+
+            if image_array.ndim != 3 or image_array.shape[-1] != 3:
+                raise ValueError(f"Expected an RGB image with shape (height, width, 3), got {image_array.shape}")
+
+            image = Image.fromarray(image_array).convert("RGB")
+            output_file = output_directory / f"{manifest_row.stimulus_id}.png"
+            image.save(output_file)
+
+    print(f"Exported {len(stimulus_manifest)} images")
+
+if __name__ == "__main__":
+    main()

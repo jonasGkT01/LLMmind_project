@@ -1,7 +1,7 @@
 import argparse
-import re
 import json
 import math
+import re
 
 from collections import defaultdict
 from pathlib import Path
@@ -10,156 +10,273 @@ import nibabel as nib
 import numpy as np
 import pandas as pd
 
-DESIGN_RE = re.compile(r"design_session(?P<session>\d+)_run(?P<run>\d+)\.tsv$")
-BOLD_RE = re.compile(r"timeseries_session(?P<session>\d+)_run(?P<run>\d+)\.nii\.gz$")
+NSD_FUNCTIONAL_SPACE_DIRECTORY = "func1pt8mm"
 
-def sid(x): return f"nsd-{int(x):05d}"
+DESIGN_FILE_PATTERN = re.compile(r"design_session(?P<session>\d+)_run(?P<run>\d+)\.tsv$")
+BOLD_FILE_PATTERN = re.compile(r"timeseries_session(?P<session>\d+)_run(?P<run>\d+)\.nii\.gz$")
 
-def discover(dataset_dir, subject, functional_space):
-    root=dataset_dir/'nsddata_timeseries'/'ppdata'/f'subj{subject:02d}'/functional_space
-    ddir=root/'design'; bdir=root/'timeseries'
+def nsd_stimulus_identifier(nsd_image_identifier):
+    return f"nsd-{int(nsd_image_identifier):05d}"
 
-    if not ddir.is_dir():
-        raise FileNotFoundError(ddir)
-    
-    if not bdir.is_dir():
-        raise FileNotFoundError(bdir)
+def discover_subject_runs(dataset_directory, subject):
+    functional_space_directory = dataset_directory / "nsddata_timeseries" / "ppdata" / f"subj{subject:02d}" / NSD_FUNCTIONAL_SPACE_DIRECTORY
+    design_directory = functional_space_directory / "design"
+    bold_directory = functional_space_directory / "timeseries"
 
-    ds={}
-    bs={}
+    if not design_directory.is_dir():
+        raise FileNotFoundError(f"Missing design directory: {design_directory}")
 
-    for p in sorted(ddir.glob('design_session*_run*.tsv')):
-        m=DESIGN_RE.match(p.name)
+    if not bold_directory.is_dir():
+        raise FileNotFoundError(f"Missing BOLD directory: {bold_directory}")
 
-        if m:
-            ds[(int(m['session']),int(m['run']))]=p
+    design_files_by_run = {}
+    bold_files_by_run = {}
 
-    for p in sorted(bdir.glob('timeseries_session*_run*.nii.gz')):
-        m=BOLD_RE.match(p.name)
+    for design_file in sorted(design_directory.glob("design_session*_run*.tsv")):
+        match = DESIGN_FILE_PATTERN.match(design_file.name)
 
-        if m:
-            bs[(int(m['session']),int(m['run']))]=p
+        if match is None:
+            continue
 
-    keys=sorted(set(ds)&set(bs))
+        run_identifier = (int(match["session"]), int(match["run"]))
 
-    if not keys:
-        raise ValueError(f'No matching design/BOLD runs for subj{subject:02d}')
-    
-    return [(s,r,ds[(s,r)],bs[(s,r)]) for s,r in keys]
+        if run_identifier in design_files_by_run:
+            raise ValueError(f"Duplicate design file for subject {subject}, session {run_identifier[0]}, run {run_identifier[1]}")
+
+        design_files_by_run[run_identifier] = design_file
+
+    for bold_file in sorted(bold_directory.glob("timeseries_session*_run*.nii.gz")):
+        match = BOLD_FILE_PATTERN.match(bold_file.name)
+
+        if match is None:
+            continue
+
+        run_identifier = (int(match["session"]), int(match["run"]))
+
+        if run_identifier in bold_files_by_run:
+            raise ValueError(f"Duplicate BOLD file for subject {subject}, session {run_identifier[0]}, run {run_identifier[1]}")
+
+        bold_files_by_run[run_identifier] = bold_file
+
+    design_runs = set(design_files_by_run)
+    bold_runs = set(bold_files_by_run)
+
+    runs_without_bold = sorted(design_runs - bold_runs)
+    runs_without_design = sorted(bold_runs - design_runs)
+
+    if runs_without_bold or runs_without_design:
+        raise ValueError(f"Unmatched NSD runs for subject {subject}. Design files without BOLD files: {runs_without_bold}. BOLD files without design files: {runs_without_design}.")
+
+    matched_runs = sorted(design_runs)
+
+    if not matched_runs:
+        raise ValueError(f"No matching design and BOLD runs found for subject {subject}")
+
+    return [
+        (session, run, design_files_by_run[(session, run)], bold_files_by_run[(session, run)])
+        for session, run in matched_runs
+    ]
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--dataset_dir', required=True); parser.add_argument('--subjects', nargs='+', type=int, required=True)
-    parser.add_argument('--functional_space', default='func1pt8mm'); parser.add_argument('--tr', type=float, required=True)
-    parser.add_argument('--event_duration_s', type=float, required=True); parser.add_argument('--onset_shift_volumes', type=int, default=0)
-    parser.add_argument('--min_repetitions_per_subject', type=int, required=True); parser.add_argument('--repetitions_to_use', type=int, required=True)
-    parser.add_argument('--output_manifest', required=True); parser.add_argument('--output_stimulus_manifest', required=True)
-    parser.add_argument('--output_excluded_stimuli', required=True)
-    args = parser.parse_args()
+    parser.add_argument("--dataset_dir", required=True)
+    parser.add_argument("--output_root", required=True)
+    parser.add_argument("--subjects", nargs="+", type=int, required=True)
+    parser.add_argument("--tr", type=float, required=True)
+    parser.add_argument("--event_duration_s", type=float, required=True)
+    parser.add_argument("--onset_shift_volumes", type=int, required=True)
+    parser.add_argument("--min_repetitions_per_subject", type=int, required=True)
+    parser.add_argument("--repetitions_to_use", type=int, required=True)
+    parser.add_argument("--output_manifest", required=True)
+    parser.add_argument("--output_stimulus_manifest", required=True)
+    parser.add_argument("--output_excluded_stimuli", required=True)
+    parser.add_argument("--output_run_length_qc", required=True)
+    parser.add_argument("--output_metadata", required=True)
+    arguments = parser.parse_args()
 
-    root=Path(args.dataset_dir)
+    dataset_directory = Path(arguments.dataset_dir)
+    processing_output_directory = Path(arguments.output_root)
 
-    if args.repetitions_to_use<1 or args.min_repetitions_per_subject<1 or args.repetitions_to_use>args.min_repetitions_per_subject:
-        raise ValueError('Invalid repetition settings')
-    
-    n_vols=int(math.ceil(args.event_duration_s/args.tr))
+    if len(set(arguments.subjects)) != len(arguments.subjects):
+        raise ValueError("Duplicate subject identifiers were provided")
 
-    occ_by_sub={}
-    counts_by_sub={}
-    qc=[]
+    if any(subject < 1 for subject in arguments.subjects):
+        raise ValueError("Subject identifiers must be positive integers")
 
-    for sub in args.subjects:
-        occ=defaultdict(list)
+    if arguments.tr <= 0:
+        raise ValueError("TR must be positive")
 
-        for ses,run,dpath,bpath in discover(root,sub,args.functional_space):
-            design=np.asarray(np.loadtxt(dpath,dtype=np.int64,ndmin=1)).reshape(-1)
-            img=nib.load(str(bpath))
+    if arguments.event_duration_s <= 0:
+        raise ValueError("Event duration must be positive")
 
-            if img.ndim!=4:
-                raise ValueError(f'Expected 4D BOLD: {bpath} {img.shape}')
-            
-            if img.shape[3] not in {len(design),len(design)+1}:
-                raise ValueError(f'Unexpected design/BOLD lengths for {bpath}: {len(design)} vs {img.shape[3]}')
+    if arguments.min_repetitions_per_subject < 1:
+        raise ValueError("Minimum repetitions per subject must be at least 1")
 
-            nz=np.flatnonzero(design>0)
+    if arguments.repetitions_to_use < 1:
+        raise ValueError("Repetitions to use must be at least 1")
 
-            for onset in nz:
-                image_id=int(design[onset])
-                start=int(onset) + args.onset_shift_volumes
-                end=start + n_vols
+    if arguments.repetitions_to_use > arguments.min_repetitions_per_subject:
+        raise ValueError("Repetitions to use cannot exceed the minimum repetitions per subject")
 
-                if start<0 or end>img.shape[3]:
-                    raise ValueError(f'Crop [{start}:{end}] outside {bpath}')
+    number_of_volumes_per_repetition = int(math.ceil(arguments.event_duration_s / arguments.tr))
 
-                occ[image_id].append(dict(subject=sub, session=ses, run=run, nsd_73k_id=image_id, stimulus_id=sid(image_id), onset_vol=int(onset), start_vol=start, end_vol=end, n_vols=n_vols, source_design=str(dpath.resolve()), source_bold=str(bpath.resolve())))
+    occurrences_by_subject = {}
+    repetition_counts_by_subject = {}
+    run_quality_control_rows = []
 
-            qc.append(dict(subject=sub,session=ses,run=run,n_design_volumes=len(design),n_bold_volumes=img.shape[3],n_stimulus_onsets=len(nz)))
+    for subject in arguments.subjects:
+        occurrences_by_stimulus = defaultdict(list)
 
-        for image_id in occ:
-            occ[image_id].sort(key=lambda x:(x['session'],x['run'],x['onset_vol']))
-        
-        occ_by_sub[sub]=occ
-        counts_by_sub[sub]={k:len(v) for k,v in occ.items()}
+        for session, run, design_file, bold_file in discover_subject_runs(dataset_directory, subject):
+            design_values = np.asarray(np.loadtxt(design_file, dtype=np.int64, ndmin=1)).reshape(-1)
+            bold_image = nib.load(str(bold_file))
 
-    sets=[{
-            k for k,v in counts_by_sub[s].items() if v>=args.min_repetitions_per_subject
+            if bold_image.ndim != 4:
+                raise ValueError(f"Expected a 4D BOLD image, got shape {bold_image.shape}: {bold_file}")
+
+            number_of_extra_bold_volumes = bold_image.shape[3] - len(design_values)
+
+            if number_of_extra_bold_volumes not in {0, 1}:
+                raise ValueError(f"Unexpected design/BOLD lengths for {bold_file}: {len(design_values)} design rows and {bold_image.shape[3]} BOLD volumes")
+
+            stimulus_onset_indices = np.flatnonzero(design_values > 0)
+
+            for onset_volume in stimulus_onset_indices:
+                nsd_image_identifier = int(design_values[onset_volume])
+                start_volume = int(onset_volume) + arguments.onset_shift_volumes
+                end_volume = start_volume + number_of_volumes_per_repetition
+
+                if start_volume < 0 or end_volume > bold_image.shape[3]:
+                    raise ValueError(f"Crop [{start_volume}:{end_volume}] is outside {bold_file} with {bold_image.shape[3]} volumes")
+
+                occurrences_by_stimulus[nsd_image_identifier].append(
+                    {
+                        "subject": subject,
+                        "session": session,
+                        "run": run,
+                        "nsd_73k_id": nsd_image_identifier,
+                        "stimulus_id": nsd_stimulus_identifier(nsd_image_identifier),
+                        "onset_vol": int(onset_volume),
+                        "start_vol": start_volume,
+                        "end_vol": end_volume,
+                        "n_vols": number_of_volumes_per_repetition,
+                        "source_design": str(design_file),
+                        "source_bold": str(bold_file),
+                    }
+                )
+
+            run_quality_control_rows.append(
+                {
+                    "subject": subject,
+                    "session": session,
+                    "run": run,
+                    "n_design_volumes": len(design_values),
+                    "n_bold_volumes": bold_image.shape[3],
+                    "n_extra_bold_volumes": number_of_extra_bold_volumes,
+                    "n_stimulus_onsets": len(stimulus_onset_indices),
+                }
+            )
+
+        for nsd_image_identifier in occurrences_by_stimulus:
+            occurrences_by_stimulus[nsd_image_identifier].sort(
+                key=lambda occurrence: (
+                    occurrence["session"],
+                    occurrence["run"],
+                    occurrence["onset_vol"],
+                )
+            )
+
+        occurrences_by_subject[subject] = occurrences_by_stimulus
+        repetition_counts_by_subject[subject] = {
+            nsd_image_identifier: len(occurrences)
+            for nsd_image_identifier, occurrences in occurrences_by_stimulus.items()
         }
-        for s in args.subjects
+
+    eligible_stimuli_per_subject = [
+        {
+            nsd_image_identifier
+            for nsd_image_identifier, repetition_count in repetition_counts_by_subject[subject].items()
+            if repetition_count >= arguments.min_repetitions_per_subject
+        }
+        for subject in arguments.subjects
     ]
 
-    keep=sorted(set.intersection(*sets)) if sets else []
+    retained_nsd_image_identifiers = sorted(set.intersection(*eligible_stimuli_per_subject))
 
-    if not keep:
-        raise ValueError('No image satisfies repetition criterion in all subjects')
-    
-    out_parent=Path(args.output_manifest).parent.parent
-    rows=[]
+    if not retained_nsd_image_identifiers:
+        raise ValueError("No NSD image satisfies the repetition criterion in all subjects")
 
-    for sub in args.subjects:
-        for image_id in keep:
-            selected=occ_by_sub[sub][image_id][:args.repetitions_to_use]
-            output=out_parent/'single_stimulus_bold_mni'/f'task-{sid(image_id)}'/f'sub-{sub:02d}_task-{sid(image_id)}_bold.nii.gz'
+    occurrence_manifest_rows = []
 
-            for rep,row in enumerate(selected,1):
-                r=dict(row)
-                r['repetition']=rep
-                r['output_bold']=str(output)
-                rows.append(r)
+    for subject in arguments.subjects:
+        for nsd_image_identifier in retained_nsd_image_identifiers:
+            stimulus_identifier = nsd_stimulus_identifier(nsd_image_identifier)
+            selected_occurrences = occurrences_by_subject[subject][nsd_image_identifier][:arguments.repetitions_to_use]
 
-    manifest=pd.DataFrame(rows).sort_values(['nsd_73k_id','subject','repetition'])
-    sm=pd.DataFrame([dict(
-            stimulus_id=sid(i),
-            nsd_73k_id=i,
-            hdf5_index=i - 1,
-            n_subjects=len(args.subjects),
-            repetitions_per_subject=args.repetitions_to_use,
-            volumes_per_repetition=n_vols,
-            volumes_per_subject_stimulus=n_vols*args.repetitions_to_use) 
-        for i in keep])
-    mp=Path(args.output_manifest); sp=Path(args.output_stimulus_manifest); ep=Path(args.output_excluded_stimuli)
+            if len(selected_occurrences) != arguments.repetitions_to_use:
+                raise ValueError(f"Expected {arguments.repetitions_to_use} repetitions for subject {subject}, stimulus {stimulus_identifier}, got {len(selected_occurrences)}")
 
-    for p in (mp,sp,ep):
-        p.parent.mkdir(parents=True, exist_ok=True)
+            output_bold_file = processing_output_directory / "single_stimulus_bold_mni" / f"task-{stimulus_identifier}" / f"sub-{subject:02d}_task-{stimulus_identifier}_bold.nii.gz"
 
-    manifest.to_csv(mp, sep='\t', index=False)
-    sm.to_csv(sp, sep='\t', index=False)
-    ep.write_text('')
+            for repetition_number, occurrence in enumerate(selected_occurrences, start=1):
+                occurrence_manifest_row = dict(occurrence)
+                occurrence_manifest_row["repetition"] = repetition_number
+                occurrence_manifest_row["output_bold"] = str(output_bold_file)
+                occurrence_manifest_rows.append(occurrence_manifest_row)
 
-    pd.DataFrame(qc).to_csv(mp.parent/'run_length_qc.tsv', sep='\t', index=False)
+    occurrence_manifest = pd.DataFrame(occurrence_manifest_rows).sort_values(["nsd_73k_id", "subject", "repetition"])
 
-    meta=dict(subjects=args.subjects,
-              functional_space=args.functional_space,
-              tr=args.tr,
-              event_duration_s=args.event_duration_s,
-              onset_shift_volumes=args.onset_shift_volumes,
-              n_volumes_per_repetition=n_vols,
-              min_repetitions_per_subject=args.min_repetitions_per_subject,
-              repetitions_to_use=args.repetitions_to_use,
-              n_retained_stimuli=len(keep),
-              n_manifest_rows=len(manifest))
-    
-    (mp.parent/'manifest_metadata.json').write_text(json.dumps(meta, indent=2, sort_keys=True))
+    stimulus_manifest = pd.DataFrame(
+        [
+            {
+                "stimulus_id": nsd_stimulus_identifier(nsd_image_identifier),
+                "nsd_73k_id": nsd_image_identifier,
+                "hdf5_index": nsd_image_identifier - 1,
+                "n_subjects": len(arguments.subjects),
+                "repetitions_per_subject": arguments.repetitions_to_use,
+                "volumes_per_repetition": number_of_volumes_per_repetition,
+                "volumes_per_subject_stimulus": number_of_volumes_per_repetition * arguments.repetitions_to_use,
+            }
+            for nsd_image_identifier in retained_nsd_image_identifiers
+        ]
+    )
 
-    print(f'Retained {len(keep)} stimuli; wrote {len(manifest)} occurrence rows')
-    
-if __name__=='__main__': main()
+    occurrence_manifest_path = Path(arguments.output_manifest)
+    stimulus_manifest_path = Path(arguments.output_stimulus_manifest)
+    excluded_stimuli_path = Path(arguments.output_excluded_stimuli)
+    run_length_quality_control_path = Path(arguments.output_run_length_qc)
+    metadata_path = Path(arguments.output_metadata)
+
+    for output_path in [
+        occurrence_manifest_path,
+        stimulus_manifest_path,
+        excluded_stimuli_path,
+        run_length_quality_control_path,
+        metadata_path,
+    ]:
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    occurrence_manifest.to_csv(occurrence_manifest_path, sep="\t", index=False)
+    stimulus_manifest.to_csv(stimulus_manifest_path, sep="\t", index=False)
+    excluded_stimuli_path.write_text("")
+    pd.DataFrame(run_quality_control_rows).to_csv(run_length_quality_control_path, sep="\t", index=False)
+
+    metadata = {
+        "subjects": arguments.subjects,
+        "functional_space": NSD_FUNCTIONAL_SPACE_DIRECTORY,
+        "tr": arguments.tr,
+        "event_duration_s": arguments.event_duration_s,
+        "onset_shift_volumes": arguments.onset_shift_volumes,
+        "n_volumes_per_repetition": number_of_volumes_per_repetition,
+        "min_repetitions_per_subject": arguments.min_repetitions_per_subject,
+        "repetitions_to_use": arguments.repetitions_to_use,
+        "n_retained_stimuli": len(retained_nsd_image_identifiers),
+        "n_manifest_rows": len(occurrence_manifest),
+    }
+
+    metadata_path.write_text(json.dumps(metadata, indent=2, sort_keys=True))
+
+    print(f"Retained {len(retained_nsd_image_identifiers)} stimuli; wrote {len(occurrence_manifest)} occurrence rows")
+
+if __name__ == "__main__":
+    main()

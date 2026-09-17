@@ -2,120 +2,78 @@ import pandas as pd
 
 from pathlib import Path
 
-NSD_DATASET_DIR = config["nsd_data"]["dataset_dir"]
-NSD_PROCESSING_OUTPUT_DIR = config["nsd_data"]["processing_output_dir"]
-
+NSD_DATASET_DIRECTORY = config["nsd_data"]["dataset_dir"]
+NSD_PROCESSING_OUTPUT_DIRECTORY = config["nsd_data"]["processing_output_dir"]
 NSD_SUBJECTS = list(range(1, int(config["nsd_data"]["subjects"]) + 1))
 
-NSD_MANIFEST_DIR = f"{NSD_PROCESSING_OUTPUT_DIR}/manifests"
+NSD_MANIFEST_DIRECTORY = f"{NSD_PROCESSING_OUTPUT_DIRECTORY}/manifests"
+NSD_OCCURRENCE_MANIFEST = f"{NSD_MANIFEST_DIRECTORY}/nsd_occurrence_manifest.tsv"
+NSD_STIMULUS_MANIFEST = f"{NSD_MANIFEST_DIRECTORY}/nsd_stimulus_manifest.tsv"
+NSD_PARCEL_MANIFEST = f"{NSD_MANIFEST_DIRECTORY}/parcel_extraction_manifest.tsv"
+NSD_ISC_MANIFEST = f"{NSD_MANIFEST_DIRECTORY}/isc_manifest.tsv"
+NSD_RUN_LENGTH_QUALITY_CONTROL = f"{NSD_MANIFEST_DIRECTORY}/run_length_qc.tsv"
+NSD_MANIFEST_METADATA = f"{NSD_MANIFEST_DIRECTORY}/manifest_metadata.json"
 
-NSD_OCCURRENCE_MANIFEST = f"{NSD_MANIFEST_DIR}/nsd_occurrence_manifest.tsv"
+NSD_BOLD_DONE = f"{NSD_MANIFEST_DIRECTORY}/.bold_done"
+NSD_PARCELS_DONE = f"{NSD_MANIFEST_DIRECTORY}/.parcels_done"
+NSD_ISC_DONE = f"{NSD_MANIFEST_DIRECTORY}/.isc_done"
 
-NSD_STIMULUS_MANIFEST = f"{NSD_MANIFEST_DIR}/nsd_stimulus_manifest.tsv"
-
-NSD_PARCEL_MANIFEST = f"{NSD_MANIFEST_DIR}/parcel_extraction_manifest.tsv"
-
-NSD_ISC_MANIFEST = f"{NSD_MANIFEST_DIR}/isc_manifest.tsv"
-
-NSD_RUN_LENGTH_QC = f"{NSD_MANIFEST_DIR}/run_length_qc.tsv"
-
-NSD_MANIFEST_METADATA = f"{NSD_MANIFEST_DIR}/manifest_metadata.json"
-
-NSD_BOLD_DONE = f"{NSD_MANIFEST_DIR}/.bold_done"
-NSD_PARCELS_DONE = f"{NSD_MANIFEST_DIR}/.parcels_done"
-NSD_ISC_DONE = f"{NSD_MANIFEST_DIR}/.isc_done"
-
-NSD_ISC_ROOT = f"{NSD_PROCESSING_OUTPUT_DIR}/isc"
+NSD_ISC_DIRECTORY = f"{NSD_PROCESSING_OUTPUT_DIRECTORY}/isc"
 
 NSD_STIMULI_READY = config["nsd_data"]["stimuli_ready"]
 NSD_EXCLUDED_STIMULI = config["nsd_data"]["excluded_stimuli"]
 
-def nsd_parcel_output(subject, stimulus_id):
-    return f"{NSD_PROCESSING_OUTPUT_DIR}/parcels/task-{stimulus_id}/sub-{int(subject):02d}_task-{stimulus_id}_parcel_ts.npy"
+def nsd_parcel_time_series_output(subject, stimulus_identifier):
+    return f"{NSD_PROCESSING_OUTPUT_DIRECTORY}/parcels/task-{stimulus_identifier}/sub-{int(subject):02d}_task-{stimulus_identifier}_parcel_ts.npy"
 
-def write_nsd_parcel_manifest(occurrence_manifest, output_tsv,):
-    manifest = pd.read_csv(occurrence_manifest, sep="\t",)
-
-    required_columns = {
-        "subject",
-        "stimulus_id",
-        "output_bold",
-    }
-
-    missing_columns = required_columns - set(manifest.columns)
+def write_nsd_parcel_manifest(occurrence_manifest_path, output_manifest_path):
+    occurrence_manifest = pd.read_csv(occurrence_manifest_path, sep="\t")
+    required_columns = {"subject", "stimulus_id", "output_bold"}
+    missing_columns = required_columns - set(occurrence_manifest.columns)
 
     if missing_columns:
         raise ValueError(f"Occurrence manifest is missing columns: {sorted(missing_columns)}")
 
-    samples = (
-        manifest[
-            [
-                "subject",
-                "stimulus_id",
-                "output_bold",
-            ]
-        ]
-        .drop_duplicates()
-        .sort_values(
-            [
-                "stimulus_id",
-                "subject",
-            ]
-        )
-    )
-
-    sample_counts = samples.groupby(
-        [
-            "subject",
-            "stimulus_id",
-        ]
-    ).size()
-
-    invalid_samples = sample_counts[sample_counts != 1]
+    unique_samples = occurrence_manifest[["subject", "stimulus_id", "output_bold"]].drop_duplicates().sort_values(["stimulus_id", "subject"])
+    subject_stimulus_counts = unique_samples.groupby(["subject", "stimulus_id"]).size()
+    invalid_samples = subject_stimulus_counts[subject_stimulus_counts != 1]
 
     if not invalid_samples.empty:
         raise ValueError("Found subject/stimulus pairs with multiple BOLD outputs:\n" + invalid_samples.to_string())
 
-    output_tsv = Path(output_tsv)
-    output_tsv.parent.mkdir(parents=True, exist_ok=True,)
+    output_manifest_path = Path(output_manifest_path)
+    output_manifest_path.parent.mkdir(parents=True, exist_ok=True)
 
-    with output_tsv.open("w") as f:
-        f.write(f"subject\tstimulus_id\tbold_file\tparcel_ts\n")
+    with output_manifest_path.open("w") as output_manifest_file:
+        output_manifest_file.write("subject\tstimulus_id\tbold_file\tparcel_time_series\n")
 
-        for row in samples.itertuples(index=False):
-            parcel_ts = nsd_parcel_output(row.subject, row.stimulus_id,)
+        for sample in unique_samples.itertuples(index=False):
+            parcel_time_series_file = nsd_parcel_time_series_output(sample.subject, sample.stimulus_id)
+            output_manifest_file.write(f"{int(sample.subject)}\t{sample.stimulus_id}\t{sample.output_bold}\t{parcel_time_series_file}\n")
 
-            f.write(f"{int(row.subject)}\t{row.stimulus_id}\t{row.output_bold}\t{parcel_ts}\n")
-
-def write_nsd_isc_manifest(parcel_manifest, output_tsv,):
-    manifest = pd.read_csv(parcel_manifest, sep="\t",)
-
-    required_columns = {
-        "subject",
-        "stimulus_id",
-        "parcel_ts",
-    }
-
-    missing_columns = required_columns - set(manifest.columns)
+def write_nsd_isc_manifest(parcel_manifest_path, output_manifest_path):
+    parcel_manifest = pd.read_csv(parcel_manifest_path, sep="\t")
+    required_columns = {"subject", "stimulus_id", "parcel_time_series"}
+    missing_columns = required_columns - set(parcel_manifest.columns)
 
     if missing_columns:
         raise ValueError(f"Parcel manifest is missing columns: {sorted(missing_columns)}")
 
-    output_tsv = Path(output_tsv)
-    output_tsv.parent.mkdir(parents=True, exist_ok=True,)
+    output_manifest_path = Path(output_manifest_path)
+    output_manifest_path.parent.mkdir(parents=True, exist_ok=True)
 
-    with output_tsv.open("w") as f:
-        f.write(f"task\tsubject\tparcel_ts\tisc_npy\tisc_nii\n")
+    with output_manifest_path.open("w") as output_manifest_file:
+        output_manifest_file.write("stimulus_id\tsubject\tparcel_time_series\tisc_numpy_file\tisc_nifti_file\n")
 
-        for stimulus_id, stimulus_df in manifest.groupby("stimulus_id", sort=True,):
-            isc_npy = f"{NSD_ISC_ROOT}/task-{stimulus_id}_isc_mean.npy"
+        for stimulus_identifier, stimulus_manifest in parcel_manifest.groupby("stimulus_id", sort=True):
+            isc_numpy_file = f"{NSD_ISC_DIRECTORY}/task-{stimulus_identifier}_isc_mean.npy"
+            isc_nifti_file = f"{NSD_ISC_DIRECTORY}/task-{stimulus_identifier}_isc_mean.nii.gz"
+            stimulus_manifest = stimulus_manifest.sort_values("subject")
 
-            isc_nii = f"{NSD_ISC_ROOT}/task-{stimulus_id}_isc_mean.nii.gz"
-
-            stimulus_df = stimulus_df.sort_values("subject")
-
-            for row in stimulus_df.itertuples(index=False):
-                f.write(f"{stimulus_id}\t{int(row.subject)}\t{row.parcel_ts}\t{isc_npy}\t{isc_nii}\n")
+            for sample in stimulus_manifest.itertuples(index=False):
+                output_manifest_file.write(
+                    f"{stimulus_identifier}\t{int(sample.subject)}\t{sample.parcel_time_series}\t{isc_numpy_file}\t{isc_nifti_file}\n"
+                )
 
 rule all_nsd_data_dataset:
     input:
@@ -128,10 +86,11 @@ rule make_nsd_manifest:
         occurrence_manifest=NSD_OCCURRENCE_MANIFEST,
         stimulus_manifest=NSD_STIMULUS_MANIFEST,
         excluded_stimuli=NSD_EXCLUDED_STIMULI,
-        run_length_qc=NSD_RUN_LENGTH_QC,
+        run_length_quality_control=NSD_RUN_LENGTH_QUALITY_CONTROL,
         metadata=NSD_MANIFEST_METADATA
     params:
-        dataset_dir=NSD_DATASET_DIR,
+        dataset_dir=NSD_DATASET_DIRECTORY,
+        output_root=NSD_PROCESSING_OUTPUT_DIRECTORY,
         subjects=" ".join(str(subject) for subject in NSD_SUBJECTS),
         tr=config["nsd_data"]["tr"],
         event_duration_s=config["nsd_data"]["event_duration_s"],
@@ -144,6 +103,7 @@ rule make_nsd_manifest:
         r"""
             python3 workflow/dataset_processing/nsd_data_dataset/scripts/make_nsd_manifest.py \
                 --dataset_dir {params.dataset_dir:q} \
+                --output_root {params.output_root:q} \
                 --subjects {params.subjects} \
                 --tr {params.tr} \
                 --event_duration_s {params.event_duration_s} \
@@ -153,7 +113,7 @@ rule make_nsd_manifest:
                 --output_manifest {output.occurrence_manifest:q} \
                 --output_stimulus_manifest {output.stimulus_manifest:q} \
                 --output_excluded_stimuli {output.excluded_stimuli:q} \
-                --output_run_length_qc {output.run_length_qc:q} \
+                --output_run_length_qc {output.run_length_quality_control:q} \
                 --output_metadata {output.metadata:q}
         """
 
@@ -163,7 +123,7 @@ rule write_nsd_parcel_manifest:
     output:
         manifest=NSD_PARCEL_MANIFEST
     run:
-        write_nsd_parcel_manifest(input.occurrence_manifest, output.manifest,)
+        write_nsd_parcel_manifest(input.occurrence_manifest, output.manifest)
 
 rule assemble_nsd_bold:
     input:
@@ -171,7 +131,7 @@ rule assemble_nsd_bold:
     output:
         touch(NSD_BOLD_DONE)
     params:
-        dataset_dir=NSD_DATASET_DIR,
+        dataset_dir=NSD_DATASET_DIRECTORY,
         interpolation=config["nsd_data"]["map_interpolation"]
     conda:
         "envs/nsd_data_dataset_processing_environment.yaml"
@@ -190,8 +150,8 @@ rule extract_nsd_parcels:
     output:
         touch(NSD_PARCELS_DONE)
     params:
-        n_rois=config["atlas"]["n_rois"],
-        yeo_networks=config["atlas"]["yeo_networks"],
+        number_of_regions=config["atlas"]["n_rois"],
+        number_of_yeo_networks=config["atlas"]["yeo_networks"],
         atlas_dir=config["atlas"]["atlas_dir"]
     conda:
         "envs/nsd_data_dataset_processing_environment.yaml"
@@ -199,8 +159,8 @@ rule extract_nsd_parcels:
         r"""
             python3 workflow/dataset_processing/nsd_data_dataset/scripts/extract_nsd_parcels.py \
                 --manifest {input.manifest:q} \
-                --n_rois {params.n_rois} \
-                --yeo_networks {params.yeo_networks} \
+                --number_of_regions {params.number_of_regions} \
+                --number_of_yeo_networks {params.number_of_yeo_networks} \
                 --atlas_dir {params.atlas_dir:q}
         """
 
@@ -210,18 +170,18 @@ rule write_nsd_isc_manifest:
     output:
         manifest=NSD_ISC_MANIFEST
     run:
-        write_nsd_isc_manifest(input.parcel_manifest, output.manifest,)
+        write_nsd_isc_manifest(input.parcel_manifest, output.manifest)
 
 rule compute_nsd_isc:
     input:
         manifest=NSD_ISC_MANIFEST,
         parcels_done=NSD_PARCELS_DONE
     output:
-        isc_dir=directory(NSD_ISC_ROOT),
+        isc_dir=directory(NSD_ISC_DIRECTORY),
         done=touch(NSD_ISC_DONE)
     params:
-        n_rois=config["atlas"]["n_rois"],
-        yeo_networks=config["atlas"]["yeo_networks"],
+        number_of_regions=config["atlas"]["n_rois"],
+        number_of_yeo_networks=config["atlas"]["yeo_networks"],
         atlas_dir=config["atlas"]["atlas_dir"]
     conda:
         "envs/nsd_data_dataset_processing_environment.yaml"
@@ -229,8 +189,8 @@ rule compute_nsd_isc:
         r"""
             python3 workflow/dataset_processing/nsd_data_dataset/scripts/compute_nsd_isc.py \
                 --manifest {input.manifest:q} \
-                --n_rois {params.n_rois} \
-                --yeo_networks {params.yeo_networks} \
+                --number_of_regions {params.number_of_regions} \
+                --number_of_yeo_networks {params.number_of_yeo_networks} \
                 --atlas_dir {params.atlas_dir:q}
         """
 

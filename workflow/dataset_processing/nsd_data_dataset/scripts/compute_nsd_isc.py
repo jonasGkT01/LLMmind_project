@@ -1,28 +1,129 @@
 import argparse
+
 from pathlib import Path
+
 import nibabel as nib
 import numpy as np
 import pandas as pd
 from nilearn import datasets, image
+
 from libraries.fmri_processing import compute_leave_one_out_isc
 
 def main():
-    p=argparse.ArgumentParser(); p.add_argument('--manifest',required=True); p.add_argument('--parcel_root',required=True); p.add_argument('--isc_root',required=True); p.add_argument('--n_rois',type=int,required=True); p.add_argument('--yeo_networks',type=int,required=True); p.add_argument('--atlas_dir',required=True); a=p.parse_args()
-    df=pd.read_csv(a.manifest,sep='\t')[['subject','stimulus_id']].drop_duplicates().sort_values(['stimulus_id','subject'])
-    atlas=datasets.fetch_atlas_schaefer_2018(n_rois=a.n_rois,data_dir=a.atlas_dir,yeo_networks=a.yeo_networks); ai=image.load_img(atlas.maps); ad=ai.get_fdata().astype(int)
-    proot=Path(a.parcel_root); iroot=Path(a.isc_root); iroot.mkdir(parents=True,exist_ok=True)
-    for stim,g in df.groupby('stimulus_id',sort=False):
-        arrays=[]
-        for r in g.itertuples(index=False):
-            f=proot/f'task-{stim}'/f'sub-{int(r.subject):02d}_task-{stim}_parcel_ts.npy'; arr=np.load(f)
-            if arr.ndim!=2 or arr.shape[1]!=a.n_rois: raise ValueError(f'Bad parcel shape {arr.shape}: {f}')
-            arrays.append(arr)
-        if len(arrays)<2: raise ValueError(f'Need >=2 subjects for {stim}')
-        lens=[x.shape[0] for x in arrays]
-        if len(set(lens))!=1:
-            m=min(lens); arrays=[x[:m] for x in arrays]
-        isc=compute_leave_one_out_isc(np.stack(arrays,axis=0)); npy=iroot/f'task-{stim}_isc_mean.npy'; nii=iroot/f'task-{stim}_isc_mean.nii.gz'; np.save(npy,isc)
-        vol=np.zeros_like(ad,dtype=np.float32)
-        for j,v in enumerate(isc): vol[ad==j+1]=v
-        nib.save(nib.Nifti1Image(vol,ai.affine,header=ai.header.copy()),str(nii)); print(stim,len(arrays),arrays[0].shape[0])
-if __name__=='__main__': main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--manifest", required=True)
+    parser.add_argument("--number_of_regions", type=int, required=True)
+    parser.add_argument("--number_of_yeo_networks", type=int, required=True)
+    parser.add_argument("--atlas_dir", required=True)
+    arguments = parser.parse_args()
+
+    isc_manifest = pd.read_csv(arguments.manifest, sep="\t")
+
+    required_columns = {
+        "stimulus_id",
+        "subject",
+        "parcel_time_series",
+        "isc_numpy_file",
+        "isc_nifti_file",
+    }
+
+    missing_columns = required_columns - set(isc_manifest.columns)
+
+    if missing_columns:
+        raise ValueError(f"ISC manifest is missing columns: {sorted(missing_columns)}")
+
+    if isc_manifest.empty:
+        raise ValueError(f"ISC manifest is empty: {arguments.manifest}")
+
+    atlas = datasets.fetch_atlas_schaefer_2018(
+        n_rois=arguments.number_of_regions,
+        data_dir=arguments.atlas_dir,
+        yeo_networks=arguments.number_of_yeo_networks,
+    )
+
+    atlas_image = image.load_img(atlas.maps)
+    atlas_labels = atlas_image.get_fdata().astype(np.int32)
+
+    for stimulus_identifier, stimulus_manifest in isc_manifest.groupby("stimulus_id", sort=False):
+        if stimulus_manifest["subject"].duplicated().any():
+            raise ValueError(f"Stimulus {stimulus_identifier} contains duplicated subjects in the ISC manifest")
+
+        parcel_time_series_files = [
+            Path(path)
+            for path in stimulus_manifest["parcel_time_series"].tolist()
+        ]
+
+        if len(parcel_time_series_files) < 2:
+            raise ValueError(f"ISC requires at least two subjects for stimulus {stimulus_identifier}")
+
+        parcel_time_series_arrays = []
+
+        for parcel_time_series_file in parcel_time_series_files:
+            if not parcel_time_series_file.exists():
+                raise FileNotFoundError(f"Missing parcel time-series file: {parcel_time_series_file}")
+
+            parcel_time_series = np.load(parcel_time_series_file)
+
+            if parcel_time_series.ndim != 2:
+                raise ValueError(f"Expected a 2D parcel time series, got shape {parcel_time_series.shape}: {parcel_time_series_file}")
+
+            if parcel_time_series.shape[1] != arguments.number_of_regions:
+                raise ValueError(f"Expected {arguments.number_of_regions} regions, got {parcel_time_series.shape[1]}: {parcel_time_series_file}")
+
+            parcel_time_series_arrays.append(parcel_time_series)
+
+        time_series_lengths = [
+            parcel_time_series.shape[0]
+            for parcel_time_series in parcel_time_series_arrays
+        ]
+
+        if len(set(time_series_lengths)) != 1:
+            length_details = ", ".join(
+                f"{parcel_time_series_file}: {parcel_time_series.shape[0]} timepoints"
+                for parcel_time_series_file, parcel_time_series in zip(
+                    parcel_time_series_files,
+                    parcel_time_series_arrays,
+                )
+            )
+
+            raise ValueError(f"Mismatched NSD parcel time-series lengths for stimulus {stimulus_identifier}: {length_details}")
+
+        stacked_parcel_time_series = np.stack(parcel_time_series_arrays, axis=0).astype(np.float32)
+        mean_isc_values = compute_leave_one_out_isc(stacked_parcel_time_series)
+
+        isc_numpy_files = stimulus_manifest["isc_numpy_file"].astype(str).unique()
+        isc_nifti_files = stimulus_manifest["isc_nifti_file"].astype(str).unique()
+
+        if len(isc_numpy_files) != 1:
+            raise ValueError(f"Stimulus {stimulus_identifier} has multiple ISC NumPy output files: {isc_numpy_files}")
+
+        if len(isc_nifti_files) != 1:
+            raise ValueError(f"Stimulus {stimulus_identifier} has multiple ISC NIfTI output files: {isc_nifti_files}")
+
+        isc_numpy_file = Path(isc_numpy_files[0])
+        isc_nifti_file = Path(isc_nifti_files[0])
+
+        isc_numpy_file.parent.mkdir(parents=True, exist_ok=True)
+        isc_nifti_file.parent.mkdir(parents=True, exist_ok=True)
+
+        np.save(isc_numpy_file, mean_isc_values)
+
+        isc_volume = np.zeros_like(atlas_labels, dtype=np.float32)
+
+        for parcel_index, isc_value in enumerate(mean_isc_values):
+            atlas_label = parcel_index + 1
+            isc_volume[atlas_labels == atlas_label] = isc_value
+
+        isc_nifti_image = nib.Nifti1Image(
+            isc_volume,
+            atlas_image.affine,
+            header=atlas_image.header.copy(),
+        )
+
+        isc_nifti_image.header.set_data_dtype(np.float32)
+        nib.save(isc_nifti_image, isc_nifti_file)
+
+        print(f"Computed ISC for {stimulus_identifier} from {len(parcel_time_series_arrays)} subjects and {time_series_lengths[0]} timepoints")
+
+if __name__ == "__main__":
+    main()
