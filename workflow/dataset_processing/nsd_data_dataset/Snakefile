@@ -1,42 +1,143 @@
 import pandas as pd
-NSD_CFG=config['nsd_data']; NSD_DATASET_DIR=NSD_CFG['dataset_dir']; NSD_OUTPUT_DIR=NSD_CFG['processing_output_dir']
-NSD_MANIFEST_DIR=f'{NSD_OUTPUT_DIR}/manifests'; NSD_MANIFEST=f'{NSD_MANIFEST_DIR}/nsd_occurrence_manifest.tsv'; NSD_STIMULUS_MANIFEST=f'{NSD_MANIFEST_DIR}/nsd_stimulus_manifest.tsv'
-NSD_BOLD_DONE=f'{NSD_MANIFEST_DIR}/.bold_done'; NSD_PARCELS_DONE=f'{NSD_MANIFEST_DIR}/.parcels_done'; NSD_ISC_DONE=f'{NSD_MANIFEST_DIR}/.isc_done'
-NSD_PARCEL_ROOT=f'{NSD_OUTPUT_DIR}/parcels'; NSD_ISC_ROOT=f'{NSD_OUTPUT_DIR}/isc'; NSD_STIMULI_READY=NSD_CFG['stimuli_ready']; NSD_EXCLUDED_STIMULI=NSD_CFG['excluded_stimuli']
+
+NSD_CFG = config["nsd_data"]
+NSD_DATASET_DIR = NSD_CFG["dataset_dir"]
+NSD_OUTPUT_DIR = NSD_CFG["processing_output_dir"]
+
+NSD_MANIFEST_DIR = f"{NSD_OUTPUT_DIR}/manifests"
+NSD_MANIFEST = f"{NSD_MANIFEST_DIR}/nsd_occurrence_manifest.tsv"
+NSD_STIMULUS_MANIFEST = f"{NSD_MANIFEST_DIR}/nsd_stimulus_manifest.tsv"
+
+NSD_BOLD_DONE = f"{NSD_MANIFEST_DIR}/.bold_done"
+NSD_PARCELS_DONE = f"{NSD_MANIFEST_DIR}/.parcels_done"
+NSD_ISC_DONE = f"{NSD_MANIFEST_DIR}/.isc_done"
+
+NSD_PARCEL_ROOT = f"{NSD_OUTPUT_DIR}/parcels"
+NSD_ISC_ROOT = f"{NSD_OUTPUT_DIR}/isc"
+NSD_STIMULI_READY = NSD_CFG["stimuli_ready"]
+NSD_EXCLUDED_STIMULI = NSD_CFG["excluded_stimuli"]
 
 rule all_nsd_data_dataset:
-    input: NSD_ISC_DONE, NSD_STIMULI_READY, NSD_EXCLUDED_STIMULI
+    input:
+        NSD_BOLD_DONE,
+        NSD_PARCELS_DONE,
+        NSD_ISC_DONE,
+        NSD_STIMULI_READY,
+        NSD_EXCLUDED_STIMULI
 
 rule make_nsd_manifest:
-    output: manifest=NSD_MANIFEST, stimulus_manifest=NSD_STIMULUS_MANIFEST, excluded_stimuli=NSD_EXCLUDED_STIMULI
-    params: dataset_dir=NSD_DATASET_DIR, subjects=' '.join(str(x) for x in NSD_CFG['subjects']), functional_space=NSD_CFG.get('functional_space','func1pt8mm'), tr=NSD_CFG['tr'], event_duration_s=NSD_CFG['event_duration_s'], onset_shift_volumes=NSD_CFG.get('onset_shift_volumes',0), min_repetitions_per_subject=NSD_CFG['min_repetitions_per_subject'], repetitions_to_use=NSD_CFG['repetitions_to_use']
-    conda: 'envs/nsd_data_dataset_processing_environment.yaml'
-    shell: r'''python3 workflow/dataset_processing/nsd_data_dataset/scripts/make_nsd_manifest.py --dataset_dir {params.dataset_dir:q} --subjects {params.subjects} --functional_space {params.functional_space:q} --tr {params.tr} --event_duration_s {params.event_duration_s} --onset_shift_volumes {params.onset_shift_volumes} --min_repetitions_per_subject {params.min_repetitions_per_subject} --repetitions_to_use {params.repetitions_to_use} --output_manifest {output.manifest:q} --output_stimulus_manifest {output.stimulus_manifest:q} --output_excluded_stimuli {output.excluded_stimuli:q}'''
+    output:
+        manifest=NSD_MANIFEST, 
+        stimulus_manifest=NSD_STIMULUS_MANIFEST, 
+        excluded_stimuli=NSD_EXCLUDED_STIMULI
+    params:
+        dataset_dir=NSD_DATASET_DIR, 
+        subjects=" ".join(str(x) for x in NSD_CFG["subjects"]), 
+        functional_space=NSD_CFG.get("functional_space","func1pt8mm"), 
+        tr=NSD_CFG["tr"], 
+        event_duration_s=NSD_CFG["event_duration_s"], 
+        onset_shift_volumes=NSD_CFG.get("onset_shift_volumes",0), 
+        min_repetitions_per_subject=NSD_CFG["min_repetitions_per_subject"], 
+        repetitions_to_use=NSD_CFG["repetitions_to_use"]
+    conda:
+        "envs/nsd_data_dataset_processing_environment.yaml"
+    shell:
+        r'''
+            python3 workflow/dataset_processing/nsd_data_dataset/scripts/make_nsd_manifest.py \
+                --dataset_dir {params.dataset_dir:q} \
+                --subjects {params.subjects} \
+                --functional_space {params.functional_space:q} \
+                --tr {params.tr} \
+                --event_duration_s {params.event_duration_s} \
+                --onset_shift_volumes {params.onset_shift_volumes} \
+                --min_repetitions_per_subject {params.min_repetitions_per_subject} \
+                --repetitions_to_use {params.repetitions_to_use} \
+                --output_manifest {output.manifest:q} \
+                --output_stimulus_manifest {output.stimulus_manifest:q} \
+                --output_excluded_stimuli {output.excluded_stimuli:q}
+        '''
 
 rule assemble_nsd_bold:
-    input: manifest=NSD_MANIFEST
-    output: touch(NSD_BOLD_DONE)
-    params: dataset_dir=NSD_DATASET_DIR, interpolation=NSD_CFG.get('map_interpolation','cubic')
-    conda: 'envs/nsd_data_dataset_processing_environment.yaml'
-    shell: r'''python3 workflow/dataset_processing/nsd_data_dataset/scripts/assemble_nsd_bold.py --manifest {input.manifest:q} --dataset_dir {params.dataset_dir:q} --interpolation {params.interpolation:q}'''
+    input:
+        manifest=NSD_MANIFEST
+    output:
+        touch(NSD_BOLD_DONE)
+    params:
+        dataset_dir=NSD_DATASET_DIR, 
+        interpolation=NSD_CFG.get("map_interpolation","cubic")
+    conda:
+        "envs/nsd_data_dataset_processing_environment.yaml"
+    shell:
+        r'''
+            python3 workflow/dataset_processing/nsd_data_dataset/scripts/assemble_nsd_bold.py \
+                --manifest {input.manifest:q} \
+                --dataset_dir {params.dataset_dir:q} \
+                --interpolation {params.interpolation:q}
+        '''
 
 rule extract_nsd_parcels:
-    input: manifest=NSD_MANIFEST, bold_done=NSD_BOLD_DONE
-    output: touch(NSD_PARCELS_DONE)
-    params: output_root=NSD_OUTPUT_DIR, n_rois=config['atlas']['n_rois'], yeo_networks=config['atlas']['yeo_networks'], atlas_dir=config['atlas']['atlas_dir']
-    conda: 'envs/nsd_data_dataset_processing_environment.yaml'
-    shell: r'''python3 workflow/dataset_processing/nsd_data_dataset/scripts/extract_nsd_parcels.py --manifest {input.manifest:q} --output_root {params.output_root:q} --n_rois {params.n_rois} --yeo_networks {params.yeo_networks} --atlas_dir {params.atlas_dir:q}'''
+    input:
+        manifest=NSD_MANIFEST,
+        bold_done=NSD_BOLD_DONE
+    output:
+        touch(NSD_PARCELS_DONE)
+    params:
+        output_root=NSD_OUTPUT_DIR,
+        n_rois=config["atlas"]["n_rois"],
+        yeo_networks=config["atlas"]["yeo_networks"],
+        atlas_dir=config["atlas"]["atlas_dir"]
+    conda:
+        "envs/nsd_data_dataset_processing_environment.yaml"
+    shell:
+        r'''
+            python3 workflow/dataset_processing/nsd_data_dataset/scripts/extract_nsd_parcels.py \
+                --manifest {input.manifest:q} \
+                --output_root {params.output_root:q} \
+                --n_rois {params.n_rois} \
+                --yeo_networks {params.yeo_networks} \
+                --atlas_dir {params.atlas_dir:q}
+        '''
 
 rule compute_nsd_isc:
-    input: manifest=NSD_MANIFEST, parcels_done=NSD_PARCELS_DONE
-    output: isc_dir=directory(NSD_ISC_ROOT), done=touch(NSD_ISC_DONE)
-    params: parcel_root=NSD_PARCEL_ROOT, isc_root=NSD_ISC_ROOT, n_rois=config['atlas']['n_rois'], yeo_networks=config['atlas']['yeo_networks'], atlas_dir=config['atlas']['atlas_dir']
-    conda: 'envs/nsd_data_dataset_processing_environment.yaml'
-    shell: r'''python3 workflow/dataset_processing/nsd_data_dataset/scripts/compute_nsd_isc.py --manifest {input.manifest:q} --parcel_root {params.parcel_root:q} --isc_root {params.isc_root:q} --n_rois {params.n_rois} --yeo_networks {params.yeo_networks} --atlas_dir {params.atlas_dir:q}'''
+    input:
+        manifest=NSD_MANIFEST,
+        parcels_done=NSD_PARCELS_DONE
+    output:
+        isc_dir=directory(NSD_ISC_ROOT),
+        done=touch(NSD_ISC_DONE)
+    params:
+        parcel_root=NSD_PARCEL_ROOT,
+        isc_root=NSD_ISC_ROOT,
+        n_rois=config["atlas"]["n_rois"],
+        yeo_networks=config["atlas"]["yeo_networks"],
+        atlas_dir=config["atlas"]["atlas_dir"]
+    conda:
+        "envs/nsd_data_dataset_processing_environment.yaml"
+    shell:
+        r'''
+            python3 workflow/dataset_processing/nsd_data_dataset/scripts/compute_nsd_isc.py \
+                --manifest {input.manifest:q} \
+                --parcel_root {params.parcel_root:q} \
+                --isc_root {params.isc_root:q} \
+                --n_rois {params.n_rois} \
+                --yeo_networks {params.yeo_networks} \
+                --atlas_dir {params.atlas_dir:q}
+        '''
 
 rule export_nsd_stimuli:
-    input: stimulus_manifest=NSD_STIMULUS_MANIFEST
-    output: stimuli_dir=directory(NSD_CFG['stimuli_dir']['vision']), ready=touch(NSD_STIMULI_READY)
-    params: stimuli_hdf5=NSD_CFG['stimuli_hdf5']
-    conda: 'envs/nsd_data_dataset_processing_environment.yaml'
-    shell: r'''python3 workflow/dataset_processing/nsd_data_dataset/scripts/export_nsd_stimuli.py --stimulus_manifest {input.stimulus_manifest:q} --stimuli_hdf5 {params.stimuli_hdf5:q} --output_dir {output.stimuli_dir:q}'''
+    input:
+        stimulus_manifest=NSD_STIMULUS_MANIFEST
+    output:
+        stimuli_dir=directory(NSD_CFG["stimuli_dir"]["vision"]), 
+        ready=touch(NSD_STIMULI_READY)
+    params:
+        stimuli_hdf5=NSD_CFG["stimuli_hdf5"]
+    conda: 
+        "envs/nsd_data_dataset_processing_environment.yaml"
+    shell:
+        r'''
+            python3 workflow/dataset_processing/nsd_data_dataset/scripts/export_nsd_stimuli.py \
+                --stimulus_manifest {input.stimulus_manifest:q} \
+                --stimuli_hdf5 {params.stimuli_hdf5:q} \
+                --output_dir {output.stimuli_dir:q}
+        '''

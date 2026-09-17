@@ -248,17 +248,34 @@ narratives:
 
 nature_stories:
   number_of_neighbours: 3
-  dataset_dir: "resources/datasets/nature_stories_dataset"
+  processing_output_dir: "results/mind/nature_stories"
+  stimuli_dir:
+    language: "resources/datasets/nature_stories_dataset/stimuli/transcripts"
   responses_dir: "resources/datasets/nature_stories_dataset/responses"
   mappers_dir: "resources/datasets/nature_stories_dataset/mappers"
   run_onsets: "resources/datasets/nature_stories_dataset/responses/new_run_onsets.json" # "resources/datasets/nature_stories_dataset/responses/run_onsets.json"
   textgrids_dir: "resources/datasets/nature_stories_dataset/stimuli/textgrids"
-  processing_output_dir: "results/mind/nature_stories"
-  stimuli_dir:
-    language: "resources/datasets/nature_stories_dataset/stimuli/transcripts"
   excluded_stimuli: "resources/datasets/nature_stories_dataset/excluded_stimuli.txt"
   stimuli_ready: "resources/datasets/nature_stories_dataset/.stimuli_ready"
   subjects: 11
+
+nsd_data:
+  number_of_neighbours: 5
+  dataset_dir: "resources/datasets/nsd_data_dataset"
+  processing_output_dir: "results/mind/nsd_data"
+  stimuli_hdf5: "resources/datasets/nsd_data_dataset/nsddata_stimuli/stimuli/nsd/nsd_stimuli.hdf5"
+  stimuli_dir:
+    vision: "resources/datasets/nsd_data_dataset/stimuli/images"
+  excluded_stimuli: "resources/datasets/nsd_data_dataset/excluded_stimuli.txt"
+  stimuli_ready: "resources/datasets/nsd_data_dataset/.stimuli_ready"
+  subjects: 8
+  functional_space: "func1pt8mm"
+  tr: 1.3333333333333333
+  event_duration_s: 4.0
+  onset_shift_volumes: 0
+  min_repetitions_per_subject: 3
+  repetitions_to_use: 3
+  map_interpolation: "cubic"
 
 atlas:
   atlas_dir: "resources/atlases"

@@ -2,8 +2,6 @@ import json
 
 from pathlib import Path
 
-NATURE_STORIES_DATASET_DIR = config["nature_stories"]["dataset_dir"]
-
 NATURE_STORIES_RESPONSES_DIR = config["nature_stories"]["responses_dir"]
 NATURE_STORIES_MAPPERS_DIR = config["nature_stories"]["mappers_dir"]
 NATURE_STORIES_RUN_ONSETS = config["nature_stories"]["run_onsets"]
