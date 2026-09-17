@@ -156,6 +156,7 @@ datasets:
   - "caption_scene"
   - "narratives"
   - "nature_stories"
+  - "nsd_data"
 
 caption_scene:
   number_of_neighbours: [5,50,250,500,1000]
