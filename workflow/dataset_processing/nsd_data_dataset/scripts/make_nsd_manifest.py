@@ -18,17 +18,33 @@ def sid(x): return f"nsd-{int(x):05d}"
 def discover(dataset_dir, subject, functional_space):
     root=dataset_dir/'nsddata_timeseries'/'ppdata'/f'subj{subject:02d}'/functional_space
     ddir=root/'design'; bdir=root/'timeseries'
-    if not ddir.is_dir(): raise FileNotFoundError(ddir)
-    if not bdir.is_dir(): raise FileNotFoundError(bdir)
-    ds={}; bs={}
+
+    if not ddir.is_dir():
+        raise FileNotFoundError(ddir)
+    
+    if not bdir.is_dir():
+        raise FileNotFoundError(bdir)
+
+    ds={}
+    bs={}
+
     for p in sorted(ddir.glob('design_session*_run*.tsv')):
         m=DESIGN_RE.match(p.name)
-        if m: ds[(int(m['session']),int(m['run']))]=p
+
+        if m:
+            ds[(int(m['session']),int(m['run']))]=p
+
     for p in sorted(bdir.glob('timeseries_session*_run*.nii.gz')):
         m=BOLD_RE.match(p.name)
-        if m: bs[(int(m['session']),int(m['run']))]=p
+
+        if m:
+            bs[(int(m['session']),int(m['run']))]=p
+
     keys=sorted(set(ds)&set(bs))
-    if not keys: raise ValueError(f'No matching design/BOLD runs for subj{subject:02d}')
+
+    if not keys:
+        raise ValueError(f'No matching design/BOLD runs for subj{subject:02d}')
+    
     return [(s,r,ds[(s,r)],bs[(s,r)]) for s,r in keys]
 
 def main():
