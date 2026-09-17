@@ -186,14 +186,29 @@ def main():
         for row in concept_df.itertuples(index=False)
     ]
 
+    for label, values in zip(labels, boxplot_values):
+        q1 = np.quantile(values, 0.25)
+        median = np.median(values)
+        q3 = np.quantile(values, 0.75)
+
+        print(f"{label}: n={len(values)}, unique={len(np.unique(values))}, Q1={q1:.6f}, median={median:.6f}, Q3={q3:.6f}, IQR={q3 - q1:.6f}")
+
     concept_level_path = Path(args.concept_level_plot)
     concept_level_path.parent.mkdir(parents=True, exist_ok=True)
 
     fig_width = max(10, 0.75*len(labels))
     fig, ax = plt.subplots(figsize=(fig_width, 7))
 
-    ax.boxplot(boxplot_values, positions=range(len(labels)), widths=0.55, showfliers=False,)
-    ax.scatter(concept_df["x_position"] + jitter, concept_df["observed_spearman_coefficient"], s=10, alpha=0.20, edgecolors="none",)
+    ax.scatter(concept_df["x_position"] + jitter, concept_df["observed_spearman_coefficient"], s=10, alpha=0.20, edgecolors="none", zorder=1,)
+    ax.boxplot(boxplot_values, 
+               positions=range(len(labels)), 
+               widths=0.55, 
+               showfliers=False,
+               boxprops={"linewidth": 1.5,},
+               whiskerprops={"linewidth": 1.5,},
+               capprops={"linewidth": 1.5,},
+               medianprops={"linewidth": 1.5,},
+               zorder=3,)
     ax.axhline(0.0, linestyle="--", linewidth=1.2, label="No rank correlation",)
 
     ax.set_xticks(range(len(labels)))
