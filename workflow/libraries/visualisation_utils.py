@@ -32,8 +32,6 @@ def deterministic_jitter(label, concept, width=0.5):
 
     return (unit_interval_value - 0.5)*width
 
-import hashlib
-
 MODEL_TICK_ROTATION = 55
 MODEL_FIGURE_HEIGHT = 7
 MODEL_FIGURE_MIN_WIDTH = 10
