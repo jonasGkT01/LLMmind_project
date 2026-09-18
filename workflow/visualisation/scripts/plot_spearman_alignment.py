@@ -191,8 +191,16 @@ def main():
         median = np.median(values)
         q3 = np.quantile(values, 0.75)
 
-        print(f"{label}: n={len(values)}, unique={len(np.unique(values))}, Q1={q1:.6f}, median={median:.6f}, Q3={q3:.6f}, IQR={q3 - q1:.6f}")
-
+        print(f"{label}: "
+              f"n={len(values)}, "
+              f"unique={len(np.unique(values))}, "
+              f"min={np.min(values):.9f}, "
+              f"Q1={q1:.9f}, "
+              f"median={median:.9f}, "
+              f"Q3={q3:.9f}, "
+              f"max={np.max(values):.9f}, "
+              f"IQR={q3 - q1:.9f}")
+    
     concept_level_path = Path(args.concept_level_plot)
     concept_level_path.parent.mkdir(parents=True, exist_ok=True)
 

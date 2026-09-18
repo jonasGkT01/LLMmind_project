@@ -9,6 +9,7 @@ import pandas as pd
 from libraries.manage_model_metadata import model_sort_key, parse_model_parameters
 from libraries.path_metadata import parse_llm_brain_alignment_score_path
 from libraries.visualisation_utils import deterministic_jitter
+from public_datasets.molilab_cold_back.PignochinoSarcomi.PignochinoSarcomi.local.src.stat_base import label
 
 def read_model_enrichments(
     path,
@@ -137,7 +138,15 @@ def main():
         median = np.median(values)
         q3 = np.quantile(values, 0.75)
 
-        print(f"{label}: n={len(values)}, unique={len(np.unique(values))}, Q1={q1:.6f}, median={median:.6f}, Q3={q3:.6f}, IQR={q3 - q1:.6f}")
+        print(f"{label}: "
+              f"n={len(values)}, "
+              f"unique={len(np.unique(values))}, "
+              f"min={np.min(values):.9f}, "
+              f"Q1={q1:.9f}, "
+              f"median={median:.9f}, "
+              f"Q3={q3:.9f}, "
+              f"max={np.max(values):.9f}, "
+              f"IQR={q3 - q1:.9f}")
 
     output_path = Path(args.plot)
     output_path.parent.mkdir(parents=True, exist_ok=True,)
