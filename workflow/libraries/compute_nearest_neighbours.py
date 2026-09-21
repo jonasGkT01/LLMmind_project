@@ -42,7 +42,12 @@ def create_neighbour_mask(neighbours):
 
     return neighbour_mask, concept_indices
 
-def relabel_nearest_neighbours(observed_neighbours, permutation, inverse_permutation, concept_indices,):
+def relabel_nearest_neighbours(
+    observed_neighbours,
+    permutation,
+    inverse_permutation,
+    concept_indices,
+):
     inverse_permutation[permutation] = concept_indices
 
     return inverse_permutation[observed_neighbours[permutation]]
