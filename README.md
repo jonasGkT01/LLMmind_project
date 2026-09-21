@@ -43,7 +43,9 @@ workflow/
   llm_llm_alignment/        Model-model alignment scoring
   spearman_alignment/       Spearman rank-correlation alignment (model- and concept-level)
   visualisation/            Plotting rules (heatmaps, line plots, boxplots)
-  envs/                     Conda environments, one per pipeline stage
+  envs/                     Base environment for running Snakemake itself
+                             (LLMmind_project_environment.yaml spec + the
+                             materialized LLMmind_project/ conda prefix)
 resources/
   atlases/                  Brain parcellation atlas used to extract ROI-level signal
   datasets/                 Raw dataset inputs (fMRI + stimuli) — not tracked in git
@@ -80,10 +82,15 @@ on demand by the `llm_nearest_neighbours` module.
 
 The project uses conda environments managed per pipeline stage under
 `workflow/*/envs/*.yaml`, plus a base environment for running Snakemake
-itself at `workflow/envs/LLMmind_project`.
+itself at `workflow/envs/LLMmind_project`, specified by
+`workflow/envs/LLMmind_project_environment.yaml` (just Python and
+`snakemake-minimal`).
 
 ```bash
-# create/activate the base environment (see .envrc for the expected path)
+# create the base environment from its spec (first time only)
+conda env create -f workflow/envs/LLMmind_project_environment.yaml -p workflow/envs/LLMmind_project
+
+# activate it (see .envrc for the expected path)
 conda activate workflow/envs/LLMmind_project
 ```
 
