@@ -9,7 +9,7 @@ import pandas as pd
 from libraries.compute_statistics import benjamini_hochberg
 from libraries.manage_model_metadata import model_family, model_sort_key, parse_model_parameters
 from libraries.validate_data import validate_required_columns
-from libraries.visualisation_utils import significance_label, deterministic_jitter
+from libraries.visualisation_utils import significance_label, deterministic_jitter, log_boxplot_summary_statistics
 
 def spearman_ylim(values, padding=0.10, minimum_limit=0.10, step=0.05):
     values = np.asarray(values, dtype=float)
@@ -186,21 +186,8 @@ def main():
         for row in concept_df.itertuples(index=False)
     ]
 
-    for label, values in zip(labels, boxplot_values):
-        q1 = np.quantile(values, 0.25)
-        median = np.median(values)
-        q3 = np.quantile(values, 0.75)
+    log_boxplot_summary_statistics(labels, boxplot_values)
 
-        print(f"{label}: "
-              f"n={len(values)}, "
-              f"unique={len(np.unique(values))}, "
-              f"min={np.min(values):.9f}, "
-              f"Q1={q1:.9f}, "
-              f"median={median:.9f}, "
-              f"Q3={q3:.9f}, "
-              f"max={np.max(values):.9f}, "
-              f"IQR={q3 - q1:.9f}")
-    
     concept_level_path = Path(args.concept_level_plot)
     concept_level_path.parent.mkdir(parents=True, exist_ok=True)
 

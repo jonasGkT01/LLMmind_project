@@ -74,3 +74,19 @@ def save_model_figure(fig, output_path,):
     fig.subplots_adjust(bottom=0.24, top=0.82,)
     fig.savefig(output_path, dpi=300, bbox_inches="tight",)
     plt.close(fig)
+
+def log_boxplot_summary_statistics(labels, boxplot_values):
+    for label, values in zip(labels, boxplot_values):
+        q1 = np.quantile(values, 0.25)
+        median = np.median(values)
+        q3 = np.quantile(values, 0.75)
+
+        print(f"{label}: "
+              f"n={len(values)}, "
+              f"unique={len(np.unique(values))}, "
+              f"min={np.min(values):.9f}, "
+              f"Q1={q1:.9f}, "
+              f"median={median:.9f}, "
+              f"Q3={q3:.9f}, "
+              f"max={np.max(values):.9f}, "
+              f"IQR={q3 - q1:.9f}")
