@@ -6,6 +6,7 @@ import pandas as pd
 
 from libraries.compute_alignment import compute_common_neighbours
 from libraries.compute_nearest_neighbours import compute_topk_indices, create_neighbour_mask, relabel_nearest_neighbours
+from libraries.compute_statistics import create_relabelling_rng
 
 def make_concept_index(concepts):
     return {concept: i for i, concept in enumerate(concepts)}
@@ -122,7 +123,7 @@ def compute_relabelled_alignment_scores(similarity_df, brain_nearest_neighbours_
     inverse_permutation = np.empty(len(concepts), dtype=np.int64)
 
     for shuffle_i in range(number_of_relabellings):
-        rng = np.random.default_rng(random_seed + shuffle_i)
+        rng = create_relabelling_rng(random_seed, shuffle_i)
         permutation = rng.permutation(len(concepts))
         relabelled_llm_neighbours = relabel_nearest_neighbours(
             observed_neighbours=observed_llm_neighbours,

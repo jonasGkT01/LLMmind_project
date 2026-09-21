@@ -3,6 +3,12 @@ import numpy as np
 def empirical_upper_tail_p_value(number_at_least_as_large, number_of_relabellings,):
     return (number_at_least_as_large + 1)/(number_of_relabellings + 1)
 
+def create_relabelling_rng(random_seed, shuffle_index):
+    """A fresh, independently-seeded generator for one relabelling shuffle, so
+    that relabellings can be produced in any order (or in parallel) and still
+    reproduce the same sequence for a given random_seed."""
+    return np.random.default_rng(random_seed + shuffle_index)
+
 def benjamini_hochberg(p_values):
     p_values = np.asarray(p_values, dtype = float,)
 

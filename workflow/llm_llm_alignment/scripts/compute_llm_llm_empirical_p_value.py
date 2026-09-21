@@ -7,7 +7,7 @@ import pandas as pd
 
 from libraries.compute_alignment import compute_mean_alignment_score
 from libraries.compute_nearest_neighbours import compute_topk_indices, create_neighbour_mask, relabel_nearest_neighbours
-from libraries.compute_statistics import empirical_upper_tail_p_value
+from libraries.compute_statistics import create_relabelling_rng, empirical_upper_tail_p_value
 from libraries.validate_data import validate_similarity_dataframe
 
 def select_shared_concepts(similarity_df_1, similarity_df_2):
@@ -42,10 +42,10 @@ def read_observed_alignment_score(path):
 def compute_empirical_p_value(observed_alignment_score, neighbours_1, neighbours_2, number_of_neighbours, number_of_relabellings, random_seed):
     neighbour_mask_1, concept_indices = create_neighbour_mask(neighbours_1)
     inverse_permutation = np.empty(neighbours_2.shape[0], dtype=np.int64)
-    rng = np.random.default_rng(random_seed)
     number_at_least_as_extreme = 0
 
     for shuffle_i in range(number_of_relabellings):
+        rng = create_relabelling_rng(random_seed, shuffle_i)
         permutation = rng.permutation(neighbours_2.shape[0])
         relabelled_neighbours_2 = relabel_nearest_neighbours(
             observed_neighbours=neighbours_2,

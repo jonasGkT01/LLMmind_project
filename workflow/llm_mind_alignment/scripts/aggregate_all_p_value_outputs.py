@@ -6,6 +6,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from libraries.compute_statistics import empirical_upper_tail_p_value
+
 def parse_p_value_path(path):
     filename = Path(path).name
 
@@ -244,7 +246,10 @@ def compute_model_level_empirical_p_value(
 
     number_of_null_scores_at_least_as_large = np.sum(null_model_alignment_scores >= observed_model_alignment_score)
 
-    model_level_empirical_p_value = (number_of_null_scores_at_least_as_large + 1)/(number_of_relabellings + 1)
+    model_level_empirical_p_value = empirical_upper_tail_p_value(
+        number_at_least_as_large=number_of_null_scores_at_least_as_large,
+        number_of_relabellings=number_of_relabellings,
+    )
 
     return (
         model_level_empirical_p_value,

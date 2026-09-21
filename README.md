@@ -128,13 +128,20 @@ adjust a dataset's parameters.
 
 Key outputs land under `results/`:
 
-- `results/alignment_scores/` — per-(dataset, model, similarity, k) brain-model
-  and model-model alignment scores and p-values (empirical + hypergeometric)
+- `results/alignment_scores/` — per-(dataset, model, similarity, k) alignment
+  scores and significance tests. Brain-model results get a per-concept
+  empirical and hypergeometric p-value plus a model-level empirical p-value;
+  model-model results get a single model-pair-level empirical p-value (no
+  per-concept or hypergeometric test). Both use the same random-shuffling
+  method to build their null distributions.
 - `results/all_alignment_scores.tsv`, `results/all_spearman_alignment_scores.tsv`
   — combined summary tables across all configurations
 - `results/alignment_heatmaps/`, `results/alignment_p_value_heatmaps/`,
   `results/alignment_lineplots/`, `results/alignment_enrichment_plots/`,
-  `results/spearman_alignment/*_plots/` — summary visualisations
+  `results/spearman_alignment/*_plots/` — summary visualisations. In the
+  concept-level enrichment and Spearman boxplots, a model whose per-concept
+  scores show no spread renders as a flat, easy-to-miss box; those are
+  marked with a red diamond rather than left looking like missing data.
 
 ## Documentation
 

@@ -9,7 +9,7 @@ import pandas as pd
 from libraries.compute_statistics import benjamini_hochberg
 from libraries.manage_model_metadata import model_family, model_sort_key, parse_model_parameters
 from libraries.validate_data import validate_required_columns
-from libraries.visualisation_utils import significance_label, deterministic_jitter, log_boxplot_summary_statistics
+from libraries.visualisation_utils import significance_label, deterministic_jitter, mark_degenerate_boxplot_statistics
 
 def spearman_ylim(values, padding=0.10, minimum_limit=0.10, step=0.05):
     values = np.asarray(values, dtype=float)
@@ -186,8 +186,6 @@ def main():
         for row in concept_df.itertuples(index=False)
     ]
 
-    log_boxplot_summary_statistics(labels, boxplot_values)
-
     concept_level_path = Path(args.concept_level_plot)
     concept_level_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -204,6 +202,7 @@ def main():
                capprops={"linewidth": 1.5,},
                medianprops={"linewidth": 1.5,},
                zorder=3,)
+    mark_degenerate_boxplot_statistics(ax, boxplot_values)
     ax.axhline(0.0, linestyle="--", linewidth=1.2, label="No rank correlation",)
 
     ax.set_xticks(range(len(labels)))

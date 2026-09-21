@@ -8,7 +8,7 @@ import pandas as pd
 
 from libraries.manage_model_metadata import model_sort_key, parse_model_parameters
 from libraries.path_metadata import parse_llm_brain_alignment_score_path
-from libraries.visualisation_utils import deterministic_jitter, log_boxplot_summary_statistics
+from libraries.visualisation_utils import deterministic_jitter, mark_degenerate_boxplot_statistics
 
 def read_model_enrichments(
     path,
@@ -132,30 +132,6 @@ def main():
         for row in enrichment_df.itertuples(index=False)
     ]
 
-    log_boxplot_summary_statistics(labels, boxplot_values)
-
-#    with open("boxplot_diagnostics.txt", "a") as diagnostic_file:
-#        for label, values in zip(labels, boxplot_values):
-#            q1 = np.quantile(values, 0.25)
-#            median = np.median(values)
-#            q3 = np.quantile(values, 0.75)
-#
-#            print(
-#                f"dataset={args.dataset}, "
-#                f"similarity={args.similarity_type}, "
-#                f"neighbours={args.number_of_neighbours}, "
-#                f"model={label}: "
-#                f"n={len(values)}, "
-#                f"unique={len(np.unique(values))}, "
-#                f"min={np.min(values):.9f}, "
-#                f"Q1={q1:.9f}, "
-#                f"median={median:.9f}, "
-#                f"Q3={q3:.9f}, "
-#                f"max={np.max(values):.9f}, "
-#                f"IQR={q3 - q1:.9f}",
-#                file=diagnostic_file,
-#            )
-
     output_path = Path(args.plot)
     output_path.parent.mkdir(parents=True, exist_ok=True,)
 
@@ -172,6 +148,7 @@ def main():
                capprops={"linewidth": 1.5,},
                medianprops={"linewidth": 1.5,},
                zorder=3,)
+    mark_degenerate_boxplot_statistics(ax, boxplot_values)
     ax.axhline(1.0, linestyle="--", linewidth=1.2, label="Hypergeometric expectation",)
 
     ax.set_xticks(range(len(labels)))
