@@ -1,5 +1,4 @@
 .snakemake
-docs/
 resources/
 results/
 workflow/libraries/__pycache__/
