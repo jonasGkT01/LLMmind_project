@@ -134,6 +134,28 @@ def main():
 
     log_boxplot_summary_statistics(labels, boxplot_values)
 
+    with open("boxplot_diagnostics.txt", "a") as diagnostic_file:
+        for label, values in zip(labels, boxplot_values):
+            q1 = np.quantile(values, 0.25)
+            median = np.median(values)
+            q3 = np.quantile(values, 0.75)
+
+            print(
+                f"dataset={args.dataset}, "
+                f"similarity={args.similarity_type}, "
+                f"neighbours={args.number_of_neighbours}, "
+                f"model={label}: "
+                f"n={len(values)}, "
+                f"unique={len(np.unique(values))}, "
+                f"min={np.min(values):.9f}, "
+                f"Q1={q1:.9f}, "
+                f"median={median:.9f}, "
+                f"Q3={q3:.9f}, "
+                f"max={np.max(values):.9f}, "
+                f"IQR={q3 - q1:.9f}",
+                file=diagnostic_file,
+            )
+
     output_path = Path(args.plot)
     output_path.parent.mkdir(parents=True, exist_ok=True,)
 
