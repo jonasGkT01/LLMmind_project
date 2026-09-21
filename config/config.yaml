@@ -261,7 +261,7 @@ nature_stories:
   subjects: 11
 
 nsd_data:
-  number_of_neighbours: 5
+  number_of_neighbours: [5, 10, 25, 50]
   dataset_dir: "resources/datasets/nsd_data_dataset"
   processing_output_dir: "results/mind/nsd_data"
   stimuli_hdf5: "resources/datasets/nsd_data_dataset/nsddata_stimuli/stimuli/nsd/nsd_stimuli.hdf5"
