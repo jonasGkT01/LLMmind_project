@@ -9,7 +9,6 @@ import pandas as pd
 from libraries.manage_model_metadata import model_sort_key, parse_model_parameters
 from libraries.path_metadata import parse_llm_brain_alignment_score_path
 from libraries.visualisation_utils import deterministic_jitter
-from public_datasets.molilab_cold_back.PignochinoSarcomi.PignochinoSarcomi.local.src.stat_base import label
 
 def read_model_enrichments(
     path,
