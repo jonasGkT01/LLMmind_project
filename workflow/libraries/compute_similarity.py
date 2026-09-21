@@ -9,7 +9,7 @@ def normalize_l2(x):
         if norm == 0:
             return x
 
-        return x / norm
+        return x/norm
 
     if x.ndim != 2:
         raise ValueError(f"Expected 1D or 2D array, got {x.ndim}D")

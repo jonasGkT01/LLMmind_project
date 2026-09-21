@@ -1,19 +1,12 @@
 import numpy as np
 
-def validate_required_columns(
-    df,
-    required_columns,
-    source = "Dataframe",
-):
+def validate_required_columns(df, required_columns, source = "Dataframe",):
     missing_columns = (set(required_columns) - set(df.columns))
 
     if missing_columns:
         raise ValueError(f"{source} is missing required columns: {sorted(missing_columns)}")
 
-def validate_similarity_dataframe(
-    similarity_df,
-    source="Similarity dataframe",
-):
+def validate_similarity_dataframe(similarity_df, source="Similarity dataframe",):
     if similarity_df.shape[0] != similarity_df.shape[1]:
         raise ValueError(f"{source} is not square: shape={similarity_df.shape}")
 

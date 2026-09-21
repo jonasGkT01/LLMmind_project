@@ -40,10 +40,7 @@ MODEL_FIGURE_WIDTH_PER_MODEL = 0.75
 def model_figure_width(number_of_models):
     return max(MODEL_FIGURE_MIN_WIDTH, MODEL_FIGURE_WIDTH_PER_MODEL*number_of_models,)
 
-def style_model_x_axis(
-    ax,
-    labels,
-):
+def style_model_x_axis(ax, labels,):
     positions = np.arange(len(labels))
 
     ax.set_xticks(positions)
@@ -53,10 +50,7 @@ def style_model_x_axis(
 
     return positions
 
-def add_model_family_annotations(
-    ax,
-    models,
-):
+def add_model_family_annotations(ax, models,):
     start = 0
 
     while start < len(models):
@@ -75,10 +69,7 @@ def add_model_family_annotations(
 
         start = end
 
-def save_model_figure(
-    fig,
-    output_path,
-):
+def save_model_figure(fig, output_path,):
     fig.tight_layout()
     fig.subplots_adjust(bottom=0.24, top=0.82,)
     fig.savefig(output_path, dpi=300, bbox_inches="tight",)

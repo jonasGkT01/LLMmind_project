@@ -6,11 +6,7 @@ def nearest_neighbours_to_dict(nearest_neighbours_df):
         for concept, group in nearest_neighbours_df.groupby("concept")
     }
 
-def compute_alignment_scores(
-    nearest_neighbours_df_1,
-    nearest_neighbours_df_2,
-    number_of_neighbours,
-):
+def compute_alignment_scores(nearest_neighbours_df_1, nearest_neighbours_df_2, number_of_neighbours,):
     nearest_neighbours_dict_1 = nearest_neighbours_to_dict(nearest_neighbours_df_1)
     nearest_neighbours_dict_2 = nearest_neighbours_to_dict(nearest_neighbours_df_2)
 
@@ -38,19 +34,10 @@ def compute_alignment_scores(
 
     return pd.DataFrame(rows, columns=["concept", "common_neighbours", "alignment_score", "alignment_score_percentage",],)
 
-def compute_common_neighbours(
-    neighbours,
-    neighbour_mask,
-    concept_indices,
-):
+def compute_common_neighbours(neighbours, neighbour_mask, concept_indices,):
     return neighbour_mask[concept_indices[:, None], neighbours,].sum(axis=1)
 
-def compute_mean_alignment_score(
-    neighbour_mask,
-    neighbours,
-    concept_indices,
-    number_of_neighbours,
-):
+def compute_mean_alignment_score(neighbour_mask, neighbours, concept_indices, number_of_neighbours,):
     if neighbour_mask.shape[0] != neighbours.shape[0]:
         raise ValueError("The two nearest-neighbour representations have different numbers of concepts")
 

@@ -42,12 +42,7 @@ def get_resampled_parcel_matrix(img, atlas_img, n_rois, cache):
 
     return cache[key]
 
-def extract_parcels(
-    bold_file,
-    atlas_img,
-    n_rois,
-    parcel_matrix_cache,
-):
+def extract_parcels(bold_file, atlas_img, n_rois, parcel_matrix_cache,):
     img = nib.load(str(bold_file))
 
     if img.ndim != 4:

@@ -1,9 +1,6 @@
 import numpy as np
 
-def empirical_upper_tail_p_value(
-    number_at_least_as_large,
-    number_of_relabellings,
-):
+def empirical_upper_tail_p_value(number_at_least_as_large, number_of_relabellings,):
     return (number_at_least_as_large + 1)/(number_of_relabellings + 1)
 
 def benjamini_hochberg(p_values):

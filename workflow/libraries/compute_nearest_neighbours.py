@@ -1,10 +1,7 @@
 import numpy as np
 import pandas as pd
 
-def compute_topk_indices(
-    similarity,
-    number_of_neighbours,
-):
+def compute_topk_indices(similarity, number_of_neighbours,):
     if similarity.shape[1] - 1 < number_of_neighbours:
         raise ValueError(f"Requested {number_of_neighbours} neighbours, but only {similarity.shape[1] - 1} candidates are available")
 
@@ -18,10 +15,7 @@ def compute_topk_indices(
 
     return idx_topk.astype(np.int64)
 
-def create_nearest_neighbours_dataframe(
-    similarity_df,
-    number_of_neighbours,
-):
+def create_nearest_neighbours_dataframe(similarity_df, number_of_neighbours,):
     similarity = similarity_df.to_numpy(copy=True)
 
     idx_topk = compute_topk_indices(similarity = similarity, number_of_neighbours=number_of_neighbours,)
@@ -48,12 +42,7 @@ def create_neighbour_mask(neighbours):
 
     return neighbour_mask, concept_indices
 
-def relabel_nearest_neighbours(
-    observed_neighbours,
-    permutation,
-    inverse_permutation,
-    concept_indices,
-):
+def relabel_nearest_neighbours(observed_neighbours, permutation, inverse_permutation, concept_indices,):
     inverse_permutation[permutation] = concept_indices
 
     return inverse_permutation[observed_neighbours[permutation]]

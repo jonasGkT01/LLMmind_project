@@ -35,10 +35,7 @@ def model_family_order(parameters_by_model):
     return family_order
 
 
-def model_sort_key(
-    model,
-    parameters_by_model,
-):
+def model_sort_key(model, parameters_by_model,):
     if model not in parameters_by_model:
         raise ValueError(f"No number of parameters was provided for model {model}")
 
