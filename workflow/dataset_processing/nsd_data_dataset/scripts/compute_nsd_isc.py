@@ -45,16 +45,16 @@ def main():
     atlas_labels = atlas_image.get_fdata().astype(np.int32)
 
     for stimulus_identifier, stimulus_manifest in isc_manifest.groupby("stimulus_id", sort=False):
-        if stimulus_manifest["subject"].duplicated().any():
-            raise ValueError(f"Stimulus {stimulus_identifier} contains duplicated subjects in the ISC manifest")
-
+        # A stimulus can be presented to a subject more than once: each presentation is
+        # an independent fMRI observation, so repeated subjects are expected here and
+        # all of their observations contribute to the ISC average.
         parcel_time_series_files = [
             Path(path)
             for path in stimulus_manifest["parcel_time_series"].tolist()
         ]
 
         if len(parcel_time_series_files) < 2:
-            raise ValueError(f"ISC requires at least two subjects for stimulus {stimulus_identifier}")
+            raise ValueError(f"ISC requires at least two usable fMRI observations for stimulus {stimulus_identifier}, got {len(parcel_time_series_files)}")
 
         parcel_time_series_arrays = []
 
@@ -123,7 +123,7 @@ def main():
         isc_nifti_image.header.set_data_dtype(np.float32)
         nib.save(isc_nifti_image, isc_nifti_file)
 
-        print(f"Computed ISC for {stimulus_identifier} from {len(parcel_time_series_arrays)} subjects and {time_series_lengths[0]} timepoints")
+        print(f"Computed ISC for {stimulus_identifier} from {len(parcel_time_series_arrays)} observations and {time_series_lengths[0]} timepoints")
 
 if __name__ == "__main__":
     main()

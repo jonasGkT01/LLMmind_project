@@ -23,37 +23,37 @@ NSD_ISC_DIRECTORY = f"{NSD_PROCESSING_OUTPUT_DIRECTORY}/isc"
 NSD_STIMULI_READY = config["nsd_data"]["stimuli_ready"]
 NSD_EXCLUDED_STIMULI = config["nsd_data"]["excluded_stimuli"]
 
-def nsd_parcel_time_series_output(subject, stimulus_identifier):
-    return f"{NSD_PROCESSING_OUTPUT_DIRECTORY}/parcels/task-{stimulus_identifier}/sub-{int(subject):02d}_task-{stimulus_identifier}_parcel_ts.npy"
+def nsd_parcel_time_series_output(subject, stimulus_identifier, repetition):
+    return f"{NSD_PROCESSING_OUTPUT_DIRECTORY}/parcels/task-{stimulus_identifier}/sub-{int(subject):02d}_rep-{int(repetition):02d}_task-{stimulus_identifier}_parcel_ts.npy"
 
 def write_nsd_parcel_manifest(occurrence_manifest_path, output_manifest_path):
     occurrence_manifest = pd.read_csv(occurrence_manifest_path, sep="\t")
-    required_columns = {"subject", "stimulus_id", "output_bold"}
+    required_columns = {"subject", "stimulus_id", "repetition", "output_bold"}
     missing_columns = required_columns - set(occurrence_manifest.columns)
 
     if missing_columns:
         raise ValueError(f"Occurrence manifest is missing columns: {sorted(missing_columns)}")
 
-    unique_samples = occurrence_manifest[["subject", "stimulus_id", "output_bold"]].drop_duplicates().sort_values(["stimulus_id", "subject"])
-    subject_stimulus_counts = unique_samples.groupby(["subject", "stimulus_id"]).size()
-    invalid_samples = subject_stimulus_counts[subject_stimulus_counts != 1]
+    unique_samples = occurrence_manifest[["subject", "stimulus_id", "repetition", "output_bold"]].drop_duplicates().sort_values(["stimulus_id", "subject", "repetition"])
+    sample_counts = unique_samples.groupby(["subject", "stimulus_id", "repetition"]).size()
+    invalid_samples = sample_counts[sample_counts != 1]
 
     if not invalid_samples.empty:
-        raise ValueError("Found subject/stimulus pairs with multiple BOLD outputs:\n" + invalid_samples.to_string())
+        raise ValueError("Found subject/stimulus/repetition triples with multiple BOLD outputs:\n" + invalid_samples.to_string())
 
     output_manifest_path = Path(output_manifest_path)
     output_manifest_path.parent.mkdir(parents=True, exist_ok=True)
 
     with output_manifest_path.open("w") as output_manifest_file:
-        output_manifest_file.write("subject\tstimulus_id\tbold_file\tparcel_time_series\n")
+        output_manifest_file.write("subject\tstimulus_id\trepetition\tbold_file\tparcel_time_series\n")
 
         for sample in unique_samples.itertuples(index=False):
-            parcel_time_series_file = nsd_parcel_time_series_output(sample.subject, sample.stimulus_id)
-            output_manifest_file.write(f"{int(sample.subject)}\t{sample.stimulus_id}\t{sample.output_bold}\t{parcel_time_series_file}\n")
+            parcel_time_series_file = nsd_parcel_time_series_output(sample.subject, sample.stimulus_id, sample.repetition)
+            output_manifest_file.write(f"{int(sample.subject)}\t{sample.stimulus_id}\t{int(sample.repetition)}\t{sample.output_bold}\t{parcel_time_series_file}\n")
 
 def write_nsd_isc_manifest(parcel_manifest_path, output_manifest_path):
     parcel_manifest = pd.read_csv(parcel_manifest_path, sep="\t")
-    required_columns = {"subject", "stimulus_id", "parcel_time_series"}
+    required_columns = {"subject", "stimulus_id", "repetition", "parcel_time_series"}
     missing_columns = required_columns - set(parcel_manifest.columns)
 
     if missing_columns:
@@ -63,16 +63,16 @@ def write_nsd_isc_manifest(parcel_manifest_path, output_manifest_path):
     output_manifest_path.parent.mkdir(parents=True, exist_ok=True)
 
     with output_manifest_path.open("w") as output_manifest_file:
-        output_manifest_file.write("stimulus_id\tsubject\tparcel_time_series\tisc_numpy_file\tisc_nifti_file\n")
+        output_manifest_file.write("stimulus_id\tsubject\trepetition\tparcel_time_series\tisc_numpy_file\tisc_nifti_file\n")
 
         for stimulus_identifier, stimulus_manifest in parcel_manifest.groupby("stimulus_id", sort=True):
             isc_numpy_file = f"{NSD_ISC_DIRECTORY}/task-{stimulus_identifier}_isc_mean.npy"
             isc_nifti_file = f"{NSD_ISC_DIRECTORY}/task-{stimulus_identifier}_isc_mean.nii.gz"
-            stimulus_manifest = stimulus_manifest.sort_values("subject")
+            stimulus_manifest = stimulus_manifest.sort_values(["subject", "repetition"])
 
             for sample in stimulus_manifest.itertuples(index=False):
                 output_manifest_file.write(
-                    f"{stimulus_identifier}\t{int(sample.subject)}\t{sample.parcel_time_series}\t{isc_numpy_file}\t{isc_nifti_file}\n"
+                    f"{stimulus_identifier}\t{int(sample.subject)}\t{int(sample.repetition)}\t{sample.parcel_time_series}\t{isc_numpy_file}\t{isc_nifti_file}\n"
                 )
 
 rule all_nsd_data_dataset:
@@ -94,9 +94,7 @@ rule make_nsd_manifest:
         subjects=" ".join(str(subject) for subject in NSD_SUBJECTS),
         tr=config["nsd_data"]["tr"],
         event_duration_s=config["nsd_data"]["event_duration_s"],
-        onset_shift_volumes=config["nsd_data"]["onset_shift_volumes"],
-        min_repetitions_per_subject=config["nsd_data"]["min_repetitions_per_subject"],
-        repetitions_to_use=config["nsd_data"]["repetitions_to_use"]
+        onset_shift_volumes=config["nsd_data"]["onset_shift_volumes"]
     conda:
         "envs/nsd_data_dataset_processing_environment.yaml"
     shell:
@@ -108,8 +106,6 @@ rule make_nsd_manifest:
                 --tr {params.tr} \
                 --event_duration_s {params.event_duration_s} \
                 --onset_shift_volumes {params.onset_shift_volumes} \
-                --min_repetitions_per_subject {params.min_repetitions_per_subject} \
-                --repetitions_to_use {params.repetitions_to_use} \
                 --output_manifest {output.occurrence_manifest:q} \
                 --output_stimulus_manifest {output.stimulus_manifest:q} \
                 --output_excluded_stimuli {output.excluded_stimuli:q} \

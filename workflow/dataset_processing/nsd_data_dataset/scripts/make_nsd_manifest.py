@@ -2,6 +2,7 @@ import argparse
 import json
 import math
 import re
+import warnings
 
 from collections import defaultdict
 from pathlib import Path
@@ -17,6 +18,14 @@ BOLD_FILE_PATTERN = re.compile(r"timeseries_session(?P<session>\d+)_run(?P<run>\
 
 def nsd_stimulus_identifier(nsd_image_identifier):
     return f"nsd-{int(nsd_image_identifier):05d}"
+
+def write_lines(values, output_path):
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    with output_path.open("w", encoding="utf-8") as f:
+        for value in sorted(set(values)):
+            f.write(f"{value}\n")
 
 def discover_subject_runs(dataset_directory, subject):
     functional_space_directory = dataset_directory / "nsddata_timeseries" / "ppdata" / f"subj{subject:02d}" / NSD_FUNCTIONAL_SPACE_DIRECTORY
@@ -85,8 +94,6 @@ def main():
     parser.add_argument("--tr", type=float, required=True)
     parser.add_argument("--event_duration_s", type=float, required=True)
     parser.add_argument("--onset_shift_volumes", type=int, required=True)
-    parser.add_argument("--min_repetitions_per_subject", type=int, required=True)
-    parser.add_argument("--repetitions_to_use", type=int, required=True)
     parser.add_argument("--output_manifest", required=True)
     parser.add_argument("--output_stimulus_manifest", required=True)
     parser.add_argument("--output_excluded_stimuli", required=True)
@@ -109,19 +116,9 @@ def main():
     if arguments.event_duration_s <= 0:
         raise ValueError("Event duration must be positive")
 
-    if arguments.min_repetitions_per_subject < 1:
-        raise ValueError("Minimum repetitions per subject must be at least 1")
-
-    if arguments.repetitions_to_use < 1:
-        raise ValueError("Repetitions to use must be at least 1")
-
-    if arguments.repetitions_to_use > arguments.min_repetitions_per_subject:
-        raise ValueError("Repetitions to use cannot exceed the minimum repetitions per subject")
-
     number_of_volumes_per_repetition = int(math.ceil(arguments.event_duration_s / arguments.tr))
 
     occurrences_by_subject = {}
-    repetition_counts_by_subject = {}
     run_quality_control_rows = []
 
     for subject in arguments.subjects:
@@ -187,38 +184,54 @@ def main():
             )
 
         occurrences_by_subject[subject] = occurrences_by_stimulus
-        repetition_counts_by_subject[subject] = {
-            nsd_image_identifier: len(occurrences)
-            for nsd_image_identifier, occurrences in occurrences_by_stimulus.items()
-        }
 
-    eligible_stimuli_per_subject = [
-        {
-            nsd_image_identifier
-            for nsd_image_identifier, repetition_count in repetition_counts_by_subject[subject].items()
-            if repetition_count >= arguments.min_repetitions_per_subject
-        }
-        for subject in arguments.subjects
-    ]
+    # Every presentation of an image, by any subject, is an independent usable fMRI
+    # observation. A stimulus is retained purely because ISC needs at least two such
+    # observations to correlate against one another; subjects do not need to have seen
+    # it, and do not need to have seen it the same number of times.
+    observation_counts_by_stimulus = defaultdict(int)
 
-    retained_nsd_image_identifiers = sorted(set.intersection(*eligible_stimuli_per_subject))
+    for subject in arguments.subjects:
+        for nsd_image_identifier, occurrences in occurrences_by_subject[subject].items():
+            observation_counts_by_stimulus[nsd_image_identifier] += len(occurrences)
+
+    retained_nsd_image_identifiers = sorted(
+        nsd_image_identifier
+        for nsd_image_identifier, observation_count in observation_counts_by_stimulus.items()
+        if observation_count >= 2
+    )
+
+    excluded_nsd_image_identifiers = sorted(
+        nsd_image_identifier
+        for nsd_image_identifier, observation_count in observation_counts_by_stimulus.items()
+        if observation_count < 2
+    )
 
     if not retained_nsd_image_identifiers:
-        raise ValueError("No NSD image satisfies the repetition criterion in all subjects")
+        raise ValueError("No NSD image has at least two usable fMRI observations across subjects")
+
+    if excluded_nsd_image_identifiers:
+        warnings.warn(
+            "Removing NSD stimuli with fewer than two usable fMRI observations: "
+            + ", ".join(nsd_stimulus_identifier(x) for x in excluded_nsd_image_identifiers),
+            RuntimeWarning,
+        )
 
     occurrence_manifest_rows = []
 
     for subject in arguments.subjects:
         for nsd_image_identifier in retained_nsd_image_identifiers:
             stimulus_identifier = nsd_stimulus_identifier(nsd_image_identifier)
-            selected_occurrences = occurrences_by_subject[subject][nsd_image_identifier][:arguments.repetitions_to_use]
+            subject_occurrences = occurrences_by_subject[subject].get(nsd_image_identifier, [])
 
-            if len(selected_occurrences) != arguments.repetitions_to_use:
-                raise ValueError(f"Expected {arguments.repetitions_to_use} repetitions for subject {subject}, stimulus {stimulus_identifier}, got {len(selected_occurrences)}")
+            for repetition_number, occurrence in enumerate(subject_occurrences, start=1):
+                output_bold_file = (
+                    processing_output_directory
+                    / "single_stimulus_bold_mni"
+                    / f"task-{stimulus_identifier}"
+                    / f"sub-{subject:02d}_task-{stimulus_identifier}_rep-{repetition_number:02d}_bold.nii.gz"
+                )
 
-            output_bold_file = processing_output_directory / "single_stimulus_bold_mni" / f"task-{stimulus_identifier}" / f"sub-{subject:02d}_task-{stimulus_identifier}_bold.nii.gz"
-
-            for repetition_number, occurrence in enumerate(selected_occurrences, start=1):
                 occurrence_manifest_row = dict(occurrence)
                 occurrence_manifest_row["repetition"] = repetition_number
                 occurrence_manifest_row["output_bold"] = str(output_bold_file)
@@ -233,9 +246,13 @@ def main():
                 "nsd_73k_id": nsd_image_identifier,
                 "hdf5_index": nsd_image_identifier - 1,
                 "n_subjects": len(arguments.subjects),
-                "repetitions_per_subject": arguments.repetitions_to_use,
+                "n_observations": observation_counts_by_stimulus[nsd_image_identifier],
+                "n_subjects_represented": sum(
+                    1
+                    for subject in arguments.subjects
+                    if nsd_image_identifier in occurrences_by_subject[subject]
+                ),
                 "volumes_per_repetition": number_of_volumes_per_repetition,
-                "volumes_per_subject_stimulus": number_of_volumes_per_repetition * arguments.repetitions_to_use,
             }
             for nsd_image_identifier in retained_nsd_image_identifiers
         ]
@@ -258,7 +275,10 @@ def main():
 
     occurrence_manifest.to_csv(occurrence_manifest_path, sep="\t", index=False)
     stimulus_manifest.to_csv(stimulus_manifest_path, sep="\t", index=False)
-    excluded_stimuli_path.write_text("")
+    write_lines(
+        (nsd_stimulus_identifier(x) for x in excluded_nsd_image_identifiers),
+        excluded_stimuli_path,
+    )
     pd.DataFrame(run_quality_control_rows).to_csv(run_length_quality_control_path, sep="\t", index=False)
 
     metadata = {
@@ -268,15 +288,15 @@ def main():
         "event_duration_s": arguments.event_duration_s,
         "onset_shift_volumes": arguments.onset_shift_volumes,
         "n_volumes_per_repetition": number_of_volumes_per_repetition,
-        "min_repetitions_per_subject": arguments.min_repetitions_per_subject,
-        "repetitions_to_use": arguments.repetitions_to_use,
         "n_retained_stimuli": len(retained_nsd_image_identifiers),
+        "n_excluded_stimuli": len(excluded_nsd_image_identifiers),
         "n_manifest_rows": len(occurrence_manifest),
     }
 
     metadata_path.write_text(json.dumps(metadata, indent=2, sort_keys=True))
 
     print(f"Retained {len(retained_nsd_image_identifiers)} stimuli; wrote {len(occurrence_manifest)} occurrence rows")
+    print(f"Excluded {len(excluded_nsd_image_identifiers)} stimuli with fewer than two usable fMRI observations")
 
 if __name__ == "__main__":
     main()

@@ -273,8 +273,6 @@ nsd_data:
   tr: 1.3333333333333333
   event_duration_s: 4.0
   onset_shift_volumes: 0
-  min_repetitions_per_subject: 3
-  repetitions_to_use: 3
   map_interpolation: "cubic"
 
 atlas:
