@@ -187,8 +187,8 @@ relative to `resources/datasets/`:
   `nsddata_timeseries/ppdata/subjXX/func1pt8mm/timeseries/timeseries_session*_run*.nii.gz`
 - Stimulus images:
   `nsddata_stimuli/stimuli/nsd/nsd_stimuli.hdf5`
-- Functional-to-MNI mapping data, used internally by
-  `nsdcode.nsd_mapdata.NSDmapdata`:
+- Functional-to-MNI mapping data, used internally (via the `nsdcode`
+  package) to register each subject's BOLD data into MNI space:
   `nsddata/ppdata/subjXX/transforms/`
 
 Everything else under a dataset directory (e.g. `.stimuli_ready`,
@@ -287,6 +287,13 @@ Pipeline behavior (datasets, models, similarity metrics, neighbourhood sizes,
 number of permutations for significance testing) is controlled entirely
 through `config/config.yaml` — no code changes are needed to add a model or
 adjust a dataset's parameters.
+
+Most rules are single-threaded and get their parallelism from Snakemake
+running independent jobs concurrently, but a few instead parallelize
+internally across whatever `--cores <N>` is given — notably NSD's
+functional-to-MNI registration step (`assemble_nsd_bold`), which maps
+stimulus presentations to MNI space using up to `<N>` worker processes at
+once. For that step, a higher `--cores` value directly speeds it up.
 
 ## Outputs
 
