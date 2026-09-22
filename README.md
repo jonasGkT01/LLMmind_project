@@ -313,6 +313,9 @@ Key outputs land under `results/`:
   concept-level alignment and Spearman boxplots, a model whose per-concept
   scores show no spread renders as a flat, easy-to-miss box; those are
   marked with a red diamond rather than left looking like missing data.
+  The model-level line plots and concept-level scatterplots for a given
+  dataset/similarity/k share the same `[0, 1]` y-axis range, so the two can
+  be compared directly side by side.
 
 ## Documentation
 

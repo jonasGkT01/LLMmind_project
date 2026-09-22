@@ -202,7 +202,7 @@ def main():
     ax.set_title(f"Brain-model alignment\n"
                  f"dataset={args.dataset}, similarity={args.similarity_type}, number_of_neighbours={args.number_of_neighbours}", 
                  pad=32)
-    ax.set_ylim(bottom=0)
+    ax.set_ylim(0, 1)
     ax.grid(axis="y", alpha=0.25)
 
     fig.tight_layout()

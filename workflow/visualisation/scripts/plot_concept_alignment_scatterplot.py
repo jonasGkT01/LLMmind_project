@@ -162,7 +162,7 @@ def main():
     ax.set_xticklabels(labels, rotation=55, ha="right",)
 
     ax.set_xlim(-0.6, len(labels) - 0.4,)
-    ax.set_ylim(bottom=0,)
+    ax.set_ylim(0, 1,)
 
     ax.set_title(f"Concept-level LLM-brain alignment\n"
                  f"dataset={args.dataset}, similarity={args.similarity_type}, neighbours={args.number_of_neighbours}",
