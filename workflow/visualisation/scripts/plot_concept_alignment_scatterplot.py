@@ -10,7 +10,7 @@ from libraries.manage_model_metadata import model_sort_key, parse_model_paramete
 from libraries.path_metadata import parse_llm_brain_alignment_score_path
 from libraries.visualisation_utils import deterministic_jitter, mark_degenerate_boxplot_statistics
 
-def read_model_enrichments(
+def read_model_alignment_scores(
     path,
     expected_dataset,
     expected_similarity_type,
@@ -66,12 +66,12 @@ def read_model_enrichments(
     expected_alignment_score = expected_number_of_neighbours/population_size
 
     output_df = alignment_df[["concept",]].copy()
-    output_df["enrichment"] = alignment_scores/expected_alignment_score
+    output_df["alignment_score"] = alignment_scores
     output_df["model"] = metadata["model"]
     output_df["stimuli_type"] = metadata["stimuli_type"]
     output_df["label"] = metadata["model"]
 
-    return output_df, metadata
+    return output_df, metadata, expected_alignment_score
 
 def main():
     parser = argparse.ArgumentParser()
@@ -87,15 +87,16 @@ def main():
 
     model_dataframes = []
     model_metadata = {}
+    expected_alignment_scores = set()
 
     for path in args.llm_brain_alignment_scores:
-        enrichment_df, metadata = read_model_enrichments(
+        scores_df, metadata, expected_alignment_score = read_model_alignment_scores(
             path=path,
             expected_dataset=args.dataset,
             expected_similarity_type=args.similarity_type,
             expected_number_of_neighbours=args.number_of_neighbours,
         )
-        label = enrichment_df["label"].iloc[0]
+        label = scores_df["label"].iloc[0]
 
         if label in model_metadata:
             raise ValueError(f"More than one alignment-score file was provided for {label}")
@@ -104,13 +105,19 @@ def main():
             "model": metadata["model"],
             "stimuli_type": metadata["stimuli_type"],
         }
-        model_dataframes.append(enrichment_df)
+        model_dataframes.append(scores_df)
+        expected_alignment_scores.add(expected_alignment_score)
 
     if not model_dataframes:
         raise ValueError("No LLM-brain alignment-score files were provided")
 
-    enrichment_df = pd.concat(model_dataframes, ignore_index=True,)
-    
+    if len(expected_alignment_scores) > 1:
+        raise ValueError(f"Inconsistent hypergeometric expected alignment scores across input files: {sorted(expected_alignment_scores)}")
+
+    expected_alignment_score = expected_alignment_scores.pop()
+
+    alignment_df = pd.concat(model_dataframes, ignore_index=True,)
+
     labels = sorted(
         model_metadata,
         key=lambda label: model_sort_key(
@@ -124,12 +131,12 @@ def main():
         for position, label in enumerate(labels)
     }
     boxplot_values = [
-        enrichment_df.loc[enrichment_df["label"] == label, "enrichment",].to_numpy(dtype=float)
+        alignment_df.loc[alignment_df["label"] == label, "alignment_score",].to_numpy(dtype=float)
         for label in labels
     ]
     x_values = [
         x_positions[row.label] + deterministic_jitter(row.label, str(row.concept), width=0.35)
-        for row in enrichment_df.itertuples(index=False)
+        for row in alignment_df.itertuples(index=False)
     ]
 
     output_path = Path(args.plot)
@@ -138,10 +145,10 @@ def main():
     fig_width = max(10, 0.75*len(labels),)
     fig, ax = plt.subplots(figsize=(fig_width, 7,))
 
-    ax.scatter(x_values, enrichment_df["enrichment"], s=10, alpha=0.20, edgecolors="none", zorder=1,)
-    ax.boxplot(boxplot_values, 
-               positions=range(len(labels)), 
-               widths=0.55, 
+    ax.scatter(x_values, alignment_df["alignment_score"], s=10, alpha=0.20, edgecolors="none", zorder=1,)
+    ax.boxplot(boxplot_values,
+               positions=range(len(labels)),
+               widths=0.55,
                showfliers=False,
                boxprops={"linewidth": 1.5,},
                whiskerprops={"linewidth": 1.5,},
@@ -149,7 +156,7 @@ def main():
                medianprops={"linewidth": 1.5,},
                zorder=3,)
     mark_degenerate_boxplot_statistics(ax, boxplot_values)
-    ax.axhline(1.0, linestyle="--", linewidth=1.2, label="Hypergeometric expectation",)
+    ax.axhline(expected_alignment_score, linestyle="--", linewidth=1.2, label="Hypergeometric expectation",)
 
     ax.set_xticks(range(len(labels)))
     ax.set_xticklabels(labels, rotation=55, ha="right",)
@@ -157,11 +164,11 @@ def main():
     ax.set_xlim(-0.6, len(labels) - 0.4,)
     ax.set_ylim(bottom=0,)
 
-    ax.set_title(f"Concept-level LLM-brain alignment enrichment\n"
+    ax.set_title(f"Concept-level LLM-brain alignment\n"
                  f"dataset={args.dataset}, similarity={args.similarity_type}, neighbours={args.number_of_neighbours}",
                  pad=32,)
     ax.set_xlabel("Model")
-    ax.set_ylabel("Observed alignment / hypergeometric expected alignment")
+    ax.set_ylabel("Alignment score")
     ax.grid(axis="y", alpha=0.25,)
     ax.legend()
 

@@ -162,7 +162,7 @@ rule all:
             for pair in HEATMAP_PAIRINGS
         ],
         [
-            f"results/alignment_enrichment_plots/dataset-{pair['dataset']}_{pair['similarity_type']}-concept_alignment_enrichment_{pair['number_of_neighbours']}NN.png"
+            f"results/concept_alignment_scatterplots/dataset-{pair['dataset']}_{pair['similarity_type']}-concept_alignment_{pair['number_of_neighbours']}NN.png"
             for pair in HEATMAP_PAIRINGS
         ],
         [

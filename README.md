@@ -111,8 +111,8 @@ with empirical significance testing.
 ### `visualisation/`
 
 Produces the summary plots described under [Outputs](#outputs): alignment
-heatmaps, p-value heatmaps, per-concept enrichment plots, line plots, and
-Spearman boxplots.
+heatmaps, p-value heatmaps, per-concept alignment scatterplots, line plots,
+and Spearman boxplots.
 
 ### `libraries/`
 
@@ -301,9 +301,9 @@ Key outputs land under `results/`:
 - `results/all_alignment_scores.tsv`, `results/all_spearman_alignment_scores.tsv`
   — combined summary tables across all configurations
 - `results/alignment_heatmaps/`, `results/alignment_p_value_heatmaps/`,
-  `results/alignment_lineplots/`, `results/alignment_enrichment_plots/`,
+  `results/alignment_lineplots/`, `results/concept_alignment_scatterplots/`,
   `results/spearman_alignment/*_plots/` — summary visualisations. In the
-  concept-level enrichment and Spearman boxplots, a model whose per-concept
+  concept-level alignment and Spearman boxplots, a model whose per-concept
   scores show no spread renders as a flat, easy-to-miss box; those are
   marked with a red diamond rather than left looking like missing data.
 

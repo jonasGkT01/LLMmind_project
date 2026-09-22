@@ -9,7 +9,7 @@ rule all_visualisation:
             for pair in HEATMAP_PAIRINGS
         ],
         [
-            f"results/alignment_enrichment_plots/dataset-{pair['dataset']}_{pair['similarity_type']}-concept_alignment_enrichment_{pair['number_of_neighbours']}NN.png"
+            f"results/concept_alignment_scatterplots/dataset-{pair['dataset']}_{pair['similarity_type']}-concept_alignment_{pair['number_of_neighbours']}NN.png"
             for pair in HEATMAP_PAIRINGS
         ],
         [
@@ -98,7 +98,7 @@ rule plot_empirical_p_value_heatmap:
                 --heatmap {output.heatmap:q}
         """
 
-rule plot_concept_alignment_enrichment:
+rule plot_concept_alignment_scatterplot:
     input:
         llm_brain_alignment_scores=lambda wc: [
             f"results/alignment_scores/dataset-{wc.dataset}_model-{pair['model']}-{pair['stimuli_type']}_brain_{wc.similarity_type}-alignment_score_{wc.number_of_neighbours}NN.parquet"
@@ -108,7 +108,7 @@ rule plot_concept_alignment_enrichment:
             and str(pair["number_of_neighbours"]) == str(wc.number_of_neighbours)
         ]
     output:
-        plot="results/alignment_enrichment_plots/dataset-{dataset}_{similarity_type}-concept_alignment_enrichment_{number_of_neighbours}NN.png"
+        plot="results/concept_alignment_scatterplots/dataset-{dataset}_{similarity_type}-concept_alignment_{number_of_neighbours}NN.png"
     params:
         model_parameters=[
             f"{model}={config['models'][model]['parameters_millions']}"
@@ -121,7 +121,7 @@ rule plot_concept_alignment_enrichment:
         "envs/visualisation_environment.yaml"
     shell:
         r"""
-            python3 workflow/visualisation/scripts/plot_concept_alignment_enrichment.py \
+            python3 workflow/visualisation/scripts/plot_concept_alignment_scatterplot.py \
                 --llm_brain_alignment_scores {input.llm_brain_alignment_scores:q} \
                 --model_parameters {params.model_parameters:q} \
                 --dataset {params.dataset:q} \
