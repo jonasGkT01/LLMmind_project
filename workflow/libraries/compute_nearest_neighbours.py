@@ -1,157 +1,131 @@
-import json
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import pyarrow as pa
 import pyarrow.parquet as pq
 
 DEFAULT_COLUMN_BLOCK_SIZE = 4096
+NEAREST_NEIGHBOURS_COUNT_METADATA_KEY = b"llmmind.number_of_neighbours"
 
-def stream_topk_indices_from_parquet(
-    similarity_parquet_path,
-    concepts,
+def compute_blockwise_topk_from_embeddings(
+    embedding_matrix,
     number_of_neighbours,
-    column_block_size = DEFAULT_COLUMN_BLOCK_SIZE,
+    normalize_fn,
+    row_block_size = DEFAULT_COLUMN_BLOCK_SIZE,
 ):
     """
-        Compute top-k neighbour indices (positions within `concepts`) for a symmetric similarity matrix
-        stored as Parquet, restricted to `concepts`, without loading the full matrix into memory.
-
-        Unlike stream_nearest_neighbours_from_parquet, `concepts` need not be every concept in the file and
-        need not follow the file's native column order: this supports comparing two matrices whose stimuli
-        only partially overlap (e.g. two LLMs sharing a dataset), by reading, for each one, only the
-        concepts both sides actually share.
+        Compute top-k nearest-neighbour indices and scores for every row of `embedding_matrix` against
+        every other row, without ever materializing the full N x N similarity matrix: normalize once
+        (cheap, O(N x D)), then for each row-block multiply the block against the full normalized matrix
+        (block_size x N, the same per-block memory footprint already used by the *_from_parquet readers
+        above) and immediately reduce that block to its top-k, discarding it. This is what lets the
+        similarity-computing scripts skip writing the dense matrix to disk at all.
     """
-    concepts = list(concepts)
-    number_of_concepts = len(concepts)
+    number_of_concepts = embedding_matrix.shape[0]
 
     if number_of_concepts - 1 < number_of_neighbours:
         raise ValueError(f"Requested {number_of_neighbours} neighbours, but only {number_of_concepts - 1} candidates are available")
 
-    parquet_file = pq.ParquetFile(similarity_parquet_path)
-    pandas_metadata = json.loads(parquet_file.schema_arrow.metadata[b"pandas"])
-    index_column = pandas_metadata["index_columns"][0]
+    normalized = normalize_fn(embedding_matrix)
 
-    concept_position = {concept: position for position, concept in enumerate(concepts)}
-    neighbour_indices = np.empty((number_of_concepts, number_of_neighbours), dtype=np.int64)
-
-    for block_start in range(0, number_of_concepts, column_block_size):
-        block_concepts = concepts[block_start:block_start + column_block_size]
-        block_width = len(block_concepts)
-
-        table = pq.read_table(similarity_parquet_path, columns=[index_column, *block_concepts],)
-        block_df = table.to_pandas(ignore_metadata=True,).set_index(index_column)
-        block = block_df.loc[concepts, block_concepts].to_numpy(dtype=np.float64, copy=True)
-
-        # self-similarity exclusion: column j is concept block_concepts[j], whose row may fall anywhere in
-        # `concepts`' order (unlike stream_nearest_neighbours_from_parquet, order is not assumed to match)
-        for column_index, concept in enumerate(block_concepts):
-            block[concept_position[concept], column_index] = -np.inf
-
-        idx_part = np.argpartition(block, -number_of_neighbours, axis=0,)[-number_of_neighbours:]
-        scores_part = np.take_along_axis(block, idx_part, axis=0,)
-        order = np.argsort(-scores_part, axis=0,)
-        idx_topk = np.take_along_axis(idx_part, order, axis=0,)
-
-        neighbour_indices[block_start:block_start + block_width, :] = idx_topk.T
-
-    return neighbour_indices
-
-def stream_nearest_neighbours_from_parquet(
-    similarity_parquet_path,
-    number_of_neighbours,
-    column_block_size = DEFAULT_COLUMN_BLOCK_SIZE,
-):
-    """
-        Compute top-k nearest neighbours for a symmetric similarity matrix stored as Parquet, without ever
-        loading the full N x N matrix into memory.
-
-        Rows and columns share the same concept order (guaranteed by the script that produced the Parquet
-        file), so by symmetry a column-projected read of a block of concepts already contains everything
-        needed to rank those concepts' neighbours against every other concept. At N~66k this keeps peak
-        memory around column_block_size/N of the full matrix instead of several full copies of it, which is
-        what previously caused an out-of-memory kill on nsd_data (N=66,216, a 43.8 GB Parquet file).
-    """
-    parquet_file = pq.ParquetFile(similarity_parquet_path)
-    pandas_metadata = json.loads(parquet_file.schema_arrow.metadata[b"pandas"])
-    index_column = pandas_metadata["index_columns"][0]
-    concepts = [name for name in parquet_file.schema_arrow.names if name != index_column]
-    number_of_concepts = len(concepts)
-
-    if parquet_file.metadata.num_rows != number_of_concepts:
-        raise ValueError(
-            f"{similarity_parquet_path} is not square: {number_of_concepts} concept columns but "
-            f"{parquet_file.metadata.num_rows} rows"
-        )
-
-    row_labels = pq.read_table(similarity_parquet_path, columns=[index_column],).column(index_column).to_pylist()
-
-    if row_labels != concepts:
-        raise ValueError(f"{similarity_parquet_path} rows and columns are not in the same order")
-
-    if number_of_concepts - 1 < number_of_neighbours:
-        raise ValueError(f"Requested {number_of_neighbours} neighbours, but only {number_of_concepts - 1} candidates are available")
-
-    concepts_array = np.array(concepts)
     neighbour_indices = np.empty((number_of_concepts, number_of_neighbours), dtype=np.int64)
     neighbour_scores = np.empty((number_of_concepts, number_of_neighbours), dtype=np.float64)
 
-    for block_start in range(0, number_of_concepts, column_block_size):
-        block_concepts = concepts[block_start:block_start + column_block_size]
-        block_width = len(block_concepts)
+    for block_start in range(0, number_of_concepts, row_block_size):
+        block_end = min(block_start + row_block_size, number_of_concepts)
+        block = normalized[block_start:block_end] @ normalized.T
 
-        table = pq.read_table(similarity_parquet_path, columns=[index_column, *block_concepts],)
-        block_df = table.to_pandas(ignore_metadata=True,).set_index(index_column)
-        block = block_df.loc[concepts, block_concepts].to_numpy(dtype=np.float64, copy=True)
+        block_rows = np.arange(block_end - block_start)
+        block[block_rows, np.arange(block_start, block_end)] = -np.inf
 
-        block_rows = np.arange(block_start, block_start + block_width,)
-        block[block_rows, np.arange(block_width),] = -np.inf
+        idx_part = np.argpartition(block, -number_of_neighbours, axis=1,)[:, -number_of_neighbours:]
+        scores_part = np.take_along_axis(block, idx_part, axis=1,)
+        order = np.argsort(-scores_part, axis=1,)
+        idx_topk = np.take_along_axis(idx_part, order, axis=1,)
+        scores_topk = np.take_along_axis(scores_part, order, axis=1,)
 
-        idx_part = np.argpartition(block, -number_of_neighbours, axis=0,)[-number_of_neighbours:]
-        scores_part = np.take_along_axis(block, idx_part, axis=0,)
-        order = np.argsort(-scores_part, axis=0,)
-        idx_topk = np.take_along_axis(idx_part, order, axis=0,)
-        scores_topk = np.take_along_axis(scores_part, order, axis=0,)
+        neighbour_indices[block_start:block_end, :] = idx_topk
+        neighbour_scores[block_start:block_end, :] = scores_topk
 
-        neighbour_indices[block_start:block_start + block_width, :] = idx_topk.T
-        neighbour_scores[block_start:block_start + block_width, :] = scores_topk.T
+    return neighbour_indices, neighbour_scores
 
-    return pd.DataFrame(
+def write_nearest_neighbours_parquet(
+    concepts,
+    neighbour_indices,
+    neighbour_scores,
+    number_of_neighbours,
+    output_path,
+):
+    """
+        Write a compact nearest-neighbours table: `concept`/`neighbour` are dictionary-encoded (via
+        pandas Categorical, sharing one `concepts` category list) instead of the plain repeated strings
+        the old per-k files used, and the realized `number_of_neighbours` is stored as file-level
+        metadata so a consumer that later needs k neighbours can assert this file actually has at least
+        that many before trusting a slice of it (see `require_stored_number_of_neighbours`) — this file
+        is unversioned by k in its name, so that safeguard is what protects against silently reading a
+        stale, too-small file after a dataset's configured max-k grows.
+    """
+    concepts_array = np.asarray(concepts)
+    category_dtype = pd.CategoricalDtype(categories=concepts_array, ordered=False)
+    number_of_concepts = len(concepts_array)
+
+    result_df = pd.DataFrame(
         {
-            "concept": np.repeat(concepts_array, number_of_neighbours,),
-            "neighbour": concepts_array[neighbour_indices.reshape(-1)],
-            "similarity": neighbour_scores.reshape(-1),
+            "concept": pd.Categorical.from_codes(
+                np.repeat(np.arange(number_of_concepts), number_of_neighbours),
+                dtype=category_dtype,
+            ),
+            "neighbour": pd.Categorical.from_codes(
+                neighbour_indices.reshape(-1),
+                dtype=category_dtype,
+            ),
+            "similarity": neighbour_scores.reshape(-1).astype(np.float32),
         }
     )
 
-def compute_topk_indices(similarity, number_of_neighbours,):
-    if similarity.shape[1] - 1 < number_of_neighbours:
-        raise ValueError(f"Requested {number_of_neighbours} neighbours, but only {similarity.shape[1] - 1} candidates are available")
+    table = pa.Table.from_pandas(result_df, preserve_index=False)
+    existing_metadata = table.schema.metadata or {}
+    table = table.replace_schema_metadata(
+        {**existing_metadata, NEAREST_NEIGHBOURS_COUNT_METADATA_KEY: str(number_of_neighbours).encode()}
+    )
 
-    similarity = similarity.copy()
-    np.fill_diagonal(similarity, -np.inf)
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    pq.write_table(table, output_path)
 
-    idx_part = np.argpartition(similarity, -number_of_neighbours, axis = 1,)[:, -number_of_neighbours:]
-    scores_part = np.take_along_axis(similarity, idx_part, axis = 1,)
-    order = np.argsort(scores_part, axis = 1,)[:, ::-1]
-    idx_topk = np.take_along_axis(idx_part, order, axis = 1,)
+def read_stored_number_of_neighbours(path):
+    """Read the neighbour count written by `write_nearest_neighbours_parquet`, raising if it's absent."""
+    parquet_file = pq.ParquetFile(path)
+    metadata = parquet_file.schema_arrow.metadata or {}
 
-    return idx_topk.astype(np.int64)
+    if NEAREST_NEIGHBOURS_COUNT_METADATA_KEY not in metadata:
+        raise ValueError(
+            f"{path} is missing the '{NEAREST_NEIGHBOURS_COUNT_METADATA_KEY.decode()}' metadata key; "
+            f"it may predate the max-k neighbours format and should be regenerated"
+        )
 
-def create_nearest_neighbours_dataframe(similarity_df, number_of_neighbours,):
-    similarity = similarity_df.to_numpy(copy=True)
+    return int(metadata[NEAREST_NEIGHBOURS_COUNT_METADATA_KEY])
 
-    idx_topk = compute_topk_indices(similarity = similarity, number_of_neighbours=number_of_neighbours,)
-    scores_topk = np.take_along_axis(similarity, idx_topk, axis = 1,)
+def require_stored_number_of_neighbours(path, requested_number_of_neighbours):
+    """Fail loudly if a stored max-k neighbours file doesn't actually contain the k a caller needs."""
+    stored_number_of_neighbours = read_stored_number_of_neighbours(path)
 
-    concepts = similarity_df.index.to_numpy()
-    neighbours = similarity_df.columns.to_numpy()
+    if stored_number_of_neighbours < requested_number_of_neighbours:
+        raise ValueError(
+            f"{path} was generated with only {stored_number_of_neighbours} neighbours per concept, but "
+            f"{requested_number_of_neighbours} were requested. Regenerate it with a larger "
+            f"--number_of_neighbours (e.g. bump the dataset's configured neighbourhood sizes)."
+        )
 
-    return pd.DataFrame(
-        {
-            "concept": np.repeat(concepts, number_of_neighbours,),
-            "neighbour": neighbours[idx_topk.reshape(-1)],
-            "similarity": scores_topk.reshape(-1),
-        }
+    return stored_number_of_neighbours
+
+def slice_top_k_neighbours(neighbours_df, number_of_neighbours):
+    """Take each concept's first `number_of_neighbours` rows from an already rank-ordered neighbours table."""
+    return (
+        neighbours_df
+        .groupby("concept", sort=False, observed=True)
+        .head(number_of_neighbours)
     )
 
 def create_neighbour_mask(neighbours):

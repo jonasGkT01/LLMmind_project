@@ -5,9 +5,14 @@ import numpy as np
 import pandas as pd
 
 from libraries.compute_alignment import compute_common_neighbours
-from libraries.compute_nearest_neighbours import compute_topk_indices, create_neighbour_mask, relabel_nearest_neighbours
+from libraries.compute_nearest_neighbours import (
+    compute_blockwise_topk_from_embeddings,
+    create_neighbour_mask,
+    relabel_nearest_neighbours,
+    require_stored_number_of_neighbours,
+)
+from libraries.compute_similarity import extract_embedding_matrix, normalize_fn_for_similarity_type
 from libraries.compute_statistics import create_relabelling_rng
-from libraries.read_similarity_subset import read_similarity_subset
 
 def make_concept_index(concepts):
     return {concept: i for i, concept in enumerate(concepts)}
@@ -27,7 +32,7 @@ def encode_brain_nearest_neighbours(brain_nearest_neighbours_df, concepts, numbe
 
         for neighbour in concept_neighbours[:number_of_neighbours]:
             if neighbour not in concept_to_index:
-                raise ValueError(f"Brain neighbour {neighbour} for concept {concept} is not present in the similarity matrix")
+                raise ValueError(f"Brain neighbour {neighbour} for concept {concept} is not present in the relabelling concept set")
 
             encoded_neighbours.append(concept_to_index[neighbour])
 
@@ -71,6 +76,11 @@ def create_relabelled_alignment_dataframe(common_neighbours_matrix, concepts, mo
                 categories=concepts,
                 ordered=True,
             ),
+            # Kept even though a single output currently holds one k's rows at a time: the combined,
+            # all-k file this feeds into (see main()) needs it to tell each k's rows apart, and Snakemake
+            # rule outputs can't be a function of wildcards (only `input:` can), so producing genuinely
+            # separate per-k files from one job isn't an option — see the plan file / commit message.
+            "number_of_neighbours": np.full(number_of_rows, number_of_neighbours, dtype=np.int32),
             "common_neighbours": common_neighbours,
             "alignment_score": alignment_scores,
             "alignment_score_percentage": alignment_scores * 100,
@@ -79,48 +89,59 @@ def create_relabelled_alignment_dataframe(common_neighbours_matrix, concepts, mo
 
     return result_df
 
-def compute_relabelled_alignment_scores(similarity_df, brain_nearest_neighbours_df, number_of_relabellings, number_of_neighbours, random_seed, model):
-    if similarity_df.shape[0] != similarity_df.shape[1]:
-        raise ValueError(f"The LLM similarity matrix is not square: shape={similarity_df.shape}")
+def compute_relabelled_alignment_scores_for_all_k(
+    embedding_df,
+    brain_nearest_neighbours_df,
+    number_of_relabellings,
+    numbers_of_neighbours,
+    random_seed,
+    model,
+    similarity_type,
+):
+    # `concepts` is the single closed set every permutation operates over: the brain/ISC-eligible
+    # concepts. Neighbours (both the LLM's and the brain's) must be expressed as positions within this
+    # exact set for relabel_nearest_neighbours/create_neighbour_mask's index math to be meaningful, so
+    # the LLM's own top-k here is computed directly from embeddings restricted to this subset — not
+    # filtered down from some larger, differently-scoped top-k file.
+    concepts = brain_nearest_neighbours_df["concept"].unique()
 
-    if similarity_df.index.has_duplicates:
-        raise ValueError("The LLM similarity matrix contains duplicate row labels")
+    missing_embedding_concepts = sorted(set(concepts) - set(embedding_df.index))
 
-    if similarity_df.columns.has_duplicates:
-        raise ValueError("The LLM similarity matrix contains duplicate column labels")
+    if missing_embedding_concepts:
+        raise ValueError(
+            f"The model's embeddings are missing {len(missing_embedding_concepts)} concept(s) required "
+            f"for relabelling, e.g. {missing_embedding_concepts[:5]}"
+        )
 
-    concepts = similarity_df.index.to_numpy()
-    column_concepts = similarity_df.columns.to_numpy()
+    max_k = max(numbers_of_neighbours)
+    concept_indices = np.arange(len(concepts), dtype=np.int64)
 
-    if set(concepts) != set(column_concepts):
-        raise ValueError("The LLM similarity matrix does not contain the same concepts in its rows and columns")
+    restricted_embedding_matrix = extract_embedding_matrix(embedding_df.loc[concepts])
+    normalize_fn = normalize_fn_for_similarity_type(similarity_type)
 
-    similarity_df = similarity_df.loc[concepts, concepts]
-    brain_nearest_neighbours_df = brain_nearest_neighbours_df[brain_nearest_neighbours_df["concept"].isin(concepts)].copy()
-    brain_concepts = set(brain_nearest_neighbours_df["concept"])
-    missing_brain_concepts = sorted(set(concepts) - brain_concepts)
-
-    if missing_brain_concepts:
-        raise ValueError(f"The brain nearest-neighbours dataframe is missing concepts: {missing_brain_concepts}")
-
-    observed_llm_neighbours = compute_topk_indices(
-        similarity = similarity_df.to_numpy(copy = True),
-        number_of_neighbours = number_of_neighbours,
+    observed_llm_neighbours, _ = compute_blockwise_topk_from_embeddings(
+        embedding_matrix = restricted_embedding_matrix,
+        number_of_neighbours = max_k,
+        normalize_fn = normalize_fn,
     )
 
-    brain_neighbours = encode_brain_nearest_neighbours(
+    brain_neighbours_at_max_k = encode_brain_nearest_neighbours(
         brain_nearest_neighbours_df = brain_nearest_neighbours_df,
         concepts = concepts,
-        number_of_neighbours = number_of_neighbours,
+        number_of_neighbours = max_k,
     )
 
-    brain_neighbour_mask, concept_indices = create_neighbour_mask(brain_neighbours)
+    brain_neighbour_masks_by_k = {}
+    common_neighbours_matrices_by_k = {}
 
-    common_neighbour_dtype = select_common_neighbour_dtype(number_of_neighbours)
-    common_neighbours_matrix = np.empty(
-        (number_of_relabellings, len(concepts)),
-        dtype=common_neighbour_dtype,
-    )
+    for k in numbers_of_neighbours:
+        mask, _ = create_neighbour_mask(brain_neighbours_at_max_k[:, :k])
+        brain_neighbour_masks_by_k[k] = mask
+        common_neighbours_matrices_by_k[k] = np.empty(
+            (number_of_relabellings, len(concepts)),
+            dtype = select_common_neighbour_dtype(k),
+        )
+
     inverse_permutation = np.empty(len(concepts), dtype=np.int64)
 
     for shuffle_i in range(number_of_relabellings):
@@ -132,29 +153,39 @@ def compute_relabelled_alignment_scores(similarity_df, brain_nearest_neighbours_
             inverse_permutation=inverse_permutation,
             concept_indices=concept_indices,
         )
-        common_neighbours_matrix[shuffle_i] = compute_common_neighbours(
-            neighbours = relabelled_llm_neighbours,
-            neighbour_mask = brain_neighbour_mask,
-            concept_indices = concept_indices,
-        )
+
+        for k in numbers_of_neighbours:
+            common_neighbours_matrices_by_k[k][shuffle_i] = compute_common_neighbours(
+                neighbours = relabelled_llm_neighbours[:, :k],
+                neighbour_mask = brain_neighbour_masks_by_k[k],
+                concept_indices = concept_indices,
+            )
 
         if shuffle_i == 0 or (shuffle_i + 1) % 100 == 0 or shuffle_i + 1 == number_of_relabellings:
             print(f"completed relabelling {shuffle_i + 1}/{number_of_relabellings}")
 
-    return create_relabelled_alignment_dataframe(
-        common_neighbours_matrix=common_neighbours_matrix,
-        concepts=concepts,
-        model=model,
-        number_of_neighbours=number_of_neighbours,
-    )
+    return {
+        k: create_relabelled_alignment_dataframe(
+            common_neighbours_matrix = common_neighbours_matrices_by_k[k],
+            concepts = concepts,
+            model = model,
+            number_of_neighbours = k,
+        )
+        for k in numbers_of_neighbours
+    }
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--llm_similarity", required=True)
+    parser.add_argument("--embedding_dataframe", required=True)
     parser.add_argument("--isc_nearest_neighbours", required=True)
-    parser.add_argument("--relabelled_alignment_score", required=True)
+    parser.add_argument("--similarity_type", required=True)
+    parser.add_argument("--relabelled_common_neighbours", required=True,
+                        help="Single output holding every --number_of_neighbours' rows, distinguished by "
+                             "a number_of_neighbours column; per-k files are sliced from it separately "
+                             "(extract_relabelled_alignment_score_for_k.py) since a Snakemake rule's "
+                             "output can't itself be a function of wildcards")
     parser.add_argument("--number_of_relabellings", type=int, required=True)
-    parser.add_argument("--number_of_neighbours", type=int, required=True)
+    parser.add_argument("--number_of_neighbours", type=int, nargs="+", required=True)
     parser.add_argument("--random_seed", type=int, default=0)
     parser.add_argument("--model", type=str, required=True)
     args = parser.parse_args()
@@ -162,35 +193,32 @@ def main():
     if args.number_of_relabellings <= 0:
         raise ValueError("--number_of_relabellings must be a positive integer")
 
-    if args.number_of_neighbours <= 0:
-        raise ValueError("--number_of_neighbours must be a positive integer")
+    if any(k <= 0 for k in args.number_of_neighbours):
+        raise ValueError("--number_of_neighbours must all be positive integers")
 
+    require_stored_number_of_neighbours(args.isc_nearest_neighbours, max(args.number_of_neighbours))
     brain_nearest_neighbours_df = pd.read_parquet(args.isc_nearest_neighbours, engine="pyarrow")
-    concepts = brain_nearest_neighbours_df["concept"].unique()
 
-    # Read only the concepts the brain/ISC side actually covers: for nsd_data the model similarity spans
-    # ~66k stimuli while ISC is limited to the ~500 with enough repetitions, so the model's full concept
-    # universe was never the right thing to intersect against brain_nearest_neighbours_df in the first
-    # place (that intersection is empty for nsd_data and would raise below) — restricting to `concepts`
-    # up front makes the neighbour search consistent with every other dataset, where the model's full
-    # stimulus set already equals its ISC-eligible one.
-    llm_similarity_df = read_similarity_subset(
-        path=args.llm_similarity,
-        concepts=concepts,
-        source=args.llm_similarity,
-    )
-    result = compute_relabelled_alignment_scores(
-        similarity_df=llm_similarity_df,
+    embedding_df = pd.read_parquet(args.embedding_dataframe)
+
+    results_by_k = compute_relabelled_alignment_scores_for_all_k(
+        embedding_df=embedding_df,
         brain_nearest_neighbours_df=brain_nearest_neighbours_df,
         number_of_relabellings=args.number_of_relabellings,
-        number_of_neighbours=args.number_of_neighbours,
+        numbers_of_neighbours=args.number_of_neighbours,
         random_seed=args.random_seed,
         model=args.model,
+        similarity_type=args.similarity_type,
     )
 
-    output_path = Path(args.relabelled_alignment_score)
+    combined_df = pd.concat(
+        [results_by_k[k] for k in args.number_of_neighbours],
+        ignore_index=True,
+    )
+
+    output_path = Path(args.relabelled_common_neighbours)
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    result.to_parquet(output_path, engine="pyarrow", compression="snappy", index=True)
+    combined_df.to_parquet(output_path, engine="pyarrow", compression="snappy", index=True)
 
 if __name__ == "__main__":
     main()

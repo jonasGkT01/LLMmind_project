@@ -22,8 +22,8 @@ rule all_llm_mind_alignment:
 
 rule compute_llm_mind_alignment_score:
     input:
-        isc_nearest_neighbours="results/mind/{dataset}/isc_{similarity_type}_nearest_neighbours_{number_of_neighbours}NN.parquet",
-        llm_nearest_neighbours="results/{stimuli_type}_models/{dataset}/{similarity_type}_nearest_neighbours/{model}_{similarity_type}_nearest_neighbours_{number_of_neighbours}NN.parquet"
+        isc_nearest_neighbours="results/mind/{dataset}/isc_{similarity_type}_nearest_neighbours.parquet",
+        llm_nearest_neighbours="results/{stimuli_type}_models/{dataset}/{similarity_type}_nearest_neighbours/{model}_{similarity_type}_nearest_neighbours.parquet"
     output:
         llm_brain_alignment_score="results/alignment_scores/dataset-{dataset}_model-{model}-{stimuli_type}_brain_{similarity_type}-alignment_score_{number_of_neighbours}NN.parquet"
     params:
@@ -40,14 +40,21 @@ rule compute_llm_mind_alignment_score:
         """
 
 rule relabel_llm_similarity_and_compute_relabelled_llm_alignment_score:
+    # One job per (dataset, model, stimuli_type, similarity_type) covers every configured k for that
+    # dataset in a single run (one shared permutation per shuffle, reused across k) instead of one
+    # Snakemake job per k independently re-deriving the same permutations. Output is a single combined
+    # file — Snakemake rule outputs can't be a function of wildcards the way inputs can, so per-k files
+    # aren't produced directly here; extract_relabelled_alignment_score_for_k (below) slices the k each
+    # downstream consumer needs out of it.
     input:
-        llm_similarity="results/{stimuli_type}_models/{dataset}/{similarity_type}_similarity/{model}_{similarity_type}_similarity.parquet",
-        isc_nearest_neighbours="results/mind/{dataset}/isc_{similarity_type}_nearest_neighbours_{number_of_neighbours}NN.parquet"
+        embedding_dataframe="results/{stimuli_type}_models/{dataset}/embeddings/{model}_embeddings.parquet",
+        isc_nearest_neighbours="results/mind/{dataset}/isc_{similarity_type}_nearest_neighbours.parquet"
     output:
-        relabelled_alignment_score="results/alignment_scores/dataset-{dataset}_model-{model}-{stimuli_type}_brain_{similarity_type}-alignment_score_{number_of_neighbours}NN_relabelled.parquet"
+        relabelled_common_neighbours="results/alignment_scores/relabelled_common_neighbours/dataset-{dataset}_model-{model}-{stimuli_type}_brain_{similarity_type}-relabelled_common_neighbours.parquet"
     params:
-        number_of_neighbours=lambda wc: wc.number_of_neighbours,
+        numbers_of_neighbours=lambda wc: dataset_numbers_of_neighbours(wc.dataset),
         model=lambda wc: wc.model,
+        similarity_type=lambda wc: wc.similarity_type,
         number_of_relabellings=NUMBER_OF_RELABELLINGS,
         random_seed=RANDOM_SEED
     conda:
@@ -55,13 +62,31 @@ rule relabel_llm_similarity_and_compute_relabelled_llm_alignment_score:
     shell:
         r"""
             python3 workflow/llm_mind_alignment/scripts/relabel_llm_similarity_and_compute_relabelled_llm_alignment_score.py \
-                --llm_similarity {input.llm_similarity:q} \
+                --embedding_dataframe {input.embedding_dataframe:q} \
                 --isc_nearest_neighbours {input.isc_nearest_neighbours:q} \
-                --relabelled_alignment_score {output.relabelled_alignment_score:q} \
-                --number_of_neighbours {params.number_of_neighbours} \
+                --similarity_type {params.similarity_type:q} \
+                --relabelled_common_neighbours {output.relabelled_common_neighbours:q} \
+                --number_of_neighbours {params.numbers_of_neighbours} \
                 --model {params.model:q} \
                 --number_of_relabellings {params.number_of_relabellings} \
                 --random_seed {params.random_seed}
+        """
+
+rule extract_relabelled_alignment_score_for_k:
+    input:
+        relabelled_common_neighbours="results/alignment_scores/relabelled_common_neighbours/dataset-{dataset}_model-{model}-{stimuli_type}_brain_{similarity_type}-relabelled_common_neighbours.parquet"
+    output:
+        relabelled_alignment_score="results/alignment_scores/dataset-{dataset}_model-{model}-{stimuli_type}_brain_{similarity_type}-alignment_score_{number_of_neighbours}NN_relabelled.parquet"
+    params:
+        number_of_neighbours=lambda wc: wc.number_of_neighbours
+    conda:
+        "envs/llm_mind_alignment_environment.yaml"
+    shell:
+        r"""
+            python3 workflow/llm_mind_alignment/scripts/extract_relabelled_alignment_score_for_k.py \
+                --relabelled_common_neighbours {input.relabelled_common_neighbours:q} \
+                --number_of_neighbours {params.number_of_neighbours} \
+                --relabelled_alignment_score {output.relabelled_alignment_score:q}
         """
 
 rule compute_empirical_p_value:

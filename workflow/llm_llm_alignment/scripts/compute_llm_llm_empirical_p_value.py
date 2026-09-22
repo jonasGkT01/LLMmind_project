@@ -8,29 +8,43 @@ import pandas as pd
 import pyarrow.parquet as pq
 
 from libraries.compute_alignment import compute_mean_alignment_score
-from libraries.compute_nearest_neighbours import create_neighbour_mask, relabel_nearest_neighbours, stream_topk_indices_from_parquet
+from libraries.compute_nearest_neighbours import compute_blockwise_topk_from_embeddings, create_neighbour_mask, relabel_nearest_neighbours
+from libraries.compute_similarity import extract_embedding_matrix, normalize_fn_for_similarity_type
 from libraries.compute_statistics import create_relabelling_rng, empirical_upper_tail_p_value
 
-def read_parquet_concepts(path):
+def read_embedding_concepts(path):
     parquet_file = pq.ParquetFile(path)
     pandas_metadata = json.loads(parquet_file.schema_arrow.metadata[b"pandas"])
     index_column = pandas_metadata["index_columns"][0]
-    concepts = [name for name in parquet_file.schema_arrow.names if name != index_column]
 
-    if parquet_file.metadata.num_rows != len(concepts):
-        raise ValueError(f"{path} is not square: {len(concepts)} concept columns but {parquet_file.metadata.num_rows} rows")
-
-    return concepts
+    return pq.read_table(path, columns=[index_column]).column(index_column).to_pylist()
 
 def select_shared_concepts(path_1, path_2):
-    concepts_1 = read_parquet_concepts(path_1)
-    concepts_2 = set(read_parquet_concepts(path_2))
+    concepts_1 = read_embedding_concepts(path_1)
+    concepts_2 = set(read_embedding_concepts(path_2))
     shared_concepts = [concept for concept in concepts_1 if concept in concepts_2]
 
     if len(shared_concepts) == 0:
-        raise ValueError("No shared concepts were found between the two similarity matrices")
+        raise ValueError("No shared concepts were found between the two embedding dataframes")
 
     return shared_concepts
+
+def compute_shared_subset_topk_indices(embedding_path, shared_concepts, number_of_neighbours, normalize_fn):
+    # Computes top-k directly within the shared-concept subset (never persisting or reading a full N x N
+    # matrix). This must be computed fresh from embeddings rather than filtering a larger, differently
+    # scoped top-k file down to shared_concepts: neighbour indices here are positions within
+    # shared_concepts specifically, which relabel_nearest_neighbours/create_neighbour_mask below require
+    # to be a closed, self-consistent index space for the permutation to be well-defined.
+    embedding_df = pd.read_parquet(embedding_path, engine="pyarrow")
+    embedding_matrix = extract_embedding_matrix(embedding_df.loc[shared_concepts])
+
+    neighbour_indices, _ = compute_blockwise_topk_from_embeddings(
+        embedding_matrix=embedding_matrix,
+        number_of_neighbours=number_of_neighbours,
+        normalize_fn=normalize_fn,
+    )
+
+    return neighbour_indices
 
 def read_observed_alignment_score(path):
     observed_df = pd.read_parquet(path, engine="pyarrow")
@@ -85,8 +99,9 @@ def compute_empirical_p_value(observed_alignment_score, neighbours_1, neighbours
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--observed_alignment_score", required=True)
-    parser.add_argument("--llm_similarity_1", required=True)
-    parser.add_argument("--llm_similarity_2", required=True)
+    parser.add_argument("--llm_embeddings_1", required=True)
+    parser.add_argument("--llm_embeddings_2", required=True)
+    parser.add_argument("--similarity_type", required=True)
     parser.add_argument("--empirical_p_value", required=True)
     parser.add_argument("--number_of_neighbours", type=int, required=True)
     parser.add_argument("--number_of_relabellings", type=int, required=True)
@@ -105,19 +120,23 @@ def main():
     if args.number_of_relabellings <= 0:
         raise ValueError("--number_of_relabellings must be a positive integer")
 
+    normalize_fn = normalize_fn_for_similarity_type(args.similarity_type)
+
     observed_alignment_score = read_observed_alignment_score(args.observed_alignment_score)
 
-    shared_concepts = select_shared_concepts(args.llm_similarity_1, args.llm_similarity_2)
+    shared_concepts = select_shared_concepts(args.llm_embeddings_1, args.llm_embeddings_2)
 
-    neighbours_1 = stream_topk_indices_from_parquet(
-        similarity_parquet_path = args.llm_similarity_1,
-        concepts = shared_concepts,
+    neighbours_1 = compute_shared_subset_topk_indices(
+        embedding_path = args.llm_embeddings_1,
+        shared_concepts = shared_concepts,
         number_of_neighbours = args.number_of_neighbours,
+        normalize_fn = normalize_fn,
     )
-    neighbours_2 = stream_topk_indices_from_parquet(
-        similarity_parquet_path = args.llm_similarity_2,
-        concepts = shared_concepts,
+    neighbours_2 = compute_shared_subset_topk_indices(
+        embedding_path = args.llm_embeddings_2,
+        shared_concepts = shared_concepts,
         number_of_neighbours = args.number_of_neighbours,
+        normalize_fn = normalize_fn,
     )
 
     empirical_p_value, number_at_least_as_extreme = compute_empirical_p_value(

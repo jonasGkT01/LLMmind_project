@@ -5,9 +5,21 @@ import numpy as np
 import pandas as pd
 from scipy.stats import rankdata
 
+from libraries.compute_similarity import (
+    dataframe_to_embedding_matrix,
+    extract_embedding_matrix,
+    normalize_fn_for_similarity_type,
+)
 from libraries.compute_statistics import empirical_upper_tail_p_value
-from libraries.read_similarity_subset import read_similarity_subset
 from libraries.validate_data import validate_similarity_dataframe
+
+def compute_similarity_dataframe(embedding_matrix, concepts, normalize_fn):
+    # concepts is always small here (bounded by the ISC-eligible/brain concept count), so a dense
+    # in-process matrix is fine — unlike the LLM/ISC neighbour-generation scripts, this never needs to
+    # touch the full N x N stimulus universe.
+    normalized = normalize_fn(embedding_matrix)
+
+    return pd.DataFrame(normalized @ normalized.T, index=concepts, columns=concepts)
 
 def rank_and_normalize(values, name):
     ranks = rankdata(values, method="average")
@@ -21,8 +33,8 @@ def rank_and_normalize(values, name):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--brain_similarity", required=True)
-    parser.add_argument("--model_similarity", required=True)
+    parser.add_argument("--brain_embeddings", required=True)
+    parser.add_argument("--model_embeddings", required=True)
     parser.add_argument("--model_level_output", required=True)
     parser.add_argument("--concept_level_output", required=True)
     parser.add_argument("--dataset", required=True)
@@ -36,23 +48,30 @@ def main():
     if args.number_of_relabellings <= 0:
         raise ValueError("--number_of_relabellings must be a positive integer")
 
-    brain_similarity_df = validate_similarity_dataframe(
-        similarity_df=pd.read_parquet(args.brain_similarity, engine="pyarrow",),
-        source=args.brain_similarity,
-    )
+    normalize_fn = normalize_fn_for_similarity_type(args.similarity_type)
 
-    concepts = brain_similarity_df.index.to_numpy()
+    brain_embedding_df = pd.read_parquet(args.brain_embeddings, engine="pyarrow")
+    concepts = brain_embedding_df.index.to_numpy()
 
     if len(concepts) < 3:
         raise ValueError("At least three concepts are required to compute Spearman alignment")
 
+    brain_embedding_matrix = dataframe_to_embedding_matrix(brain_embedding_df)
+    brain_similarity_df = validate_similarity_dataframe(
+        similarity_df=compute_similarity_dataframe(brain_embedding_matrix, concepts, normalize_fn),
+        source=args.brain_embeddings,
+    )
+
+    model_embedding_df = pd.read_parquet(args.model_embeddings, engine="pyarrow")
+    missing_concepts = sorted(set(concepts) - set(model_embedding_df.index))
+
+    if missing_concepts:
+        raise ValueError(f"{args.model_embeddings} is missing {len(missing_concepts)} requested concept(s), e.g. {missing_concepts[:5]}")
+
+    model_embedding_matrix = extract_embedding_matrix(model_embedding_df.loc[concepts])
     model_similarity_df = validate_similarity_dataframe(
-        similarity_df=read_similarity_subset(
-            path=args.model_similarity,
-            concepts=concepts,
-            source=args.model_similarity,
-        ),
-        source=args.model_similarity,
+        similarity_df=compute_similarity_dataframe(model_embedding_matrix, concepts, normalize_fn),
+        source=args.model_embeddings,
     )
 
     brain_similarity_df = brain_similarity_df.loc[concepts, concepts]

@@ -5,9 +5,13 @@ from pathlib import Path
 import pandas as pd
 
 from libraries.compute_alignment import compute_alignment_scores
+from libraries.compute_nearest_neighbours import require_stored_number_of_neighbours, slice_top_k_neighbours
 from libraries.validate_data import validate_required_columns
 
-def read_nearest_neighbours(path):
+def read_nearest_neighbours(path, number_of_neighbours):
+    # both files hold the dataset's largest configured neighbourhood size, not just number_of_neighbours
+    require_stored_number_of_neighbours(path, number_of_neighbours)
+
     df = pd.read_parquet(path, engine = "pyarrow",)
 
     validate_required_columns(
@@ -16,7 +20,7 @@ def read_nearest_neighbours(path):
         source = str(path),
     )
 
-    return df
+    return slice_top_k_neighbours(df, number_of_neighbours)
 
 def main():
     parser = argparse.ArgumentParser()
@@ -29,8 +33,8 @@ def main():
     if args.number_of_neighbours <= 0:
         raise ValueError("--number_of_neighbours must be a positive integer")
 
-    llm_nearest_neighbours_1_df = read_nearest_neighbours(args.llm_nearest_neighbours_1)
-    llm_nearest_neighbours_2_df = read_nearest_neighbours(args.llm_nearest_neighbours_2)
+    llm_nearest_neighbours_1_df = read_nearest_neighbours(args.llm_nearest_neighbours_1, args.number_of_neighbours)
+    llm_nearest_neighbours_2_df = read_nearest_neighbours(args.llm_nearest_neighbours_2, args.number_of_neighbours)
 
     alignment_score_df = compute_alignment_scores(
         nearest_neighbours_df_1 = llm_nearest_neighbours_1_df,

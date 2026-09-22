@@ -11,17 +11,27 @@ SIMILARITY_TYPES = list(config["similarity_types"])
 NUMBER_OF_RELABELLINGS = config["number_of_relabellings"]
 RANDOM_SEED = config["random_seed"]
 
+def dataset_numbers_of_neighbours(dataset):
+    numbers_of_neighbours = config[dataset]["number_of_neighbours"]
+
+    # allow both old scalar syntax and new list syntax
+    if isinstance(numbers_of_neighbours, int):
+        numbers_of_neighbours = [numbers_of_neighbours]
+
+    return numbers_of_neighbours
+
+def max_number_of_neighbours(dataset):
+    # The largest configured neighbourhood size for a dataset: the only k the neighbour-generation
+    # rules (compute_llm_nearest_neighbours, compute_isc_nearest_neighbours) actually compute and store.
+    # Every smaller configured k is a prefix slice of that one stored file (see slice_top_k_neighbours in
+    # libraries/compute_nearest_neighbours.py) rather than a separately materialized file.
+    return max(dataset_numbers_of_neighbours(dataset))
+
 def pairings():
     pairs = []
 
     for dataset in DATASETS:
-        numbers_of_neighbours = config[dataset]["number_of_neighbours"]
-
-        # allow both old scalar syntax and new list syntax
-        if isinstance(numbers_of_neighbours, int):
-            numbers_of_neighbours = [numbers_of_neighbours]
-
-        for number_of_neighbours in numbers_of_neighbours:
+        for number_of_neighbours in dataset_numbers_of_neighbours(dataset):
             for stimuli_type in list(config[dataset]["stimuli_dir"].keys()):
                 for model in MODEL_KEYS:
                     if config["models"][model]["modality"] in [stimuli_type, "multimodal"]:
@@ -46,15 +56,9 @@ def llm_llm_pairings():
     llm_llm_pairs = []
 
     for dataset in DATASETS:
-        numbers_of_neighbours = config[dataset]["number_of_neighbours"]
-
-        # allow both old scalar syntax and new list syntax
-        if isinstance(numbers_of_neighbours, int):
-            numbers_of_neighbours = [numbers_of_neighbours]
-
         available_modalities = list(config[dataset]["stimuli_dir"].keys())
 
-        for number_of_neighbours in numbers_of_neighbours:
+        for number_of_neighbours in dataset_numbers_of_neighbours(dataset):
             compatible_models = [
                 model
                 for model in MODEL_KEYS
@@ -89,11 +93,35 @@ HEATMAP_PAIRINGS = [
     }
     for dataset in DATASETS
     for similarity_type in SIMILARITY_TYPES
-    for number_of_neighbours in (
-        config[dataset]["number_of_neighbours"]
-        if isinstance(config[dataset]["number_of_neighbours"], list)
-        else [config[dataset]["number_of_neighbours"]]
-    )
+    for number_of_neighbours in dataset_numbers_of_neighbours(dataset)
+]
+
+# One entry per (dataset, model, stimuli_type, similarity_type) — no number_of_neighbours dimension.
+# Drives compute_llm_nearest_neighbours (workflow/llm_nearest_neighbours/Snakefile), which now computes
+# and stores only the dataset's largest configured k; every k-specific consumer rule still iterates
+# PAIRINGS and slices the k it needs from that one shared file.
+LLM_NEIGHBOUR_GENERATION_PAIRINGS = [
+    {
+        "dataset": dataset,
+        "stimuli_type": stimuli_type,
+        "model": model,
+        "similarity_type": similarity_type,
+    }
+    for dataset in DATASETS
+    for stimuli_type in list(config[dataset]["stimuli_dir"].keys())
+    for model in MODEL_KEYS
+    if config["models"][model]["modality"] in [stimuli_type, "multimodal"]
+    for similarity_type in SIMILARITY_TYPES
+]
+
+# One entry per (dataset, similarity_type) — the mind/ISC-side analog, no model dimension.
+MIND_NEIGHBOUR_GENERATION_PAIRINGS = [
+    {
+        "dataset": dataset,
+        "similarity_type": similarity_type,
+    }
+    for dataset in DATASETS
+    for similarity_type in SIMILARITY_TYPES
 ]
 
 SPEARMAN_PAIRINGS = [

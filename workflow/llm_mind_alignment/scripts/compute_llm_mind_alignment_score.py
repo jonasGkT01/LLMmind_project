@@ -3,6 +3,7 @@ import argparse
 import pandas as pd
 
 from libraries.compute_alignment import compute_alignment_scores
+from libraries.compute_nearest_neighbours import require_stored_number_of_neighbours, slice_top_k_neighbours
 
 def main():
     parser = argparse.ArgumentParser()
@@ -28,6 +29,11 @@ def main():
     if number_of_neighbours is None or number_of_neighbours <= 0:
         raise ValueError("--number_of_neighbours must be a positive integer")
 
+    # both files hold the dataset's largest configured neighbourhood size; fail loudly rather than
+    # silently truncating if a smaller-than-requested file ever slips through
+    require_stored_number_of_neighbours(isc_nearest_neighbours, number_of_neighbours)
+    require_stored_number_of_neighbours(llm_nearest_neighbours, number_of_neighbours)
+
     # load the dataframes
     nearest_neighbours_df_1 = pd.read_parquet(isc_nearest_neighbours, engine = "pyarrow")
     nearest_neighbours_df_2 = pd.read_parquet(llm_nearest_neighbours, engine = "pyarrow")
@@ -42,6 +48,9 @@ def main():
 
     if missing_columns_2:
         raise ValueError(f"The second nearest-neighbours dataframe is missing columns: {sorted(missing_columns_2)}")
+
+    nearest_neighbours_df_1 = slice_top_k_neighbours(nearest_neighbours_df_1, number_of_neighbours)
+    nearest_neighbours_df_2 = slice_top_k_neighbours(nearest_neighbours_df_2, number_of_neighbours)
 
     alignment_score_df = compute_alignment_scores(
         nearest_neighbours_df_1=nearest_neighbours_df_1,

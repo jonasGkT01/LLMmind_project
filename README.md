@@ -137,14 +137,21 @@ parameters (TR, event duration, etc.), plus the neighbourhood sizes
 `nsd_data` is far larger than the other three by stimulus count — tens of
 thousands of eligible stimuli, versus hundreds to a few thousand for the
 rest, because its embedding-eligibility criterion is much looser than its
-ISC-eligibility criterion (515 stimuli have enough repetitions for ISC; far
-more have enough for a usable embedding). The similarity and
+ISC-eligibility criterion. (Until 2026-09-21, ISC eligibility for this
+dataset specifically was capped at only 515 stimuli by a stricter
+per-subject repetition rule; that rule was removed, so ISC eligibility now
+follows the same ≥2-pooled-observations rule as every other dataset — see
+the developer changelog for the history.) The similarity and
 nearest-neighbour computation steps (`llm_nearest_neighbours/`,
-`llm_llm_alignment/`, `llm_mind_alignment/`, `spearman_alignment/`) stream
-large similarity matrices from disk in blocks rather than loading them
-fully into memory, specifically so this dataset's runs stay feasible; for
-the other three datasets, small enough to load in full, this makes no
-practical difference.
+`isc_nearest_neighbours/`, `llm_llm_alignment/`, `llm_mind_alignment/`,
+`spearman_alignment/`) never build or store a full stimulus × stimulus
+similarity matrix at all: similarity is computed in blocks directly from
+embeddings and immediately reduced to each concept's top-ranked
+neighbours, capped at the largest neighbourhood size configured for that
+dataset (`number_of_neighbours`, below) — the only thing any downstream
+step actually needs. For the other three datasets, small enough that a
+full matrix would be cheap anyway, this makes no practical difference to
+the results, only to how much disk and memory computing them uses.
 
 ## Input data
 
@@ -320,11 +327,14 @@ once. For that step, a higher `--cores` value directly speeds it up.
   `snakemake --cleanup-metadata <path>` for the affected outputs if you're
   confident the already-downloaded weights don't actually need
   re-fetching.
-- **Disk space for `nsd_data`**: each model's full similarity matrix pair
-  (cosine + Pearson) for this dataset is a fixed ~88GB, independent of the
-  model's embedding size, since it scales with the number of stimuli
-  squared rather than embedding dimension. Running the full model sweep
-  for this dataset needs correspondingly large free disk space.
+- **Disk space for `nsd_data`**: similarity computation never writes a full
+  stimulus × stimulus matrix (see [Datasets](#datasets) above), so
+  per-model disk use is now driven by the dataset's largest configured
+  neighbourhood size rather than a fixed ~88GB regardless of it. If you
+  have result directories from before 2026-09-22 containing
+  `*_similarity.parquet` files or neighbour files with a `_<k>NN` suffix,
+  those are stale — the pipeline no longer produces or reads either, and
+  they're safe to delete.
 
 ## Outputs
 

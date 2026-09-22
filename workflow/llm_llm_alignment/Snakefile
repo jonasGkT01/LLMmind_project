@@ -11,8 +11,8 @@ rule all_llm_llm_alignment:
 
 rule compute_llm_llm_alignment_score:
     input:
-        llm_nearest_neighbours_1="results/{stimuli_type_1}_models/{dataset}/{similarity_type}_nearest_neighbours/{model_1}_{similarity_type}_nearest_neighbours_{number_of_neighbours}NN.parquet",
-        llm_nearest_neighbours_2="results/{stimuli_type_2}_models/{dataset}/{similarity_type}_nearest_neighbours/{model_2}_{similarity_type}_nearest_neighbours_{number_of_neighbours}NN.parquet"
+        llm_nearest_neighbours_1="results/{stimuli_type_1}_models/{dataset}/{similarity_type}_nearest_neighbours/{model_1}_{similarity_type}_nearest_neighbours.parquet",
+        llm_nearest_neighbours_2="results/{stimuli_type_2}_models/{dataset}/{similarity_type}_nearest_neighbours/{model_2}_{similarity_type}_nearest_neighbours.parquet"
     output:
         llm_llm_alignment_score="results/alignment_scores/dataset-{dataset}_model-{model_1}-{stimuli_type_1}_model-{model_2}-{stimuli_type_2}_{similarity_type}-alignment_score_{number_of_neighbours}NN.parquet"
     params:
@@ -31,12 +31,13 @@ rule compute_llm_llm_alignment_score:
 rule compute_llm_llm_empirical_p_value:
     input:
         observed_alignment_score="results/alignment_scores/dataset-{dataset}_model-{model_1}-{stimuli_type_1}_model-{model_2}-{stimuli_type_2}_{similarity_type}-alignment_score_{number_of_neighbours}NN.parquet",
-        llm_similarity_1="results/{stimuli_type_1}_models/{dataset}/{similarity_type}_similarity/{model_1}_{similarity_type}_similarity.parquet",
-        llm_similarity_2="results/{stimuli_type_2}_models/{dataset}/{similarity_type}_similarity/{model_2}_{similarity_type}_similarity.parquet"
+        llm_embeddings_1="results/{stimuli_type_1}_models/{dataset}/embeddings/{model_1}_embeddings.parquet",
+        llm_embeddings_2="results/{stimuli_type_2}_models/{dataset}/embeddings/{model_2}_embeddings.parquet"
     output:
         empirical_p_value="results/alignment_scores/dataset-{dataset}_model-{model_1}-{stimuli_type_1}_model-{model_2}-{stimuli_type_2}_empirical_{similarity_type}-alignment_score_{number_of_neighbours}NN.p_value.tsv"
     params:
         number_of_neighbours=lambda wc: wc.number_of_neighbours,
+        similarity_type=lambda wc: wc.similarity_type,
         number_of_relabellings=NUMBER_OF_RELABELLINGS,
         random_seed=RANDOM_SEED,
         model_1=lambda wc: wc.model_1,
@@ -51,8 +52,9 @@ rule compute_llm_llm_empirical_p_value:
         r"""
             python3 workflow/llm_llm_alignment/scripts/compute_llm_llm_empirical_p_value.py \
                 --observed_alignment_score {input.observed_alignment_score:q} \
-                --llm_similarity_1 {input.llm_similarity_1:q} \
-                --llm_similarity_2 {input.llm_similarity_2:q} \
+                --llm_embeddings_1 {input.llm_embeddings_1:q} \
+                --llm_embeddings_2 {input.llm_embeddings_2:q} \
+                --similarity_type {params.similarity_type:q} \
                 --empirical_p_value {output.empirical_p_value:q} \
                 --number_of_neighbours {params.number_of_neighbours} \
                 --number_of_relabellings {params.number_of_relabellings} \

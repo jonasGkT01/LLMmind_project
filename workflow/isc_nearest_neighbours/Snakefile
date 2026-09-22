@@ -4,8 +4,8 @@ from pathlib import Path
 rule all_isc_nearest_neighbours:
     input:
         [
-            f"results/mind/{pair['dataset']}/isc_{pair['similarity_type']}_nearest_neighbours_{pair['number_of_neighbours']}NN.parquet"
-            for pair in PAIRINGS
+            f"results/mind/{pair['dataset']}/isc_{pair['similarity_type']}_nearest_neighbours.parquet"
+            for pair in MIND_NEIGHBOUR_GENERATION_PAIRINGS
         ]
 
 def isc_done_for_dataset(wc):
@@ -55,39 +55,25 @@ rule create_isc_dataframe:
                 --isc_dataframe {output.isc_dataframe:q}
         """
 
-rule compute_isc_similarity:
+rule compute_isc_nearest_neighbours:
+    # Computes similarity blockwise straight from the ISC dataframe and keeps only the dataset's largest
+    # configured number_of_neighbours per concept — the dense N x N similarity matrix is never written
+    # to disk. Output is unversioned by k: every k-specific consumer rule slices the k it needs from this
+    # one file via slice_top_k_neighbours.
     input:
         isc_dataframe="results/mind/{dataset}/isc_dataframe.parquet"
     output:
-        isc_cosine_similarity_dataframe="results/mind/{dataset}/isc_cosine_similarity.parquet",
-        isc_pearson_similarity_dataframe="results/mind/{dataset}/isc_pearson_similarity.parquet"
-    conda:
-        "envs/isc_nearest_neighbours_environment.yaml"
-    shell:
-        r"""
-            python3 workflow/isc_nearest_neighbours/scripts/compute_isc_similarity.py \
-                --isc_dataframe {input.isc_dataframe:q} \
-                --isc_cosine_similarity_dataframe {output.isc_cosine_similarity_dataframe:q} \
-                --isc_pearson_similarity_dataframe {output.isc_pearson_similarity_dataframe:q}
-        """
-
-rule compute_isc_nearest_neighbours:
-    input:
-        isc_cosine_similarity_dataframe="results/mind/{dataset}/isc_cosine_similarity.parquet",
-        isc_pearson_similarity_dataframe="results/mind/{dataset}/isc_pearson_similarity.parquet"
-    output:
-        isc_cosine_nearest_neighbours="results/mind/{dataset}/isc_cosine_nearest_neighbours_{number_of_neighbours}NN.parquet",
-        isc_pearson_nearest_neighbours="results/mind/{dataset}/isc_pearson_nearest_neighbours_{number_of_neighbours}NN.parquet"
+        isc_cosine_nearest_neighbours="results/mind/{dataset}/isc_cosine_nearest_neighbours.parquet",
+        isc_pearson_nearest_neighbours="results/mind/{dataset}/isc_pearson_nearest_neighbours.parquet"
     params:
-        number_of_neighbours=lambda wc: wc.number_of_neighbours
+        number_of_neighbours=lambda wc: max_number_of_neighbours(wc.dataset)
     conda:
         "envs/isc_nearest_neighbours_environment.yaml"
     shell:
         r"""
             python3 workflow/isc_nearest_neighbours/scripts/compute_isc_nearest_neighbours.py \
-                --isc_cosine_similarity_dataframe {input.isc_cosine_similarity_dataframe:q} \
-                --isc_pearson_similarity_dataframe {input.isc_pearson_similarity_dataframe:q} \
+                --isc_dataframe {input.isc_dataframe:q} \
+                --number_of_neighbours {params.number_of_neighbours:q} \
                 --isc_cosine_nearest_neighbours {output.isc_cosine_nearest_neighbours:q} \
-                --isc_pearson_nearest_neighbours {output.isc_pearson_nearest_neighbours:q} \
-                --number_of_neighbours {params.number_of_neighbours}
+                --isc_pearson_nearest_neighbours {output.isc_pearson_nearest_neighbours:q}
         """

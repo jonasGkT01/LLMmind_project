@@ -2,76 +2,61 @@ import argparse
 
 import pandas as pd
 
-from libraries.compute_nearest_neighbours import create_nearest_neighbours_dataframe
+from libraries.compute_nearest_neighbours import compute_blockwise_topk_from_embeddings, write_nearest_neighbours_parquet
+from libraries.compute_similarity import dataframe_to_embedding_matrix, normalize_l2, pearson_normalize
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--isc_cosine_similarity_dataframe", 
-                      type = str, 
-                      help = "Path to the file containing computed cosine similarities")
-    parser.add_argument("--isc_pearson_similarity_dataframe", 
-                      type = str, 
-                      help = "Path to the file containing computed Pearson similarities")
-    parser.add_argument("--isc_cosine_nearest_neighbours", 
-                      type = str, 
-                      help = "Path to the file containing the cosine nearest neighbours of concepts")
-    parser.add_argument("--isc_pearson_nearest_neighbours", 
-                      type = str, 
-                      help = "Path to the file containing the Pearson nearest neighbours of concepts")
-    parser.add_argument("--number_of_neighbours", 
-                      type = int, 
-                      help = "Set the number of neighbours to compute")
+    parser.add_argument("--isc_dataframe",
+                        type=str,
+                        help="Path to dataframe of ISC's")
+    parser.add_argument("--number_of_neighbours",
+                        type=int,
+                        required=True,
+                        help="Number of neighbours to compute and store (the dataset's largest configured neighbourhood size)")
+    parser.add_argument("--isc_cosine_nearest_neighbours",
+                        type=str,
+                        help="Path to the file containing the cosine nearest neighbours of concepts")
+    parser.add_argument("--isc_pearson_nearest_neighbours",
+                        type=str,
+                        help="Path to the file containing the Pearson nearest neighbours of concepts")
     args = parser.parse_args()
 
-    isc_cosine_similarity_dataframe = args.isc_cosine_similarity_dataframe
-    isc_pearson_similarity_dataframe = args.isc_pearson_similarity_dataframe
-    isc_cosine_nearest_neighbours = args.isc_cosine_nearest_neighbours
-    isc_pearson_nearest_neighbours = args.isc_pearson_nearest_neighbours
-    number_of_neighbours = args.number_of_neighbours
+    if args.number_of_neighbours <= 0:
+        raise ValueError("--number_of_neighbours must be a positive integer")
+
+    isc_df = pd.read_parquet(args.isc_dataframe, engine="pyarrow")
+    embedding_matrix = dataframe_to_embedding_matrix(isc_df)
+    concepts = isc_df.index
 
     ##### COSINE SIMILARITY #####
-    # load the dataframe
-    cosine_similarity_df = pd.read_parquet(isc_cosine_similarity_dataframe, engine = "pyarrow")
-
-    cosine_nearest_neighbours_df = (
-        create_nearest_neighbours_dataframe(
-            similarity_df=cosine_similarity_df,
-            number_of_neighbours=number_of_neighbours,
-        )
+    cosine_indices, cosine_scores = compute_blockwise_topk_from_embeddings(
+        embedding_matrix=embedding_matrix,
+        number_of_neighbours=args.number_of_neighbours,
+        normalize_fn=normalize_l2,
     )
-
-    cosine_nearest_neighbours_df = (
-        cosine_nearest_neighbours_df.rename(
-            columns={"similarity": "cosine_similarity",}
-        )
+    write_nearest_neighbours_parquet(
+        concepts=concepts,
+        neighbour_indices=cosine_indices,
+        neighbour_scores=cosine_scores,
+        number_of_neighbours=args.number_of_neighbours,
+        output_path=args.isc_cosine_nearest_neighbours,
     )
-    
-    # save the nearest neighbours to primary concept as a parquet file
-    cosine_nearest_neighbours_df.to_parquet(isc_cosine_nearest_neighbours, engine = "pyarrow", index = True)
-    
-#    # print the cosine nearest neighbours dataframe
-#    with pd.option_context("display.max_rows", None, "display.max_columns", None):
-#        print(cosine_nearest_neighbours_df)
+    del cosine_indices, cosine_scores
 
     ##### PEARSON SIMILARITY #####
-    # load the dataframe
-    pearson_similarity_df = pd.read_parquet(isc_pearson_similarity_dataframe, engine="pyarrow")
-
-    pearson_nearest_neighbours_df = (
-        create_nearest_neighbours_dataframe(
-            similarity_df=pearson_similarity_df,
-            number_of_neighbours=number_of_neighbours,
-        )
+    pearson_indices, pearson_scores = compute_blockwise_topk_from_embeddings(
+        embedding_matrix=embedding_matrix,
+        number_of_neighbours=args.number_of_neighbours,
+        normalize_fn=pearson_normalize,
     )
-
-    pearson_nearest_neighbours_df = (
-        pearson_nearest_neighbours_df.rename(
-            columns={"similarity": "pearson_similarity",}
-        )
+    write_nearest_neighbours_parquet(
+        concepts=concepts,
+        neighbour_indices=pearson_indices,
+        neighbour_scores=pearson_scores,
+        number_of_neighbours=args.number_of_neighbours,
+        output_path=args.isc_pearson_nearest_neighbours,
     )
-    
-    # save the nearest neighbours to primary concept as a parquet file
-    pearson_nearest_neighbours_df.to_parquet(isc_pearson_nearest_neighbours, engine = "pyarrow", index = True)
 
 if __name__ == "__main__":
     main()

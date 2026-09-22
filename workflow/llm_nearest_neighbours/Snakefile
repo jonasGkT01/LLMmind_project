@@ -3,12 +3,8 @@ from pathlib import Path
 rule all_llm_nearest_neighbours:
     input:
         [
-            f"results/{pair['stimuli_type']}_models/{pair['dataset']}/{pair['similarity_type']}_similarity/{pair['model']}_{pair['similarity_type']}_similarity.parquet"
-            for pair in PAIRINGS
-        ],
-        [
-            f"results/{pair['stimuli_type']}_models/{pair['dataset']}/{pair['similarity_type']}_nearest_neighbours/{pair['model']}_{pair['similarity_type']}_nearest_neighbours_{pair['number_of_neighbours']}NN.parquet"
-            for pair in PAIRINGS
+            f"results/{pair['stimuli_type']}_models/{pair['dataset']}/{pair['similarity_type']}_nearest_neighbours/{pair['model']}_{pair['similarity_type']}_nearest_neighbours.parquet"
+            for pair in LLM_NEIGHBOUR_GENERATION_PAIRINGS
         ]
 
 rule download_pretrained_llm:
@@ -52,35 +48,25 @@ rule get_embeddings:
                 --excluded_stimuli {input.excluded_stimuli:q}
         """
 
-rule compute_llm_similarity:
+rule compute_llm_nearest_neighbours:
+    # Computes similarity blockwise straight from embeddings and keeps only the dataset's largest
+    # configured number_of_neighbours per concept — the dense N x N similarity matrix is never written
+    # to disk. Output is unversioned by k (see max_number_of_neighbours in workflow/Snakefile): every
+    # k-specific consumer rule slices the k it needs from this one file via slice_top_k_neighbours.
     input:
         embedding_dataframe="results/{stimuli_type}_models/{dataset}/embeddings/{model}_embeddings.parquet"
     output:
-        cosine_similarity_dataframe="results/{stimuli_type}_models/{dataset}/cosine_similarity/{model}_cosine_similarity.parquet",
-        pearson_similarity_dataframe="results/{stimuli_type}_models/{dataset}/pearson_similarity/{model}_pearson_similarity.parquet"
-    conda:
-        "envs/llm_nearest_neighbours_environment.yaml"
-    shell:
-        r"""
-            python3 workflow/llm_nearest_neighbours/scripts/compute_llm_similarity.py \
-                --embedding_dataframe {input.embedding_dataframe:q} \
-                --cosine_similarity_dataframe {output.cosine_similarity_dataframe:q} \
-                --pearson_similarity_dataframe {output.pearson_similarity_dataframe:q}
-        """
-
-rule compute_llm_nearest_neighbours:
-    input:
-        similarity_dataframe="results/{stimuli_type}_models/{dataset}/{similarity_type}_similarity/{model}_{similarity_type}_similarity.parquet"
-    output:
-        nearest_neighbours="results/{stimuli_type}_models/{dataset}/{similarity_type}_nearest_neighbours/{model}_{similarity_type}_nearest_neighbours_{number_of_neighbours}NN.parquet"
+        cosine_nearest_neighbours="results/{stimuli_type}_models/{dataset}/cosine_nearest_neighbours/{model}_cosine_nearest_neighbours.parquet",
+        pearson_nearest_neighbours="results/{stimuli_type}_models/{dataset}/pearson_nearest_neighbours/{model}_pearson_nearest_neighbours.parquet"
     params:
-        number_of_neighbours=lambda wc: wc.number_of_neighbours
+        number_of_neighbours=lambda wc: max_number_of_neighbours(wc.dataset)
     conda:
         "envs/llm_nearest_neighbours_environment.yaml"
     shell:
         r"""
             python3 workflow/llm_nearest_neighbours/scripts/compute_llm_nearest_neighbours.py \
+                --embedding_dataframe {input.embedding_dataframe:q} \
                 --number_of_neighbours {params.number_of_neighbours:q} \
-                --similarity_dataframe {input.similarity_dataframe:q} \
-                --nearest_neighbours {output.nearest_neighbours:q}
+                --cosine_nearest_neighbours {output.cosine_nearest_neighbours:q} \
+                --pearson_nearest_neighbours {output.pearson_nearest_neighbours:q}
         """
