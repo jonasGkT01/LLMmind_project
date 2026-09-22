@@ -129,6 +129,8 @@ rule assemble_nsd_bold:
     params:
         dataset_dir=NSD_DATASET_DIRECTORY,
         interpolation=config["nsd_data"]["map_interpolation"]
+    threads:
+        workflow.cores
     conda:
         "envs/nsd_data_dataset_processing_environment.yaml"
     shell:
@@ -136,7 +138,8 @@ rule assemble_nsd_bold:
             python3 workflow/dataset_processing/nsd_data_dataset/scripts/assemble_nsd_bold.py \
                 --manifest {input.manifest:q} \
                 --dataset_dir {params.dataset_dir:q} \
-                --interpolation {params.interpolation:q}
+                --interpolation {params.interpolation:q} \
+                --jobs {threads}
         """
 
 rule extract_nsd_parcels:
