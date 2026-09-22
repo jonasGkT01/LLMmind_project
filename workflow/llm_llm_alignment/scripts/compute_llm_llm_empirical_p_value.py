@@ -1,27 +1,36 @@
 #!/usr/bin/env python3
 import argparse
+import json
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import pyarrow.parquet as pq
 
 from libraries.compute_alignment import compute_mean_alignment_score
-from libraries.compute_nearest_neighbours import compute_topk_indices, create_neighbour_mask, relabel_nearest_neighbours
+from libraries.compute_nearest_neighbours import create_neighbour_mask, relabel_nearest_neighbours, stream_topk_indices_from_parquet
 from libraries.compute_statistics import create_relabelling_rng, empirical_upper_tail_p_value
-from libraries.validate_data import validate_similarity_dataframe
 
-def select_shared_concepts(similarity_df_1, similarity_df_2):
-    concepts_1 = list(similarity_df_1.index)
-    concepts_2 = set(similarity_df_2.index)
+def read_parquet_concepts(path):
+    parquet_file = pq.ParquetFile(path)
+    pandas_metadata = json.loads(parquet_file.schema_arrow.metadata[b"pandas"])
+    index_column = pandas_metadata["index_columns"][0]
+    concepts = [name for name in parquet_file.schema_arrow.names if name != index_column]
+
+    if parquet_file.metadata.num_rows != len(concepts):
+        raise ValueError(f"{path} is not square: {len(concepts)} concept columns but {parquet_file.metadata.num_rows} rows")
+
+    return concepts
+
+def select_shared_concepts(path_1, path_2):
+    concepts_1 = read_parquet_concepts(path_1)
+    concepts_2 = set(read_parquet_concepts(path_2))
     shared_concepts = [concept for concept in concepts_1 if concept in concepts_2]
 
     if len(shared_concepts) == 0:
         raise ValueError("No shared concepts were found between the two similarity matrices")
 
-    similarity_df_1 = similarity_df_1.loc[shared_concepts, shared_concepts]
-    similarity_df_2 = similarity_df_2.loc[shared_concepts, shared_concepts]
-
-    return similarity_df_1, similarity_df_2
+    return shared_concepts
 
 def read_observed_alignment_score(path):
     observed_df = pd.read_parquet(path, engine="pyarrow")
@@ -98,29 +107,16 @@ def main():
 
     observed_alignment_score = read_observed_alignment_score(args.observed_alignment_score)
 
-    similarity_df_1 = pd.read_parquet(args.llm_similarity_1, engine = "pyarrow")
-    similarity_df_2 = pd.read_parquet(args.llm_similarity_2, engine = "pyarrow")
+    shared_concepts = select_shared_concepts(args.llm_similarity_1, args.llm_similarity_2)
 
-    similarity_df_1 = validate_similarity_dataframe(
-        similarity_df = similarity_df_1,
-        source = args.llm_similarity_1,
-    )
-    similarity_df_2 = validate_similarity_dataframe(
-        similarity_df = similarity_df_2,
-        source = args.llm_similarity_2,
-    )
-
-    similarity_df_1, similarity_df_2 = select_shared_concepts(
-        similarity_df_1 = similarity_df_1,
-        similarity_df_2 = similarity_df_2,
-    )
-
-    neighbours_1 = compute_topk_indices(
-        similarity = similarity_df_1.to_numpy(copy = True),
+    neighbours_1 = stream_topk_indices_from_parquet(
+        similarity_parquet_path = args.llm_similarity_1,
+        concepts = shared_concepts,
         number_of_neighbours = args.number_of_neighbours,
     )
-    neighbours_2 = compute_topk_indices(
-        similarity = similarity_df_2.to_numpy(copy = True),
+    neighbours_2 = stream_topk_indices_from_parquet(
+        similarity_parquet_path = args.llm_similarity_2,
+        concepts = shared_concepts,
         number_of_neighbours = args.number_of_neighbours,
     )
 
@@ -142,7 +138,7 @@ def main():
                 "model_2": args.model_2,
                 "stimuli_type_2": args.stimuli_type_2,
                 "number_of_parameters_2": args.number_of_parameters_2,
-                "number_of_shared_concepts": len(similarity_df_1),
+                "number_of_shared_concepts": len(shared_concepts),
                 "number_of_neighbours": args.number_of_neighbours,
                 "number_of_relabellings": args.number_of_relabellings,
                 "random_seed": args.random_seed,

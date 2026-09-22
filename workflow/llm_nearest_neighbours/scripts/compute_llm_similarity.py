@@ -54,10 +54,12 @@ def main():
 
     # save the pandas dataframe as a parquet file
     cosine_similarity_df.to_parquet(cosine_similarity_dataframe, engine="pyarrow", index=True)
-    
+
 #    # print the cosine similarity dataframe
 #    with pd.option_context("display.max_rows", None, "display.max_columns", None):
 #        print(cosine_similarity_df)
+
+    del cosine_result, cosine_similarity_df
 
     ##### PEARSON SIMILARITY #####
     # compute Pearson similarities for all the concepts in the embedding dataframe

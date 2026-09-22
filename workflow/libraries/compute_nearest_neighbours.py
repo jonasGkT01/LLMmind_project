@@ -6,6 +6,56 @@ import pyarrow.parquet as pq
 
 DEFAULT_COLUMN_BLOCK_SIZE = 4096
 
+def stream_topk_indices_from_parquet(
+    similarity_parquet_path,
+    concepts,
+    number_of_neighbours,
+    column_block_size = DEFAULT_COLUMN_BLOCK_SIZE,
+):
+    """
+        Compute top-k neighbour indices (positions within `concepts`) for a symmetric similarity matrix
+        stored as Parquet, restricted to `concepts`, without loading the full matrix into memory.
+
+        Unlike stream_nearest_neighbours_from_parquet, `concepts` need not be every concept in the file and
+        need not follow the file's native column order: this supports comparing two matrices whose stimuli
+        only partially overlap (e.g. two LLMs sharing a dataset), by reading, for each one, only the
+        concepts both sides actually share.
+    """
+    concepts = list(concepts)
+    number_of_concepts = len(concepts)
+
+    if number_of_concepts - 1 < number_of_neighbours:
+        raise ValueError(f"Requested {number_of_neighbours} neighbours, but only {number_of_concepts - 1} candidates are available")
+
+    parquet_file = pq.ParquetFile(similarity_parquet_path)
+    pandas_metadata = json.loads(parquet_file.schema_arrow.metadata[b"pandas"])
+    index_column = pandas_metadata["index_columns"][0]
+
+    concept_position = {concept: position for position, concept in enumerate(concepts)}
+    neighbour_indices = np.empty((number_of_concepts, number_of_neighbours), dtype=np.int64)
+
+    for block_start in range(0, number_of_concepts, column_block_size):
+        block_concepts = concepts[block_start:block_start + column_block_size]
+        block_width = len(block_concepts)
+
+        table = pq.read_table(similarity_parquet_path, columns=[index_column, *block_concepts],)
+        block_df = table.to_pandas(ignore_metadata=True,).set_index(index_column)
+        block = block_df.loc[concepts, block_concepts].to_numpy(dtype=np.float64, copy=True)
+
+        # self-similarity exclusion: column j is concept block_concepts[j], whose row may fall anywhere in
+        # `concepts`' order (unlike stream_nearest_neighbours_from_parquet, order is not assumed to match)
+        for column_index, concept in enumerate(block_concepts):
+            block[concept_position[concept], column_index] = -np.inf
+
+        idx_part = np.argpartition(block, -number_of_neighbours, axis=0,)[-number_of_neighbours:]
+        scores_part = np.take_along_axis(block, idx_part, axis=0,)
+        order = np.argsort(-scores_part, axis=0,)
+        idx_topk = np.take_along_axis(idx_part, order, axis=0,)
+
+        neighbour_indices[block_start:block_start + block_width, :] = idx_topk.T
+
+    return neighbour_indices
+
 def stream_nearest_neighbours_from_parquet(
     similarity_parquet_path,
     number_of_neighbours,

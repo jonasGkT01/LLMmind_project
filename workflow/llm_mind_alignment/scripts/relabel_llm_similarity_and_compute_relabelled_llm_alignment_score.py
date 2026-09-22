@@ -7,6 +7,7 @@ import pandas as pd
 from libraries.compute_alignment import compute_common_neighbours
 from libraries.compute_nearest_neighbours import compute_topk_indices, create_neighbour_mask, relabel_nearest_neighbours
 from libraries.compute_statistics import create_relabelling_rng
+from libraries.read_similarity_subset import read_similarity_subset
 
 def make_concept_index(concepts):
     return {concept: i for i, concept in enumerate(concepts)}
@@ -164,8 +165,20 @@ def main():
     if args.number_of_neighbours <= 0:
         raise ValueError("--number_of_neighbours must be a positive integer")
 
-    llm_similarity_df = pd.read_parquet(args.llm_similarity, engine="pyarrow")
     brain_nearest_neighbours_df = pd.read_parquet(args.isc_nearest_neighbours, engine="pyarrow")
+    concepts = brain_nearest_neighbours_df["concept"].unique()
+
+    # Read only the concepts the brain/ISC side actually covers: for nsd_data the model similarity spans
+    # ~66k stimuli while ISC is limited to the ~500 with enough repetitions, so the model's full concept
+    # universe was never the right thing to intersect against brain_nearest_neighbours_df in the first
+    # place (that intersection is empty for nsd_data and would raise below) — restricting to `concepts`
+    # up front makes the neighbour search consistent with every other dataset, where the model's full
+    # stimulus set already equals its ISC-eligible one.
+    llm_similarity_df = read_similarity_subset(
+        path=args.llm_similarity,
+        concepts=concepts,
+        source=args.llm_similarity,
+    )
     result = compute_relabelled_alignment_scores(
         similarity_df=llm_similarity_df,
         brain_nearest_neighbours_df=brain_nearest_neighbours_df,

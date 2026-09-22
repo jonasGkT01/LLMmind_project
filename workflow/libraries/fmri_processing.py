@@ -73,19 +73,38 @@ def safe_pearsonr(x, y):
     return float(np.nan_to_num(r, nan=0.0, posinf=0.0, neginf=0.0,))
 
 def compute_leave_one_out_isc(data):
+    """
+        Leave-one-out ISC, vectorized across parcels.
+
+        Equivalent to calling safe_pearsonr(data[subject, :, parcel], others_mean[:, parcel]) for every
+        (subject, parcel) pair, but as a single vectorized Pearson correlation per subject instead of one
+        scipy.stats.pearsonr call per parcel: at nsd_data's scale (called once per stimulus, ~66k times)
+        the per-parcel Python/SciPy call overhead otherwise dominates runtime.
+    """
     n_subjects = data.shape[0]
     n_parcels = data.shape[2]
 
-    isc = np.zeros((n_subjects, n_parcels), dtype=np.float32,)
+    isc = np.zeros((n_subjects, n_parcels), dtype=np.float64,)
 
     for subject_idx in range(n_subjects):
         other_subjects = np.arange(n_subjects) != subject_idx
-        others_mean = data[other_subjects].mean(axis=0)
+        x = data[subject_idx].astype(np.float64,)
+        y = data[other_subjects].mean(axis=0,).astype(np.float64,)
 
-        for parcel_idx in range(n_parcels):
-            isc[subject_idx, parcel_idx] = safe_pearsonr(
-                data[subject_idx, :, parcel_idx],
-                others_mean[:, parcel_idx],
-            )
+        x_centered = x - x.mean(axis=0, keepdims=True,)
+        y_centered = y - y.mean(axis=0, keepdims=True,)
+
+        numerator = (x_centered*y_centered).sum(axis=0,)
+        denominator = np.sqrt((x_centered**2).sum(axis=0,)*(y_centered**2).sum(axis=0,))
+
+        with np.errstate(invalid="ignore", divide="ignore",):
+            r = numerator/denominator
+
+        is_constant_x = np.all(np.isclose(x, x[0:1, :]), axis=0,)
+        is_constant_y = np.all(np.isclose(y, y[0:1, :]), axis=0,)
+
+        r = np.where(is_constant_x | is_constant_y, 0.0, r,)
+
+        isc[subject_idx] = np.nan_to_num(r, nan=0.0, posinf=0.0, neginf=0.0,)
 
     return isc.mean(axis=0).astype(np.float32)

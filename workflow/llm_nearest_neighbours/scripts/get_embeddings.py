@@ -452,7 +452,10 @@ def main():
     if input_type == "text":
         print(f"chunk_max_length={max_length}, chunk_overlap={args.chunk_overlap}")
 
-    records = []
+    stimuli = []
+    n_tokens_list = []
+    n_chunks_list = []
+    embeddings = []
 
     for item in items:
         if input_type == "text":
@@ -480,56 +483,44 @@ def main():
 
         print(f"{item['stimulus']}: embedding_dim={embedding.numel()}, n_tokens={n_tokens}, n_chunks={n_chunks}")
 
-        records.append(
-            {
-                "stimulus": item["stimulus"],
-                "n_tokens": n_tokens,
-                "n_chunks": n_chunks,
-                "chunk_max_length": (
-                    max_length
-                    if input_type == "text"
-                    else 0
-                ),
-                "chunk_overlap": (
-                    args.chunk_overlap
-                    if input_type == "text"
-                    else 0
-                ),
-                **{
-                    dimension: value
-                    for dimension, value in enumerate(embedding.numpy().astype("float32"))
-                },
-            }
-        )
+        stimuli.append(item["stimulus"])
+        n_tokens_list.append(n_tokens)
+        n_chunks_list.append(n_chunks)
+        embeddings.append(embedding.numpy().astype("float32"))
 
         del embedding
 
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
 
-    dataframe = pd.DataFrame(records)
+    # stack once at the end instead of building one dict per stimulus with one key per embedding
+    # dimension: for a high-dimensional model over nsd_data's ~66k stimuli, the wide-dict intermediate
+    # is far more memory- and time-costly for pandas to assemble than a single preallocated 2D array.
+    embedding_matrix = np.stack(embeddings, axis=0,)
+    del embeddings
+
+    metadata_columns = ["n_tokens", "n_chunks", "chunk_max_length", "chunk_overlap",]
+    embedding_columns = list(range(embedding_matrix.shape[1]))
+
+    dataframe = pd.concat(
+        [
+            pd.DataFrame(
+                {
+                    "stimulus": stimuli,
+                    "n_tokens": n_tokens_list,
+                    "n_chunks": n_chunks_list,
+                    "chunk_max_length": max_length if input_type == "text" else 0,
+                    "chunk_overlap": args.chunk_overlap if input_type == "text" else 0,
+                }
+            ),
+            pd.DataFrame(embedding_matrix, columns=embedding_columns,),
+        ],
+        axis=1,
+    )
 
     dataframe = dataframe.set_index("stimulus")
 
     dataframe.index.name = "stimulus"
-
-    metadata_columns = ["n_tokens", "n_chunks", "chunk_max_length", "chunk_overlap",]
-
-    embedding_columns = [
-        column
-        for column in dataframe.columns
-        if isinstance(column, int)
-    ]
-
-    unexpected_columns = [
-        column
-        for column in dataframe.columns
-        if column not in metadata_columns
-        and column not in embedding_columns
-    ]
-
-    if unexpected_columns:
-        raise ValueError(f"Unexpected non-embedding columns found: {unexpected_columns}")
 
     dataframe = dataframe[metadata_columns + embedding_columns]
 

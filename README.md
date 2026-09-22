@@ -134,6 +134,18 @@ modality), subject count, exclusion lists, and dataset-specific acquisition
 parameters (TR, event duration, etc.), plus the neighbourhood sizes
 (`number_of_neighbours`) to evaluate for that dataset.
 
+`nsd_data` is far larger than the other three by stimulus count — tens of
+thousands of eligible stimuli, versus hundreds to a few thousand for the
+rest, because its embedding-eligibility criterion is much looser than its
+ISC-eligibility criterion (515 stimuli have enough repetitions for ISC; far
+more have enough for a usable embedding). The similarity and
+nearest-neighbour computation steps (`llm_nearest_neighbours/`,
+`llm_llm_alignment/`, `llm_mind_alignment/`, `spearman_alignment/`) stream
+large similarity matrices from disk in blocks rather than loading them
+fully into memory, specifically so this dataset's runs stay feasible; for
+the other three datasets, small enough to load in full, this makes no
+practical difference.
+
 ## Input data
 
 None of the raw fMRI/stimuli datasets are tracked in git — they must be
@@ -294,6 +306,25 @@ internally across whatever `--cores <N>` is given — notably NSD's
 functional-to-MNI registration step (`assemble_nsd_bold`), which maps
 stimulus presentations to MNI space using up to `<N>` worker processes at
 once. For that step, a higher `--cores` value directly speeds it up.
+
+### Troubleshooting
+
+- **`ProtectedOutputException` / write-protected files under
+  `resources/models/`**: pretrained models are downloaded via
+  `huggingface_hub`, which can leave downloaded files (and sometimes their
+  containing directory) read-only. If Snakemake refuses to (re)build a
+  model directory because of this, run `chmod -R u+w resources/models/`
+  and retry. If Snakemake also reports that a model's software
+  environment definition has changed since it was last downloaded, either
+  launch with `--rerun-triggers mtime` to ignore that check, or run
+  `snakemake --cleanup-metadata <path>` for the affected outputs if you're
+  confident the already-downloaded weights don't actually need
+  re-fetching.
+- **Disk space for `nsd_data`**: each model's full similarity matrix pair
+  (cosine + Pearson) for this dataset is a fixed ~88GB, independent of the
+  model's embedding size, since it scales with the number of stimuli
+  squared rather than embedding dimension. Running the full model sweep
+  for this dataset needs correspondingly large free disk space.
 
 ## Outputs
 
