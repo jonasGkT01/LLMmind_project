@@ -19,7 +19,7 @@ def make_concept_index(concepts):
 
 def encode_brain_nearest_neighbours(brain_nearest_neighbours_df, concepts, number_of_neighbours):
     concept_to_index = make_concept_index(concepts)
-    neighbours_by_concept = brain_nearest_neighbours_df.groupby("concept", sort=False)["neighbour"].agg(list).to_dict()
+    neighbours_by_concept = brain_nearest_neighbours_df.groupby("concept", sort=False, observed=True)["neighbour"].apply(list).to_dict()
     rows = []
 
     for concept in concepts:

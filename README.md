@@ -378,6 +378,19 @@ using up to `<N>` worker processes at once. For that step, a higher `--cores` va
   `libraries/` modules. After the 2026-09-23 chunking and constant-signal
   fixes, for example, rerun
   `--forcerun get_embeddings compute_narratives_isc compute_nature_stories_isc`.
+- **A rule fails with only `CalledProcessError … returned non-zero exit
+  status 1`**: the Snakemake log doesn't include the script's own error
+  message. Copy the rule's `shell:` command from the log and re-run it
+  inside the conda env the log names:
+  `source /opt/conda/miniconda3/bin/activate .snakemake/conda/<hash>_`, then
+  `export PYTHONPATH="$PWD/workflow:$PYTHONPATH"`. That prints the full
+  Python traceback. For a quicker test, lower `--number_of_relabellings`
+  and point the output at a scratch path. After fixing the problem, restart
+  with `--rerun-incomplete`, so that the half-written outputs left by the
+  crash are rebuilt. Rule envs don't pin library versions, so a rebuilt env
+  can pull in a new major version. pandas 3, for example, broke
+  `groupby(...).agg(list)` on the categorical neighbour columns (fixed
+  2026-09-23).
 - **"Requested k neighbours, but only n candidates"**: a dataset's
   `number_of_neighbours` must be smaller than its number of included
   stimuli (about 1,000 for `nsd_data` and `caption_scene`).
