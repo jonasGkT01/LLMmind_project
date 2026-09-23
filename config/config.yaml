@@ -159,7 +159,7 @@ datasets:
   - "nsd_data"
 
 caption_scene:
-  number_of_neighbours: [5,50,250,500,1000]
+  number_of_neighbours: [5, 25, 50, 100]
   bold_glob: "resources/datasets/caption_scene_dataset/V1/derivatives/pp_data/sub-*/func/sub-*_ses-*_task-CSD_run-*.nii.gz"
   processing_output_dir: "results/mind/caption_scene"
   stimuli_dir: 
@@ -261,7 +261,7 @@ nature_stories:
   subjects: 11
 
 nsd_data:
-  number_of_neighbours: [5, 50, 500, 2500, 5000]
+  number_of_neighbours: [5, 25, 50, 100]
   dataset_dir: "resources/datasets/nsd_data_dataset"
   processing_output_dir: "results/mind/nsd_data"
   stimuli_hdf5: "resources/datasets/nsd_data_dataset/nsddata_stimuli/stimuli/nsd/nsd_stimuli.hdf5"

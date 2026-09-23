@@ -146,10 +146,18 @@ for c in NARRATIVES_BOLD_FILES:
 
     NARRATIVES_TASK_GROUPS.setdefault(c["task"], []).append(c)
 
+# Every scan is its own fMRI observation, but a task is retained only if it was presented
+# to at least two different subjects, so that its ISC is not purely a within-subject quantity.
+NARRATIVES_TASK_GROUPS = {
+    task: scans
+    for task, scans in NARRATIVES_TASK_GROUPS.items()
+    if len({c["subject"] for c in scans}) >= 2
+}
+
 def parcel_outputs_for_task(task):
     return [
         narratives_parcel_output(c)
-        for c in NARRATIVES_TASK_GROUPS[task]
+        for c in NARRATIVES_TASK_GROUPS.get(task, [])
     ]
 
 NARRATIVES_PARCEL_OUTPUTS = [
@@ -319,16 +327,29 @@ rule rename_narratives_stimuli_transcipts:
         """
 
 rule write_narratives_problematic_stimuli:
+    # Lists every transcript stimulus that has no ISC: the problematic subtasks, plus any task
+    # dropped by the scan-level checks above (no usable scans, or scans from fewer than two
+    # different subjects). get_embeddings skips every stimulus listed here.
+    input:
+        NARRATIVES_STIMULI_READY
     output:
         txt=NARRATIVES_EXCLUDED_STIMULI
     params:
-        problematic_stimuli=config["narratives"]["problematic_subtasks"]
+        stimuli_dir=config["narratives"]["stimuli_dir"]["language"],
+        problematic_stimuli=config["narratives"]["problematic_subtasks"],
+        retained_tasks=sorted(NARRATIVES_TASK_GROUPS)
     run:
+        transcript_stimuli = {
+            path.stem
+            for path in Path(params.stimuli_dir).iterdir()
+            if path.is_file()
+        }
+
+        excluded_stimuli = set(params.problematic_stimuli) | (transcript_stimuli - set(params.retained_tasks))
+
         output_path = Path(output.txt)
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
         with output_path.open("w") as f:
-            for stimulus in sorted(set(params.problematic_stimuli)):
+            for stimulus in sorted(excluded_stimuli):
                 f.write(f"{stimulus}\n")
-
-        print(f"wrote {len(set(params.problematic_stimuli))} problematic stimuli to {output_path}")

@@ -16,7 +16,8 @@ def isc_dir_for_dataset(wc):
 
 checkpoint create_isc_manifest:
     input:
-        isc_done=isc_done_for_dataset
+        isc_done=isc_done_for_dataset,
+        excluded_stimuli=lambda wc: config[wc.dataset]["excluded_stimuli"]
     output:
         output_manifest="results/mind/{dataset}/manifests/isc_inputs.tsv"
     params:
@@ -29,6 +30,7 @@ checkpoint create_isc_manifest:
             python3 workflow/isc_nearest_neighbours/scripts/create_isc_manifest.py \
                 --dataset {params.dataset:q} \
                 --isc_dir {params.isc_dir:q} \
+                --excluded_stimuli {input.excluded_stimuli:q} \
                 --output_manifest {output.output_manifest:q}
         """
 

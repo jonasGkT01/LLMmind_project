@@ -89,7 +89,6 @@ def discover_subject_runs(dataset_directory, subject):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset_dir", required=True)
-    parser.add_argument("--output_root", required=True)
     parser.add_argument("--subjects", nargs="+", type=int, required=True)
     parser.add_argument("--tr", type=float, required=True)
     parser.add_argument("--event_duration_s", type=float, required=True)
@@ -102,7 +101,6 @@ def main():
     arguments = parser.parse_args()
 
     dataset_directory = Path(arguments.dataset_dir)
-    processing_output_directory = Path(arguments.output_root)
 
     if len(set(arguments.subjects)) != len(arguments.subjects):
         raise ValueError("Duplicate subject identifiers were provided")
@@ -186,34 +184,35 @@ def main():
         occurrences_by_subject[subject] = occurrences_by_stimulus
 
     # Every presentation of an image, by any subject, is an independent usable fMRI
-    # observation. A stimulus is retained purely because ISC needs at least two such
-    # observations to correlate against one another; subjects do not need to have seen
-    # it, and do not need to have seen it the same number of times.
+    # observation and contributes to that image's ISC. A stimulus is retained only if it
+    # was presented to at least two different subjects, so that its ISC is not purely a
+    # within-subject quantity; subjects do not need to have seen it the same number of times.
     observation_counts_by_stimulus = defaultdict(int)
+    subject_counts_by_stimulus = defaultdict(int)
 
     for subject in arguments.subjects:
         for nsd_image_identifier, occurrences in occurrences_by_subject[subject].items():
             observation_counts_by_stimulus[nsd_image_identifier] += len(occurrences)
+            subject_counts_by_stimulus[nsd_image_identifier] += 1
 
     retained_nsd_image_identifiers = sorted(
         nsd_image_identifier
-        for nsd_image_identifier, observation_count in observation_counts_by_stimulus.items()
-        if observation_count >= 2
+        for nsd_image_identifier, subject_count in subject_counts_by_stimulus.items()
+        if subject_count >= 2
     )
 
     excluded_nsd_image_identifiers = sorted(
         nsd_image_identifier
-        for nsd_image_identifier, observation_count in observation_counts_by_stimulus.items()
-        if observation_count < 2
+        for nsd_image_identifier, subject_count in subject_counts_by_stimulus.items()
+        if subject_count < 2
     )
 
     if not retained_nsd_image_identifiers:
-        raise ValueError("No NSD image has at least two usable fMRI observations across subjects")
+        raise ValueError("No NSD image was presented to at least two different subjects")
 
     if excluded_nsd_image_identifiers:
         warnings.warn(
-            "Removing NSD stimuli with fewer than two usable fMRI observations: "
-            + ", ".join(nsd_stimulus_identifier(x) for x in excluded_nsd_image_identifiers),
+            f"Removing {len(excluded_nsd_image_identifiers)} NSD stimuli presented to fewer than two different subjects (listed in {arguments.output_excluded_stimuli})",
             RuntimeWarning,
         )
 
@@ -221,20 +220,11 @@ def main():
 
     for subject in arguments.subjects:
         for nsd_image_identifier in retained_nsd_image_identifiers:
-            stimulus_identifier = nsd_stimulus_identifier(nsd_image_identifier)
             subject_occurrences = occurrences_by_subject[subject].get(nsd_image_identifier, [])
 
             for repetition_number, occurrence in enumerate(subject_occurrences, start=1):
-                output_bold_file = (
-                    processing_output_directory
-                    / "single_stimulus_bold_mni"
-                    / f"task-{stimulus_identifier}"
-                    / f"sub-{subject:02d}_task-{stimulus_identifier}_rep-{repetition_number:02d}_bold.nii.gz"
-                )
-
                 occurrence_manifest_row = dict(occurrence)
                 occurrence_manifest_row["repetition"] = repetition_number
-                occurrence_manifest_row["output_bold"] = str(output_bold_file)
                 occurrence_manifest_rows.append(occurrence_manifest_row)
 
     occurrence_manifest = pd.DataFrame(occurrence_manifest_rows).sort_values(["nsd_73k_id", "subject", "repetition"])
@@ -296,7 +286,7 @@ def main():
     metadata_path.write_text(json.dumps(metadata, indent=2, sort_keys=True))
 
     print(f"Retained {len(retained_nsd_image_identifiers)} stimuli; wrote {len(occurrence_manifest)} occurrence rows")
-    print(f"Excluded {len(excluded_nsd_image_identifiers)} stimuli with fewer than two usable fMRI observations")
+    print(f"Excluded {len(excluded_nsd_image_identifiers)} stimuli presented to fewer than two different subjects")
 
 if __name__ == "__main__":
     main()

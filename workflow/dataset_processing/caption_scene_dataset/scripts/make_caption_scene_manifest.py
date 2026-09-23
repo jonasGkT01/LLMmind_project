@@ -266,14 +266,17 @@ def main():
 
         raise ValueError("Global manifest is empty. No valid events were found after excluding unreadable or corrupted BOLD files")
 
-    stimulus_counts = out.groupby("stimulus_id").size()
+    # Every valid presentation is its own fMRI observation and contributes to the ISC, but a
+    # stimulus is retained only if it was presented to at least two different subjects, so that
+    # its ISC is not purely a within-subject quantity.
+    subject_counts = out.groupby("stimulus_id")["subject"].nunique()
 
-    valid_stimuli = stimulus_counts[stimulus_counts >= 2].index
-    singleton_stimuli = stimulus_counts[stimulus_counts == 1].index.tolist()
+    valid_stimuli = subject_counts[subject_counts >= 2].index
+    single_subject_stimuli = subject_counts[subject_counts < 2].index.tolist()
 
-    if singleton_stimuli:
+    if single_subject_stimuli:
         warnings.warn(
-            "Removing stimuli represented by only one valid single-stimulus NIfTI: " + ", ".join(sorted(singleton_stimuli)),
+            f"Removing {len(single_subject_stimuli)} stimuli presented to fewer than two different subjects (listed in {args.output_excluded_stimuli})",
             RuntimeWarning,
         )
 
@@ -301,7 +304,7 @@ def main():
     )
 
     if out.empty:
-        raise ValueError("Global manifest is empty after removing stimuli represented by fewer than two valid single-stimulus NIfTI files")
+        raise ValueError("Global manifest is empty after removing stimuli presented to fewer than two different subjects")
 
     out = out.sort_values(["subject", "session", "run", "event_index"]).reset_index(drop=True)
 

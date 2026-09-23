@@ -14,7 +14,6 @@ NSD_ISC_MANIFEST = f"{NSD_MANIFEST_DIRECTORY}/isc_manifest.tsv"
 NSD_RUN_LENGTH_QUALITY_CONTROL = f"{NSD_MANIFEST_DIRECTORY}/run_length_qc.tsv"
 NSD_MANIFEST_METADATA = f"{NSD_MANIFEST_DIRECTORY}/manifest_metadata.json"
 
-NSD_BOLD_DONE = f"{NSD_MANIFEST_DIRECTORY}/.bold_done"
 NSD_PARCELS_DONE = f"{NSD_MANIFEST_DIRECTORY}/.parcels_done"
 NSD_ISC_DONE = f"{NSD_MANIFEST_DIRECTORY}/.isc_done"
 
@@ -28,28 +27,28 @@ def nsd_parcel_time_series_output(subject, stimulus_identifier, repetition):
 
 def write_nsd_parcel_manifest(occurrence_manifest_path, output_manifest_path):
     occurrence_manifest = pd.read_csv(occurrence_manifest_path, sep="\t")
-    required_columns = {"subject", "stimulus_id", "repetition", "output_bold"}
-    missing_columns = required_columns - set(occurrence_manifest.columns)
+    sample_columns = ["subject", "stimulus_id", "repetition", "source_bold", "start_vol", "end_vol", "n_vols"]
+    missing_columns = set(sample_columns) - set(occurrence_manifest.columns)
 
     if missing_columns:
         raise ValueError(f"Occurrence manifest is missing columns: {sorted(missing_columns)}")
 
-    unique_samples = occurrence_manifest[["subject", "stimulus_id", "repetition", "output_bold"]].drop_duplicates().sort_values(["stimulus_id", "subject", "repetition"])
+    unique_samples = occurrence_manifest[sample_columns].drop_duplicates().sort_values(["stimulus_id", "subject", "repetition"])
     sample_counts = unique_samples.groupby(["subject", "stimulus_id", "repetition"]).size()
     invalid_samples = sample_counts[sample_counts != 1]
 
     if not invalid_samples.empty:
-        raise ValueError("Found subject/stimulus/repetition triples with multiple BOLD outputs:\n" + invalid_samples.to_string())
+        raise ValueError("Found subject/stimulus/repetition triples with multiple BOLD crops:\n" + invalid_samples.to_string())
 
     output_manifest_path = Path(output_manifest_path)
     output_manifest_path.parent.mkdir(parents=True, exist_ok=True)
 
     with output_manifest_path.open("w") as output_manifest_file:
-        output_manifest_file.write("subject\tstimulus_id\trepetition\tbold_file\tparcel_time_series\n")
+        output_manifest_file.write("subject\tstimulus_id\trepetition\tsource_bold\tstart_vol\tend_vol\tn_vols\tparcel_time_series\n")
 
         for sample in unique_samples.itertuples(index=False):
             parcel_time_series_file = nsd_parcel_time_series_output(sample.subject, sample.stimulus_id, sample.repetition)
-            output_manifest_file.write(f"{int(sample.subject)}\t{sample.stimulus_id}\t{int(sample.repetition)}\t{sample.output_bold}\t{parcel_time_series_file}\n")
+            output_manifest_file.write(f"{int(sample.subject)}\t{sample.stimulus_id}\t{int(sample.repetition)}\t{sample.source_bold}\t{int(sample.start_vol)}\t{int(sample.end_vol)}\t{int(sample.n_vols)}\t{parcel_time_series_file}\n")
 
 def write_nsd_isc_manifest(parcel_manifest_path, output_manifest_path):
     parcel_manifest = pd.read_csv(parcel_manifest_path, sep="\t")
@@ -90,7 +89,6 @@ rule make_nsd_manifest:
         metadata=NSD_MANIFEST_METADATA
     params:
         dataset_dir=NSD_DATASET_DIRECTORY,
-        output_root=NSD_PROCESSING_OUTPUT_DIRECTORY,
         subjects=" ".join(str(subject) for subject in NSD_SUBJECTS),
         tr=config["nsd_data"]["tr"],
         event_duration_s=config["nsd_data"]["event_duration_s"],
@@ -101,7 +99,6 @@ rule make_nsd_manifest:
         r"""
             python3 workflow/dataset_processing/nsd_data_dataset/scripts/make_nsd_manifest.py \
                 --dataset_dir {params.dataset_dir:q} \
-                --output_root {params.output_root:q} \
                 --subjects {params.subjects} \
                 --tr {params.tr} \
                 --event_duration_s {params.event_duration_s} \
@@ -122,13 +119,19 @@ rule write_nsd_parcel_manifest:
         write_nsd_parcel_manifest(input.occurrence_manifest, output.manifest)
 
 rule assemble_nsd_bold:
+    # Maps each retained stimulus presentation to MNI space and reduces it to Schaefer parcel
+    # time series in memory: only the small parcel arrays are written, never the full-brain
+    # MNI volumes. Only presentations of stimuli retained by make_nsd_manifest are processed.
     input:
-        manifest=NSD_OCCURRENCE_MANIFEST
+        manifest=NSD_PARCEL_MANIFEST
     output:
-        touch(NSD_BOLD_DONE)
+        touch(NSD_PARCELS_DONE)
     params:
         dataset_dir=NSD_DATASET_DIRECTORY,
-        interpolation=config["nsd_data"]["map_interpolation"]
+        interpolation=config["nsd_data"]["map_interpolation"],
+        number_of_regions=config["atlas"]["n_rois"],
+        number_of_yeo_networks=config["atlas"]["yeo_networks"],
+        atlas_dir=config["atlas"]["atlas_dir"]
     threads:
         workflow.cores
     conda:
@@ -139,28 +142,10 @@ rule assemble_nsd_bold:
                 --manifest {input.manifest:q} \
                 --dataset_dir {params.dataset_dir:q} \
                 --interpolation {params.interpolation:q} \
-                --jobs {threads}
-        """
-
-rule extract_nsd_parcels:
-    input:
-        manifest=NSD_PARCEL_MANIFEST,
-        bold_done=NSD_BOLD_DONE
-    output:
-        touch(NSD_PARCELS_DONE)
-    params:
-        number_of_regions=config["atlas"]["n_rois"],
-        number_of_yeo_networks=config["atlas"]["yeo_networks"],
-        atlas_dir=config["atlas"]["atlas_dir"]
-    conda:
-        "envs/nsd_data_dataset_processing_environment.yaml"
-    shell:
-        r"""
-            python3 workflow/dataset_processing/nsd_data_dataset/scripts/extract_nsd_parcels.py \
-                --manifest {input.manifest:q} \
                 --number_of_regions {params.number_of_regions} \
                 --number_of_yeo_networks {params.number_of_yeo_networks} \
-                --atlas_dir {params.atlas_dir:q}
+                --atlas_dir {params.atlas_dir:q} \
+                --jobs {threads}
         """
 
 rule write_nsd_isc_manifest:
