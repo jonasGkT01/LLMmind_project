@@ -18,8 +18,7 @@ def infer_task_from_isc_path(path):
 STIMULUS_EXTENSIONS = {".txt", ".bmp", ".jpeg", ".jpg", ".png", ".tif", ".tiff", ".webp"}
 
 def eligible_stimuli_in_dir(stimuli_dir, excluded_stimuli):
-    # Same selection as get_embeddings.load_stimuli(): every stimulus file in the directory whose stem
-    # is not excluded is embedded, so these are exactly the concepts the ISC side must provide.
+    # Same selection as get_embeddings.load_stimuli(): the concepts the ISC side must provide.
     return {
         path.stem
         for path in Path(stimuli_dir).iterdir()
@@ -56,9 +55,8 @@ def main():
     if len(eligible_stimuli) == 0:
         raise ValueError(f"No eligible stimuli in {args.stimuli_dirs} after applying {args.excluded_stimuli}")
 
-    # The manifest is built from the eligible stimuli (the ones get_embeddings embeds), not from whatever
-    # happens to be in isc_dir: every eligible stimulus must have its ISC file, and ISC files left over
-    # from an earlier run with a different stimulus filter are ignored rather than globbed back in.
+    # Built from the eligible stimuli, not by globbing isc_dir: each one must have an ISC file,
+    # and leftover files from runs with a different stimulus filter are ignored.
     isc_files_by_task = {
         infer_task_from_isc_path(path): path
         for path in sorted(isc_dir.glob("task-*_isc_mean.npy"))

@@ -1,4 +1,5 @@
 import sys
+
 from huggingface_hub import snapshot_download
 
 def download_model_repo(model_name: str, save_dir: str) -> None:

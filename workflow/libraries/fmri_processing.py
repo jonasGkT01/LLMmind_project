@@ -1,9 +1,9 @@
-import nibabel as nib
 import numpy as np
-
-from nilearn.image import resample_to_img
 from scipy import sparse
 from scipy.stats import pearsonr
+
+import nibabel as nib
+from nilearn.image import resample_to_img
 
 def build_parcel_matrix(labels_3d, n_rois):
     labels = labels_3d.reshape(-1).astype(np.int32)
@@ -64,11 +64,9 @@ def extract_parcels(bold_file, atlas_img, n_rois, parcel_matrix_cache,):
 
     return ts
 
-# Parcel time series are stored as float32, so a signal whose range over time is within a few float32
-# ulps of its magnitude carries no information: correlating it only correlates rounding noise. This
-# replaces np.isclose()/np.allclose() with their default tolerances (rtol=1e-5 against the first sample),
-# which also flagged real low-amplitude signals as constant, e.g. anything varying by < ~0.01 on raw
-# BOLD values around 1000.
+# A float32 signal whose range is within a few ulps of its magnitude is only rounding noise.
+# np.isclose() defaults (rtol=1e-5) were too loose: they flagged real low-amplitude signals
+# (e.g. < ~0.01 variation on BOLD values around 1000) as constant.
 CONSTANT_SIGNAL_RTOL = 8*np.finfo(np.float32).eps
 
 def is_constant_signal(x, axis=0):

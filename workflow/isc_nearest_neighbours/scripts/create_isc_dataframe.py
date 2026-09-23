@@ -1,9 +1,9 @@
-import numpy as np
-import pandas as pd
-
-import re
 import argparse
 from pathlib import Path
+import re
+
+import numpy as np
+import pandas as pd
 
 TASK_PATTERN = re.compile(r"task-(.+?)_isc_mean\.npy$")
 

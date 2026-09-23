@@ -30,11 +30,8 @@ def select_shared_concepts(path_1, path_2):
     return shared_concepts
 
 def compute_shared_subset_topk_indices(embedding_path, shared_concepts, number_of_neighbours, normalize_fn):
-    # Computes top-k directly within the shared-concept subset (never persisting or reading a full N x N
-    # matrix). This must be computed fresh from embeddings rather than filtering a larger, differently
-    # scoped top-k file down to shared_concepts: neighbour indices here are positions within
-    # shared_concepts specifically, which relabel_nearest_neighbours/create_neighbour_mask below require
-    # to be a closed, self-consistent index space for the permutation to be well-defined.
+    # Top-k is recomputed from embeddings within shared_concepts, not filtered from a larger file:
+    # the permutation needs neighbour indices to be positions in this closed set.
     embedding_df = pd.read_parquet(embedding_path, engine="pyarrow")
     embedding_matrix = extract_embedding_matrix(embedding_df.loc[shared_concepts])
 

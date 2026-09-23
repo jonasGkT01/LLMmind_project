@@ -1,12 +1,13 @@
 import argparse
 from pathlib import Path
+
 import h5py
-import nibabel.freesurfer.io as fsio
 import numpy as np
 import pandas as pd
+from scipy.sparse import csr_matrix, diags
 
 from netneurotools.datasets import fetch_schaefer2018
-from scipy.sparse import csr_matrix, diags
+import nibabel.freesurfer.io as fsio
 
 def load_mapper(path):
     """

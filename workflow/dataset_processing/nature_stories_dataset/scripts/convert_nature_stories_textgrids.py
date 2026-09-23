@@ -61,8 +61,7 @@ def parse_chronological_textgrid(data, input_file):
     for i in range(n_tiers):
         line = lines[3 + i]
 
-        # We know Nature Stories tier names/classes do not contain
-        # whitespace, so splitting here is sufficient and transparent.
+        # Nature Stories tier names/classes contain no whitespace, so split() is enough.
         parts = line.split()
 
         if len(parts) < 4:

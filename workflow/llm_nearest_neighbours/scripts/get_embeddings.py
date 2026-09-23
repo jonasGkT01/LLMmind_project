@@ -5,8 +5,9 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-import torch
 from PIL import Image
+import torch
+
 from transformers import AutoModel, AutoProcessor, AutoTokenizer, BitsAndBytesConfig
 
 IMAGE_EXTENSIONS = {".bmp", ".jpeg", ".jpg", ".png", ".tif", ".tiff", ".webp"}
@@ -301,8 +302,8 @@ def embed_long_text(
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
 
-        # This chunk already reaches the end of the text: a further start would only yield a chunk lying
-        # entirely inside this one, re-embedding covered tokens and over-weighting them in the mean.
+        # This chunk reaches the end of the text: another one would only re-embed covered tokens
+        # and over-weight them in the mean.
         if start + chunk_token_length >= n_tokens:
             break
 
@@ -499,9 +500,8 @@ def main():
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
 
-    # stack once at the end instead of building one dict per stimulus with one key per embedding
-    # dimension: for a high-dimensional model over nsd_data's ~66k stimuli, the wide-dict intermediate
-    # is far more memory- and time-costly for pandas to assemble than a single preallocated 2D array.
+    # stack once into a 2D array: a dict per stimulus with one key per dimension is far slower
+    # and heavier for pandas on large datasets (e.g. nsd_data's ~66k stimuli)
     embedding_matrix = np.stack(embeddings, axis=0,)
     del embeddings
 

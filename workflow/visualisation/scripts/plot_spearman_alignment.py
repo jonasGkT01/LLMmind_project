@@ -9,7 +9,7 @@ import pandas as pd
 from libraries.compute_statistics import benjamini_hochberg
 from libraries.manage_model_metadata import model_family, model_sort_key, parse_model_parameters
 from libraries.validate_data import validate_required_columns
-from libraries.visualisation_utils import significance_label, deterministic_jitter, mark_degenerate_boxplot_statistics
+from libraries.visualisation_utils import deterministic_jitter, mark_degenerate_boxplot_statistics, significance_label
 
 def spearman_ylim(values, padding=0.10, minimum_limit=0.10, step=0.05):
     values = np.asarray(values, dtype=float)

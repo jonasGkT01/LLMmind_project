@@ -76,10 +76,8 @@ def create_relabelled_alignment_dataframe(common_neighbours_matrix, concepts, mo
                 categories=concepts,
                 ordered=True,
             ),
-            # Kept even though a single output currently holds one k's rows at a time: the combined,
-            # all-k file this feeds into (see main()) needs it to tell each k's rows apart, and Snakemake
-            # rule outputs can't be a function of wildcards (only `input:` can), so producing genuinely
-            # separate per-k files from one job isn't an option — see the plan file / commit message.
+            # Needed to tell k's apart in the combined all-k file (see main()): Snakemake outputs
+            # can't depend on wildcards, so separate per-k files from one job aren't possible.
             "number_of_neighbours": np.full(number_of_rows, number_of_neighbours, dtype=np.int32),
             "common_neighbours": common_neighbours,
             "alignment_score": alignment_scores,
@@ -98,11 +96,8 @@ def compute_relabelled_alignment_scores_for_all_k(
     model,
     similarity_type,
 ):
-    # `concepts` is the single closed set every permutation operates over: the brain/ISC-eligible
-    # concepts. Neighbours (both the LLM's and the brain's) must be expressed as positions within this
-    # exact set for relabel_nearest_neighbours/create_neighbour_mask's index math to be meaningful, so
-    # the LLM's own top-k here is computed directly from embeddings restricted to this subset — not
-    # filtered down from some larger, differently-scoped top-k file.
+    # `concepts` (the ISC-eligible ones) is the closed set every permutation works on. Both LLM and
+    # brain neighbours must be positions in it, so the LLM top-k is recomputed on this subset.
     concepts = brain_nearest_neighbours_df["concept"].unique()
 
     missing_embedding_concepts = sorted(set(concepts) - set(embedding_df.index))

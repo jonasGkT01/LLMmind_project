@@ -1,17 +1,16 @@
 import argparse
-
-from concurrent.futures import ProcessPoolExecutor, as_completed
+from concurrent.futures import as_completed, ProcessPoolExecutor
 from pathlib import Path
 
-import nibabel as nib
 import numpy as np
 import pandas as pd
 
+import nibabel as nib
 from nilearn import datasets, image
+from nsdcode.interp_wrapper import interp_wrapper
+from nsdcode.load_data import load_transform
 from nsdcode.nsd_datalocation import nsd_datalocation
 from nsdcode.parse_case import parse_case
-from nsdcode.load_data import load_transform
-from nsdcode.interp_wrapper import interp_wrapper
 
 from libraries.fmri_processing import get_resampled_parcel_matrix
 
@@ -26,13 +25,9 @@ _parcel_matrix_cache = {}
 _atlas_image_cache = {}
 
 def get_subject_mni_transform(dataset_dir, subject):
-    # NSDmapdata.fit() reloads the ~50MB func1pt8-to-MNI deformation field from disk
-    # and rebuilds the flattened interpolation coordinates from it on every single
-    # call, at a cost of several seconds. Since this only depends on the subject, and
-    # this script calls the mapping once per stimulus occurrence (tens of thousands of
-    # times across all subjects), that redundant reload dominates the runtime. Loading
-    # and building it once per subject and reusing it here removes that redundancy
-    # without changing the mapping itself.
+    # NSDmapdata.fit() reloads the ~50MB func1pt8-to-MNI deformation field on every call
+    # (seconds each, tens of thousands of calls). It depends only on the subject, so it
+    # is built once per subject and cached here; the mapping itself is unchanged.
     if subject not in _subject_mni_transform_cache:
         nsd_path = nsd_datalocation(dataset_dir)
         transforms_dir = Path(nsd_path) / "ppdata" / f"subj{subject:02d}" / "transforms"
@@ -52,13 +47,9 @@ def get_subject_mni_transform(dataset_dir, subject):
         coords[coords == 9999] = np.nan
         coords -= 1
 
-        # interp_wrapper() overwrites invalid (non-finite) coordinates in place with 1 and
-        # only marks them invalid in the output of that one call, so on any later call with
-        # the same array (every further volume and occurrence) those locations would be
-        # sampled as if valid. Instead the invalid mask is recorded once here, the stored
-        # coordinates are made all-finite (so interp_wrapper() has nothing to mutate and
-        # they can be shared across every call) and the mask is re-applied after each
-        # interpolation in map_occurrence_to_mni().
+        # interp_wrapper() overwrites non-finite coordinates in place, so later calls on the
+        # same array would sample them as valid. The invalid mask is saved once, the cached
+        # coordinates made finite, and the mask re-applied in map_occurrence_to_mni().
         invalid_coords = ~np.all(np.isfinite(coords), axis=0)
         coords[:, invalid_coords] = 1
 
@@ -67,8 +58,7 @@ def get_subject_mni_transform(dataset_dir, subject):
     return _subject_mni_transform_cache[subject]
 
 def nsd_mni_affine():
-    # Same affine nsdcode's nsd_write_vol() gives the MNI volumes it writes out, so the
-    # atlas is resampled onto exactly the grid the mapped data lives on.
+    # Same affine as nsdcode's nsd_write_vol(), so the atlas matches the mapped data's grid.
     affine = np.diag([NSD_MNI_VOXEL_SIZE] * 3 + [1]).astype(np.float64)
     affine[:3, -1] = -NSD_MNI_ORIGIN * NSD_MNI_VOXEL_SIZE
 
@@ -103,14 +93,12 @@ def map_occurrence_to_mni(cropped_bold_data, coords, target_shape, invalid_coord
 
     mapped_bold_data = np.moveaxis(np.asarray(mapped_volumes), 0, -1)
 
-    # In the case of the target being MNI, the volumes are LPI, so the first (X)
-    # dimension must be flipped (see NSDmapdata.fit()'s docstring).
+    # MNI volumes are LPI, so the X axis is flipped (see NSDmapdata.fit()'s docstring).
     return np.flip(mapped_bold_data, axis=0)
 
 def process_group(dataset_dir, subject, source_bold, occurrences, interptype, badval, atlas_maps, number_of_regions):
-    # Runs in a worker process when --jobs > 1: each worker keeps its own transform and
-    # parcel-matrix caches, so a worker only pays the per-subject load once across however
-    # many (subject, source_bold) groups it is assigned.
+    # With --jobs > 1 this runs in a worker with its own caches, so each worker loads
+    # a subject's transform once for all of its (subject, source_bold) groups.
     source_bold_image = nib.load(str(source_bold))
 
     if source_bold_image.ndim != 4:
@@ -146,8 +134,7 @@ def process_group(dataset_dir, subject, source_bold, occurrences, interptype, ba
             badval,
         )
 
-        # Same reduction as libraries.fmri_processing.extract_parcels, applied to the
-        # in-memory MNI data instead of a NIfTI written to and re-read from disk.
+        # Same reduction as fmri_processing.extract_parcels, on in-memory data instead of a NIfTI.
         parcel_time_series = (parcel_matrix @ mapped_bold_data.reshape(-1, n_vols)).T.astype(np.float32)
 
         if parcel_time_series.shape != (n_vols, number_of_regions):
@@ -206,13 +193,9 @@ def main():
     )
     atlas_maps = str(atlas.maps)
 
-    # Each occurrence (a single presentation of a stimulus to a subject) is its own
-    # independent fMRI observation and is cropped, mapped to MNI space and reduced to
-    # parcels on its own, rather than concatenated with other presentations into one
-    # continuous time series. Occurrences are grouped by their source run file to avoid
-    # reloading the same BOLD run from disk more than once, and the groups are the unit of
-    # work handed out to worker processes (sorted by subject so a worker's groups share,
-    # and reuse, the same cached transform as much as possible).
+    # Each occurrence (one presentation to one subject) is processed on its own, not
+    # concatenated. Occurrences are grouped by source run so each BOLD file is loaded once;
+    # groups are the unit of work per worker, sorted by subject to reuse cached transforms.
     groups = sorted(
         parcel_manifest.groupby(["subject", "source_bold"], sort=False),
         key=lambda group: group[0][0],

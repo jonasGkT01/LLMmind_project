@@ -6,9 +6,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from libraries.manage_model_metadata import model_family, parse_model_parameters
 from libraries.compute_statistics import benjamini_hochberg
-from libraries.visualisation_utils import significance_label, contrasting_text_color
+from libraries.manage_model_metadata import model_family, parse_model_parameters
+from libraries.visualisation_utils import contrasting_text_color, significance_label
 
 def validate_p_value(value, source):
     p_value = float(value)

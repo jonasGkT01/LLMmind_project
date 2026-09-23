@@ -1,8 +1,8 @@
 import argparse
 import math
+from pathlib import Path
 import re
 import warnings
-from pathlib import Path
 
 import pandas as pd
 
@@ -266,9 +266,8 @@ def main():
 
         raise ValueError("Global manifest is empty. No valid events were found after excluding unreadable or corrupted BOLD files")
 
-    # Every valid presentation is its own fMRI observation and contributes to the ISC, but a
-    # stimulus is retained only if it was presented to at least two different subjects, so that
-    # its ISC is not purely a within-subject quantity.
+    # Every valid presentation enters the ISC, but a stimulus is kept only if at least
+    # two different subjects saw it, so its ISC is not purely within-subject.
     subject_counts = out.groupby("stimulus_id")["subject"].nunique()
 
     valid_stimuli = subject_counts[subject_counts >= 2].index

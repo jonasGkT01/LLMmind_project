@@ -1,10 +1,10 @@
 import argparse
-
 from pathlib import Path
 
-import nibabel as nib
 import numpy as np
 import pandas as pd
+
+import nibabel as nib
 from nilearn import datasets, image
 
 from libraries.fmri_processing import compute_leave_one_out_isc
@@ -45,9 +45,8 @@ def main():
     atlas_labels = atlas_image.get_fdata().astype(np.int32)
 
     for stimulus_identifier, stimulus_manifest in isc_manifest.groupby("stimulus_id", sort=False):
-        # A stimulus can be presented to a subject more than once: each presentation is
-        # an independent fMRI observation, so repeated subjects are expected here and
-        # all of their observations contribute to the ISC average.
+        # Each presentation is an independent observation: a subject may appear more
+        # than once, and every presentation enters the ISC average.
         parcel_time_series_files = [
             Path(path)
             for path in stimulus_manifest["parcel_time_series"].tolist()

@@ -404,6 +404,40 @@ Key outputs land under `results/`:
   dataset/similarity/k share the same `[0, 1]` y-axis range, so the two can
   be compared directly side by side.
 
+## Code conventions
+
+Python sources under `workflow/` follow two layout rules:
+
+- **Imports** come in up to four groups, separated by one blank line:
+  standard library → general scientific stack (`numpy`, `pandas`, `scipy`,
+  `matplotlib`, `pyarrow`, `h5py`, `PIL`, `torch`) → domain-specific
+  libraries (`nibabel`, `nilearn`, `nsdcode`, `netneurotools`, `praatio`,
+  `transformers`, `huggingface_hub`) → the project's own `libraries.*`.
+  Within a group, lines are sorted alphabetically by module name, ignoring
+  case and ignoring `import` vs `from … import`. Names inside a
+  `from … import` are sorted too.
+- **Comments** use `#`, stay short (ideally 1–3 lines), and explain *why*
+  rather than restate the code. Triple-quoted strings are kept for
+  docstrings only.
+
+Example import block:
+
+```python
+import argparse
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
+
+import nibabel as nib
+from nilearn import datasets, image
+
+from libraries.fmri_processing import compute_leave_one_out_isc
+```
+
+These are not enforced by a linter. Please follow them by hand when adding
+or editing scripts.
+
 ## Documentation
 
 - [`docs/changelog/developers/`](docs/changelog/developers/) — technical

@@ -1,5 +1,9 @@
 # 2026-09-23 — Python bytecode no longer tracked; corrections to the chunking and constant-signal entry
 
+> **Correction:** the repository-wide `.gitignore` patterns described below
+> were not in commit `6b2bc6e`; they were added later, see
+> [`2026-09-23-import-order-and-concise-comments.md`](2026-09-23-import-order-and-concise-comments.md).
+
 Follow-up to `2026-09-23-long-text-chunking-and-constant-signal-check.md`
 (commit `ea9145a`), prompted by an external review of that commit. No
 pipeline code changed in this entry.

@@ -1,5 +1,5 @@
-import re
 from pathlib import Path
+import re
 
 LLM_BRAIN_ALIGNMENT_SCORE_PATTERN = re.compile(
     r"dataset-(?P<dataset>.+?)"

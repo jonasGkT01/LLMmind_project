@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 import argparse
-import re
 from pathlib import Path
+import re
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
 from libraries.manage_model_metadata import model_sort_key, parse_model_parameters
-from libraries.visualisation_utils import contrasting_text_color
 from libraries.path_metadata import parse_llm_brain_alignment_score_path
+from libraries.visualisation_utils import contrasting_text_color
 
 def parse_llm_llm_path(path):
     filename = Path(path).name

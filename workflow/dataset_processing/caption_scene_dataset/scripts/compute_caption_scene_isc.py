@@ -1,9 +1,10 @@
 import argparse
 from pathlib import Path
 
-import nibabel as nib
 import numpy as np
 import pandas as pd
+
+import nibabel as nib
 from nilearn import datasets, image
 
 from libraries.fmri_processing import compute_leave_one_out_isc

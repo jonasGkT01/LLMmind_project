@@ -1,0 +1,118 @@
+# 2026-09-23 — Import-block ordering and concise comments
+
+Style-only change across the Python sources in `workflow/` (27 files). No
+statement other than imports and comments was touched, so no pipeline
+output changes. The rules are summarised in `README.md` under
+[Code conventions](../../../README.md#code-conventions).
+
+## Import blocks
+
+Every file's top-level import block is now split into up to four groups,
+in this order, separated by one blank line:
+
+| Group | Contents | Modules currently used |
+|---|---|---|
+| 1. Standard library | anything in `sys.stdlib_module_names` | `argparse`, `collections`, `concurrent.futures`, `gc`, `hashlib`, `json`, `math`, `os`, `pathlib`, `re`, `sys`, `warnings` |
+| 2. General scientific stack | general-purpose numeric/data/plotting | `h5py`, `matplotlib`, `numpy`, `pandas`, `PIL`, `pyarrow`, `scipy`, `torch` |
+| 3. Domain-specific | neuroimaging, speech, LLM tooling | `huggingface_hub`, `netneurotools`, `nibabel`, `nilearn`, `nsdcode`, `praatio`, `transformers` |
+| 4. Project | this repository's own helpers | `libraries.*` |
+
+Within a group:
+
+- lines are sorted case-insensitively by **module name**, regardless of the
+  `import x` / `from x import y` form. So `from pathlib import Path` now
+  precedes `import re`, and `PIL` sorts between `pandas` and `pyarrow`;
+- names inside a `from x import a, b` are sorted case-insensitively
+  (e.g. `as_completed, ProcessPoolExecutor`);
+- parenthesised multi-line imports keep their one-name-per-line layout.
+
+`torch` is in group 2 and `transformers` in group 3. That is a judgment
+call: `torch` is treated as a general array/compute framework.
+
+Notable moves:
+
+- `nibabel` (including `nibabel.freesurfer.io`) and `nilearn` moved from
+  group 2 into group 3 wherever they were mixed with `numpy`/`pandas`.
+- `scipy` moved up from the domain block into group 2 in
+  `libraries/fmri_processing.py` and
+  `dataset_processing/nature_stories_dataset/scripts/extract_nature_stories_parcels.py`.
+- The out-of-order `nsdcode.*` imports in `assemble_nsd_bold.py` and the
+  `libraries.*` imports in `plot_alignment_heatmap.py`,
+  `plot_empirical_p_value_heatmap.py` and `plot_spearman_alignment.py` are
+  now sorted.
+- `create_isc_dataframe.py` had `numpy`/`pandas` above the standard library.
+- Stray blank lines inside group 1 (e.g. after `import argparse` in the NSD
+  scripts) and between a shebang and the first import were removed.
+
+The reordering was done by a one-off script, which is not committed. It
+parsed each file with `ast`, took the contiguous top-level
+`Import`/`ImportFrom` nodes, and aborted on any file where a comment or
+statement sat inside that range. Nothing enforces the rule going forward:
+no `isort`/`ruff` config was added, and neither tool is in the environment.
+With `isort`, the same layout would need custom sections
+(`sections=FUTURE,STDLIB,THIRDPARTY,DOMAIN,FIRSTPARTY`, `known_domain=...`,
+`known_first_party=libraries`, `force_sort_within_sections=true`,
+`case_sensitive=false`).
+
+## Comments
+
+- Comments stay as `#` lines. Converting multi-line comments to `"""`
+  blocks was considered and dropped: outside a docstring position they are
+  no-op string expressions (flagged by pylint `W0105`) and interpret
+  backslash escapes unless written `r"""`.
+- About 20 multi-line comments were shortened to 1–3 lines, keeping the
+  *why* and dropping narrative. The largest reductions:
+  - `assemble_nsd_bold.py`: transform-cache rationale (7 → 3 lines),
+    `interp_wrapper()` invalid-coordinate handling (7 → 3), occurrence
+    grouping (7 → 3), plus four 2–3 line comments reduced to 1–2;
+  - `libraries/fmri_processing.py`: `CONSTANT_SIGNAL_RTOL` rationale (5 → 3);
+  - `compute_llm_llm_empirical_p_value.py` and
+    `relabel_llm_similarity_and_compute_relabelled_llm_alignment_score.py`:
+    why top-k is recomputed on the closed concept subset (5 → 2 each). The
+    Snakemake wildcard/output note (4 → 2). This rewording also dropped a
+    stale reference to "the plan file / commit message";
+  - `create_isc_manifest.py`, `get_embeddings.py`,
+    `compute_spearman_alignment_with_empirical_p_value.py`,
+    `compute_llm_mind_alignment_score.py`, `make_nsd_manifest.py`,
+    `make_caption_scene_manifest.py`, `compute_nsd_isc.py`,
+    `convert_nature_stories_textgrids.py`.
+- Left unchanged: single-line comments, the Praat TextGrid format examples
+  in `convert_nature_stories_textgrids.py`, the `##### … SIMILARITY #####`
+  section headers, all docstrings, and two commented-out `print` blocks
+  (`compute_narratives_isc.py:94`, `compute_llm_mind_alignment_score.py`).
+
+## `.gitignore`
+
+- Added repository-wide `__pycache__/` and `*.py[cod]` patterns.
+  `2026-09-23-untrack-python-bytecode-and-doc-corrections.md` says these
+  were added, but commit `6b2bc6e` kept only the path-specific
+  `workflow/libraries/__pycache__/` rule. As a result, 35 `.pyc` files
+  generated by this session's `py_compile` check under `*/scripts/__pycache__/`
+  were not ignored and ended up staged. They were unstaged and deleted
+  before this entry was written.
+
+## Verification
+
+- `python3 -m py_compile` (Python 3.12) passes on every `.py` file under
+  `workflow/` except `envs/`.
+- Every `+`/`-` line in the diff of `workflow/` matches
+  `^\s*(#|import |from \S+ import|$)`, i.e. it is an import, a comment or
+  a blank line.
+- No pipeline stage was run. Reordering imports could in principle
+  matter if a module relied on import-time side effects of an earlier
+  one. None of the moved imports is known to do so, but this was not
+  tested.
+
+---
+
+*AI disclosure: this changelog entry, and the changes it describes, were
+written by an AI coding assistant.*
+
+- *Tool: Claude Code (Anthropic), VS Code extension.*
+- *Model: Claude Opus 5.5 (`claude-opus-5-5`, 1M-token context).*
+- *Date: 2026-09-23.*
+- *Basis: the developer's (Jonas Salvalaggio) style requests in the same
+  session. The assistant proposed the rules first, the developer approved
+  them, and then asked to keep `#` comments instead of `"""` blocks.*
+- *Verification: as listed above. No pipeline stage was run.*
+- *Review status: not yet reviewed by the developer at the time of writing.*

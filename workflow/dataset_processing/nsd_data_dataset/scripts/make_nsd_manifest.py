@@ -1,15 +1,15 @@
 import argparse
+from collections import defaultdict
 import json
 import math
+from pathlib import Path
 import re
 import warnings
 
-from collections import defaultdict
-from pathlib import Path
-
-import nibabel as nib
 import numpy as np
 import pandas as pd
+
+import nibabel as nib
 
 NSD_FUNCTIONAL_SPACE_DIRECTORY = "func1pt8mm"
 
@@ -183,10 +183,9 @@ def main():
 
         occurrences_by_subject[subject] = occurrences_by_stimulus
 
-    # Every presentation of an image, by any subject, is an independent usable fMRI
-    # observation and contributes to that image's ISC. A stimulus is retained only if it
-    # was presented to at least two different subjects, so that its ISC is not purely a
-    # within-subject quantity; subjects do not need to have seen it the same number of times.
+    # Every presentation enters the image's ISC, but a stimulus is kept only if at least
+    # two different subjects saw it (not necessarily equally often), so its ISC is not
+    # purely within-subject.
     observation_counts_by_stimulus = defaultdict(int)
     subject_counts_by_stimulus = defaultdict(int)
 

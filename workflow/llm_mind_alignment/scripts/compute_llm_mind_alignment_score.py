@@ -29,8 +29,7 @@ def main():
     if number_of_neighbours is None or number_of_neighbours <= 0:
         raise ValueError("--number_of_neighbours must be a positive integer")
 
-    # both files hold the dataset's largest configured neighbourhood size; fail loudly rather than
-    # silently truncating if a smaller-than-requested file ever slips through
+    # both files must hold at least number_of_neighbours: fail loudly instead of truncating
     require_stored_number_of_neighbours(isc_nearest_neighbours, number_of_neighbours)
     require_stored_number_of_neighbours(llm_nearest_neighbours, number_of_neighbours)
 

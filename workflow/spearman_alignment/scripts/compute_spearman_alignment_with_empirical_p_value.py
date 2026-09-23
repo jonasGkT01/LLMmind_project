@@ -14,9 +14,7 @@ from libraries.compute_statistics import empirical_upper_tail_p_value
 from libraries.validate_data import validate_similarity_dataframe
 
 def compute_similarity_dataframe(embedding_matrix, concepts, normalize_fn):
-    # concepts is always small here (bounded by the ISC-eligible/brain concept count), so a dense
-    # in-process matrix is fine — unlike the LLM/ISC neighbour-generation scripts, this never needs to
-    # touch the full N x N stimulus universe.
+    # only the ISC-eligible concepts are used here, so a dense matrix is fine (no full N x N)
     normalized = normalize_fn(embedding_matrix)
 
     return pd.DataFrame(normalized @ normalized.T, index=concepts, columns=concepts)

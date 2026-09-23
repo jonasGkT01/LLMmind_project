@@ -1,9 +1,10 @@
 import argparse
 from pathlib import Path
 
-import nibabel as nib
 import numpy as np
 import pandas as pd
+
+import nibabel as nib
 
 def validate_manifest(manifest):
     required_columns = {
