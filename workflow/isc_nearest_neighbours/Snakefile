@@ -17,12 +17,14 @@ def isc_dir_for_dataset(wc):
 checkpoint create_isc_manifest:
     input:
         isc_done=isc_done_for_dataset,
-        excluded_stimuli=lambda wc: config[wc.dataset]["excluded_stimuli"]
+        excluded_stimuli=lambda wc: config[wc.dataset]["excluded_stimuli"],
+        stimuli_ready=lambda wc: config[wc.dataset]["stimuli_ready"]
     output:
         output_manifest="results/mind/{dataset}/manifests/isc_inputs.tsv"
     params:
         dataset="{dataset}",
-        isc_dir=isc_dir_for_dataset
+        isc_dir=isc_dir_for_dataset,
+        stimuli_dirs=lambda wc: list(config[wc.dataset]["stimuli_dir"].values())
     conda:
         "envs/isc_nearest_neighbours_environment.yaml"
     shell:
@@ -31,6 +33,7 @@ checkpoint create_isc_manifest:
                 --dataset {params.dataset:q} \
                 --isc_dir {params.isc_dir:q} \
                 --excluded_stimuli {input.excluded_stimuli:q} \
+                --stimuli_dirs {params.stimuli_dirs:q} \
                 --output_manifest {output.output_manifest:q}
         """
 

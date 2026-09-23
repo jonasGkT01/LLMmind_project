@@ -52,13 +52,17 @@ def get_subject_mni_transform(dataset_dir, subject):
         coords[coords == 9999] = np.nan
         coords -= 1
 
-        # interp_wrapper() mutates invalid (non-finite) coordinates in place, which
-        # would silently stop marking those locations as invalid on a second reuse.
-        # Sharing the same array across calls is only safe when there is nothing to
-        # mutate, so fall back to copying per occurrence if any turn up.
-        reusable = not np.any(~np.isfinite(coords))
+        # interp_wrapper() overwrites invalid (non-finite) coordinates in place with 1 and
+        # only marks them invalid in the output of that one call, so on any later call with
+        # the same array (every further volume and occurrence) those locations would be
+        # sampled as if valid. Instead the invalid mask is recorded once here, the stored
+        # coordinates are made all-finite (so interp_wrapper() has nothing to mutate and
+        # they can be shared across every call) and the mask is re-applied after each
+        # interpolation in map_occurrence_to_mni().
+        invalid_coords = ~np.all(np.isfinite(coords), axis=0)
+        coords[:, invalid_coords] = 1
 
-        _subject_mni_transform_cache[subject] = (coords, target_shape, reusable)
+        _subject_mni_transform_cache[subject] = (coords, target_shape, invalid_coords)
 
     return _subject_mni_transform_cache[subject]
 
@@ -83,18 +87,17 @@ def get_mni_parcel_matrix(target_shape, atlas_maps, number_of_regions):
         cache=_parcel_matrix_cache,
     )
 
-def map_occurrence_to_mni(cropped_bold_data, coords, target_shape, reusable, interptype, badval):
-    occurrence_coords = coords if reusable else coords.copy()
-
+def map_occurrence_to_mni(cropped_bold_data, coords, target_shape, invalid_coords, interptype, badval):
     mapped_volumes = []
 
     for volume_index in range(cropped_bold_data.shape[-1]):
         mapped_volume = interp_wrapper(
             cropped_bold_data[..., volume_index],
-            occurrence_coords,
+            coords,
             interptype=interptype,
         ).astype(NSD_MAP_OUTPUT_CLASS)
 
+        mapped_volume[invalid_coords] = np.nan
         mapped_volume[np.isnan(mapped_volume)] = badval
         mapped_volumes.append(np.reshape(mapped_volume, target_shape, order="F"))
 
@@ -113,7 +116,7 @@ def process_group(dataset_dir, subject, source_bold, occurrences, interptype, ba
     if source_bold_image.ndim != 4:
         raise ValueError(f"Expected a 4D BOLD image, got shape {source_bold_image.shape}: {source_bold}")
 
-    coords, target_shape, reusable = get_subject_mni_transform(dataset_dir, subject)
+    coords, target_shape, invalid_coords = get_subject_mni_transform(dataset_dir, subject)
     parcel_matrix = get_mni_parcel_matrix(target_shape, atlas_maps, number_of_regions)
 
     processed_volumes = 0
@@ -138,7 +141,7 @@ def process_group(dataset_dir, subject, source_bold, occurrences, interptype, ba
             cropped_bold_data,
             coords,
             target_shape,
-            reusable,
+            invalid_coords,
             interptype,
             badval,
         )
