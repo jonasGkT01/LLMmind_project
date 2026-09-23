@@ -64,8 +64,22 @@ def extract_parcels(bold_file, atlas_img, n_rois, parcel_matrix_cache,):
 
     return ts
 
+# Parcel time series are stored as float32, so a signal whose range over time is within a few float32
+# ulps of its magnitude carries no information: correlating it only correlates rounding noise. This
+# replaces np.isclose()/np.allclose() with their default tolerances (rtol=1e-5 against the first sample),
+# which also flagged real low-amplitude signals as constant, e.g. anything varying by < ~0.01 on raw
+# BOLD values around 1000.
+CONSTANT_SIGNAL_RTOL = 8*np.finfo(np.float32).eps
+
+def is_constant_signal(x, axis=0):
+    x = np.asarray(x, dtype=np.float64,)
+    signal_range = np.ptp(x, axis=axis,)
+    magnitude = np.max(np.abs(x), axis=axis,)
+
+    return signal_range <= CONSTANT_SIGNAL_RTOL*magnitude
+
 def safe_pearsonr(x, y):
-    if np.allclose(x, x[0]) or np.allclose(y, y[0]):
+    if is_constant_signal(x) or is_constant_signal(y):
         return 0.0
 
     r, _ = pearsonr(x, y)
@@ -100,8 +114,8 @@ def compute_leave_one_out_isc(data):
         with np.errstate(invalid="ignore", divide="ignore",):
             r = numerator/denominator
 
-        is_constant_x = np.all(np.isclose(x, x[0:1, :]), axis=0,)
-        is_constant_y = np.all(np.isclose(y, y[0:1, :]), axis=0,)
+        is_constant_x = is_constant_signal(x, axis=0,)
+        is_constant_y = is_constant_signal(y, axis=0,)
 
         r = np.where(is_constant_x | is_constant_y, 0.0, r,)
 

@@ -301,6 +301,11 @@ def embed_long_text(
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
 
+        # This chunk already reaches the end of the text: a further start would only yield a chunk lying
+        # entirely inside this one, re-embedding covered tokens and over-weighting them in the mean.
+        if start + chunk_token_length >= n_tokens:
+            break
+
     if not chunk_embeddings:
         raise ValueError("No chunks were produced for stimulus")
 

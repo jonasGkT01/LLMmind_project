@@ -69,7 +69,10 @@ BOLD + stimuli into per-concept "mind" representations:
 - extracts ROI-level (parcel) signal from the BOLD data using the Schaefer
   atlas
 - computes inter-subject correlation (ISC) per concept/stimulus, producing
-  one representative brain-response vector per concept
+  one representative brain-response vector per concept. ISC is leave-one-out
+  (each observation against the mean of the others) and is averaged per
+  parcel. A parcel whose time series is flat, down to float32 rounding
+  noise, gets an ISC of 0 (`libraries/fmri_processing.py`).
 - cleans/prepares the matching stimuli (transcripts for the language
   datasets, images for the vision datasets) so they line up 1:1 with the ISC
   output and can be fed to the model embedding step
@@ -104,6 +107,12 @@ graphs.
 Downloads each configured pretrained model (`download_pretrained_llm`),
 extracts its embeddings for the same stimuli, computes embedding-embedding
 similarity, and builds the model-side nearest-neighbour graphs.
+
+Text stimuli longer than the model's context are split into overlapping
+token chunks (`--chunk_overlap`, default 256 tokens). The stimulus embedding
+is the mean of the chunk embeddings, weighted by chunk length. Chunking
+stops at the first chunk that reaches the end of the text. Each embeddings
+file records `n_tokens` and `n_chunks` per stimulus.
 
 ### `llm_mind_alignment/`
 
@@ -360,6 +369,10 @@ using up to `<N>` worker processes at once. For that step, a higher `--cores` va
   notice when their code changes. After changing them, force the manifest
   step and let everything downstream rebuild, e.g.
   `snakemake --use-conda --cores <N> --forcerun make_nsd_manifest make_caption_scene_manifest`.
+  The same applies to the embedding and ISC code, including the shared
+  `libraries/` modules. After the 2026-09-23 chunking and constant-signal
+  fixes, for example, rerun
+  `--forcerun get_embeddings compute_narratives_isc compute_nature_stories_isc`.
 - **"Requested k neighbours, but only n candidates"**: a dataset's
   `number_of_neighbours` must be smaller than its number of included
   stimuli (about 1,000 for `nsd_data` and `caption_scene`).
