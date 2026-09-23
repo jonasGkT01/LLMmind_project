@@ -71,8 +71,11 @@ BOLD + stimuli into per-concept "mind" representations:
 - computes inter-subject correlation (ISC) per concept/stimulus, producing
   one representative brain-response vector per concept. ISC is leave-one-out
   (each observation against the mean of the others) and is averaged per
-  parcel. A parcel whose time series is flat, down to float32 rounding
-  noise, gets an ISC of 0 (`libraries/fmri_processing.py`).
+  parcel. A parcel whose time series is (near-)constant gets an ISC of 0:
+  its range over time must be at most about 1e-6 of its magnitude
+  (`is_constant_signal()` in `libraries/fmri_processing.py`). This is a
+  small tolerance, not an exact test, so a real but tiny fluctuation is
+  zeroed too.
 - cleans/prepares the matching stimuli (transcripts for the language
   datasets, images for the vision datasets) so they line up 1:1 with the ISC
   output and can be fed to the model embedding step
@@ -110,9 +113,11 @@ similarity, and builds the model-side nearest-neighbour graphs.
 
 Text stimuli longer than the model's context are split into overlapping
 token chunks (`--chunk_overlap`, default 256 tokens). The stimulus embedding
-is the mean of the chunk embeddings, weighted by chunk length. Chunking
-stops at the first chunk that reaches the end of the text. Each embeddings
-file records `n_tokens` and `n_chunks` per stimulus.
+is the mean of the chunk embeddings, weighted by chunk length, so tokens in
+an overlap contribute to two chunks. Every text stimulus goes through this
+path, whatever its length. Chunking stops at the first chunk that reaches
+the end of the text, so a text that fits in one chunk gets exactly one.
+Each embeddings file records `n_tokens` and `n_chunks` per stimulus.
 
 ### `llm_mind_alignment/`
 

@@ -1,5 +1,9 @@
 # 2026-09-23 — Long-text chunking stops at the end of the text; float32-based constant-signal check in ISC
 
+> **Correction:** some statements below (which texts change, equal
+> weighting, what counts as a flat signal) were inaccurate; see
+> [`2026-09-23-untrack-python-bytecode-and-doc-corrections.md`](2026-09-23-untrack-python-bytecode-and-doc-corrections.md).
+
 Follow-up to `2026-09-23-nsd-invalid-coords-and-positive-isc-manifest.md`,
 addressing the two code points the external review of commit `60bb6c5` left
 open.

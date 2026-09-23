@@ -1,5 +1,9 @@
 # 2026-09-23 — Fairer handling of long texts and of weak brain signals
 
+> **Correction:** some statements below (which texts change, equal
+> weighting, what counts as a flat signal) were inaccurate; see
+> [`2026-09-23-untrack-python-bytecode-and-doc-corrections.md`](2026-09-23-untrack-python-bytecode-and-doc-corrections.md).
+
 ## What changed
 
 This update fixes two small accuracy problems, one on each side of the
