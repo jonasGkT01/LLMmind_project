@@ -374,6 +374,10 @@ using up to `<N>` worker processes at once. For that step, a higher `--cores` va
   notice when their code changes. After changing them, force the manifest
   step and let everything downstream rebuild, e.g.
   `snakemake --use-conda --cores <N> --forcerun make_nsd_manifest make_caption_scene_manifest`.
+  If you skip this step, `create_isc_manifest` can stop with
+  `FileNotFoundError: N of M eligible stimuli have no ISC file`. That error
+  means the dataset's `excluded_stimuli` file is older than its ISC outputs,
+  and the same forced rerun fixes it.
   The same applies to the embedding and ISC code, including the shared
   `libraries/` modules. After the 2026-09-23 chunking and constant-signal
   fixes, for example, rerun
