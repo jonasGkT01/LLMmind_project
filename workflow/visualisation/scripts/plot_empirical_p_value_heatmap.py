@@ -8,7 +8,7 @@ import pandas as pd
 
 from libraries.compute_statistics import benjamini_hochberg
 from libraries.manage_model_metadata import model_family, parse_model_parameters
-from libraries.visualisation_utils import contrasting_text_color, significance_label
+from libraries.visualisation_utils import contrasting_text_color, EMPIRICAL_P_VALUE_LABEL, PAIRWISE_AXIS_LABEL, PAIRWISE_EMPIRICAL_P_VALUE, PAIRWISE_LEVEL, plot_title, significance_label
 
 def validate_p_value(value, source):
     p_value = float(value)
@@ -241,13 +241,13 @@ def main():
 
             ax.text(column_i, row_i, annotation, ha="center", va="center", fontsize=7, color=text_color,)
 
-    ax.set_title(f"LLM–LLM and LLM–brain empirical p-values\n"
-                 f"dataset={args.dataset}, similarity={args.similarity_type}, neighbours={args.number_of_neighbours}")
-    ax.set_xlabel("Model / brain")
-    ax.set_ylabel("Model / brain")
+    ax.set_title(plot_title(PAIRWISE_LEVEL, PAIRWISE_EMPIRICAL_P_VALUE, args.dataset, args.similarity_type, args.number_of_neighbours)
+                 + "\nasterisks: Benjamini-Hochberg q-value")
+    ax.set_xlabel(PAIRWISE_AXIS_LABEL)
+    ax.set_ylabel(PAIRWISE_AXIS_LABEL)
 
     colorbar = fig.colorbar(image, ax=ax)
-    colorbar.set_label("-log10(empirical p-value)")
+    colorbar.set_label(EMPIRICAL_P_VALUE_LABEL)
 
     fig.tight_layout()
     fig.savefig(output_path, dpi=300)

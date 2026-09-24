@@ -6,9 +6,25 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+from libraries.compute_statistics import benjamini_hochberg, read_model_level_empirical_p_values
 from libraries.manage_model_metadata import model_sort_key, parse_model_parameters
 from libraries.path_metadata import parse_llm_brain_alignment_score_path
-from libraries.visualisation_utils import deterministic_jitter, mark_degenerate_boxplot_statistics
+from libraries.visualisation_utils import (
+    add_legend,
+    add_model_family_annotations,
+    ALIGNMENT_SCORE_LABEL,
+    annotate_significance_band,
+    BRAIN_MODEL_ALIGNMENT_SCORE,
+    concept_colours,
+    concept_legend_handles,
+    CONCEPT_LEVEL,
+    concept_point_alpha,
+    deterministic_jitter,
+    mark_degenerate_boxplot_statistics,
+    MODEL_AXIS_LABEL,
+    plot_title,
+    significance_legend_handles,
+)
 
 def read_model_alignment_scores(
     path,
@@ -76,6 +92,7 @@ def read_model_alignment_scores(
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--llm_brain_alignment_scores", nargs="+", required=True, help="LLM-brain concept-level alignment-score Parquet files",)
+    parser.add_argument("--model_level_statistics", required=True, help="TSV file containing model-level statistics",)
     parser.add_argument("--model_parameters", nargs="+", required=True, help="Model parameter counts formatted as model=parameters_millions",)
     parser.add_argument("--dataset", required=True,)
     parser.add_argument("--similarity_type", required=True,)
@@ -126,6 +143,21 @@ def main():
         ),
     )
 
+    p_value_by_model = read_model_level_empirical_p_values(
+        path=args.model_level_statistics,
+        dataset=args.dataset,
+        similarity_type=args.similarity_type,
+        number_of_neighbours=args.number_of_neighbours,
+    )
+
+    missing_p_values = set(labels) - set(p_value_by_model)
+
+    if missing_p_values:
+        raise ValueError(f"Missing model-level empirical p-values for models: {sorted(missing_p_values)}")
+
+    p_values = np.asarray([p_value_by_model[label] for label in labels], dtype=float,)
+    q_values = benjamini_hochberg(p_values)
+
     x_positions = {
         label: position
         for position, label in enumerate(labels)
@@ -139,13 +171,16 @@ def main():
         for row in alignment_df.itertuples(index=False)
     ]
 
+    colour_by_concept = concept_colours(alignment_df["concept"].astype(str))
+    colours = alignment_df["concept"].astype(str).map(colour_by_concept).tolist()
+
     output_path = Path(args.plot)
     output_path.parent.mkdir(parents=True, exist_ok=True,)
 
     fig_width = max(10, 0.75*len(labels),)
     fig, ax = plt.subplots(figsize=(fig_width, 7,))
 
-    ax.scatter(x_values, alignment_df["alignment_score"], s=10, alpha=0.20, edgecolors="none", zorder=1,)
+    ax.scatter(x_values, alignment_df["alignment_score"], s=10, c=colours, alpha=concept_point_alpha(len(colour_by_concept)), edgecolors="none", zorder=1,)
     ax.boxplot(boxplot_values,
                positions=range(len(labels)),
                widths=0.55,
@@ -156,7 +191,9 @@ def main():
                medianprops={"linewidth": 1.5,},
                zorder=3,)
     mark_degenerate_boxplot_statistics(ax, boxplot_values)
-    ax.axhline(expected_alignment_score, linestyle="--", linewidth=1.2, label="Hypergeometric expectation",)
+    ax.axhline(expected_alignment_score, linestyle="--", linewidth=1.2, color="grey", label="Null expectation (hypergeometric)",)
+    add_model_family_annotations(ax, labels)
+    annotate_significance_band(ax, range(len(labels)), p_values, q_values)
 
     ax.set_xticks(range(len(labels)))
     ax.set_xticklabels(labels, rotation=55, ha="right",)
@@ -164,13 +201,11 @@ def main():
     ax.set_xlim(-0.6, len(labels) - 0.4,)
     ax.set_ylim(0, 1,)
 
-    ax.set_title(f"Concept-level LLM-brain alignment\n"
-                 f"dataset={args.dataset}, similarity={args.similarity_type}, neighbours={args.number_of_neighbours}",
-                 pad=32,)
-    ax.set_xlabel("Model")
-    ax.set_ylabel("Alignment score")
+    ax.set_title(plot_title(CONCEPT_LEVEL, BRAIN_MODEL_ALIGNMENT_SCORE, args.dataset, args.similarity_type, args.number_of_neighbours), pad=32,)
+    ax.set_xlabel(MODEL_AXIS_LABEL)
+    ax.set_ylabel(ALIGNMENT_SCORE_LABEL)
     ax.grid(axis="y", alpha=0.25,)
-    ax.legend()
+    add_legend(ax, significance_legend_handles() + concept_legend_handles(colour_by_concept))
 
     fig.tight_layout()
     fig.subplots_adjust(

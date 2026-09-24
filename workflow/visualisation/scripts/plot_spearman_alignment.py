@@ -9,7 +9,28 @@ import pandas as pd
 from libraries.compute_statistics import benjamini_hochberg
 from libraries.manage_model_metadata import model_family, model_sort_key, parse_model_parameters
 from libraries.validate_data import validate_required_columns
-from libraries.visualisation_utils import deterministic_jitter, mark_degenerate_boxplot_statistics, significance_label
+from libraries.visualisation_utils import (
+    add_legend,
+    add_model_family_annotations,
+    annotate_significance,
+    annotate_significance_band,
+    BRAIN_MODEL_SPEARMAN_ALIGNMENT,
+    concept_colours,
+    concept_legend_handles,
+    CONCEPT_LEVEL,
+    concept_point_alpha,
+    deterministic_jitter,
+    mark_degenerate_boxplot_statistics,
+    MODEL_AXIS_LABEL,
+    MODEL_LEVEL,
+    NULL_STANDARD_DEVIATION,
+    plot_title,
+    significance_legend_handles,
+    SPEARMAN_COEFFICIENT_LABEL,
+    y_axis_label,
+)
+
+NULL_STANDARD_DEVIATION_COLUMN = "empirical_null_standard_deviation_spearman_coefficient"
 
 def spearman_ylim(values, padding=0.10, minimum_limit=0.10, step=0.05):
     values = np.asarray(values, dtype=float)
@@ -55,6 +76,7 @@ def main():
             "stimuli_type",
             "similarity_type",
             "observed_spearman_coefficient",
+            NULL_STANDARD_DEVIATION_COLUMN,
         }
 
         if name == "concept-level":
@@ -85,6 +107,13 @@ def main():
             raise ValueError(f"{name} Spearman data contains invalid coefficients")
 
         df["observed_spearman_coefficient"] = coefficients
+
+        null_standard_deviations = pd.to_numeric(df[NULL_STANDARD_DEVIATION_COLUMN], errors="coerce",)
+
+        if null_standard_deviations.isna().any() or (null_standard_deviations < 0).any():
+            raise ValueError(f"{name} Spearman data contains invalid null standard deviations")
+
+        df[NULL_STANDARD_DEVIATION_COLUMN] = null_standard_deviations
         df["label"] = df["model"].astype(str)
 
     if model_df["label"].duplicated().any():
@@ -125,15 +154,15 @@ def main():
 
     fig_width = max(10, 0.75*len(labels))
     fig, ax = plt.subplots(figsize=(fig_width, 7))
-    ax.plot(x, model_df["observed_spearman_coefficient"], marker="o", linewidth=1.8,)
 
-    for (x_position, coefficient, q_value,) in zip(x, model_df["observed_spearman_coefficient"], model_df["q_value"],):
-        significance = significance_label(q_value)
+    model_coefficients = model_df["observed_spearman_coefficient"].to_numpy(dtype=float)
+    model_errors = model_df[NULL_STANDARD_DEVIATION_COLUMN].to_numpy(dtype=float)
 
-        if significance:
-            ax.annotate(significance, xy=(x_position, coefficient,), xytext=(0, 6), textcoords="offset points", ha="center", va="bottom",)
+    ax.errorbar(x, model_coefficients, yerr=model_errors, marker="o", linewidth=1.8, capsize=3,)
 
-    ax.axhline(0.0, linewidth=1, linestyle="--", alpha=0.6,)
+    annotate_significance(ax, x, model_coefficients + model_errors, model_df["empirical_upper_tail_p_value"], model_df["q_value"])
+
+    ax.axhline(0.0, linestyle="--", linewidth=1.2, color="grey", label="Null expectation (no rank correlation)",)
 
     start = 0
 
@@ -157,13 +186,12 @@ def main():
     ax.set_xticks(x)
     ax.set_xticklabels(labels, rotation=55, ha="right",)
 
-    ax.set_xlabel("Model")
-    ax.set_ylabel("Spearman's rank correlation coefficient")
-    ax.set_title(f"Brain-model Spearman alignment\n"
-                 f"dataset={args.dataset}, similarity={args.similarity_type}",
-                 pad=32,)
-    ax.set_ylim(*spearman_ylim(model_df["observed_spearman_coefficient"],))
+    ax.set_xlabel(MODEL_AXIS_LABEL)
+    ax.set_ylabel(y_axis_label(SPEARMAN_COEFFICIENT_LABEL, NULL_STANDARD_DEVIATION))
+    ax.set_title(plot_title(MODEL_LEVEL, BRAIN_MODEL_SPEARMAN_ALIGNMENT, args.dataset, args.similarity_type), pad=32,)
+    ax.set_ylim(*spearman_ylim(np.concatenate([model_coefficients - model_errors, model_coefficients + model_errors]),))
     ax.grid(axis="y", alpha=0.25)
+    add_legend(ax, significance_legend_handles())
 
     fig.tight_layout()
     fig.subplots_adjust(bottom=0.24, top=0.82)
@@ -192,7 +220,15 @@ def main():
     fig_width = max(10, 0.75*len(labels))
     fig, ax = plt.subplots(figsize=(fig_width, 7))
 
-    ax.scatter(concept_df["x_position"] + jitter, concept_df["observed_spearman_coefficient"], s=10, alpha=0.20, edgecolors="none", zorder=1,)
+    colour_by_concept = concept_colours(concept_df["concept"].astype(str))
+    colours = concept_df["concept"].astype(str).map(colour_by_concept).tolist()
+    alpha = concept_point_alpha(len(colour_by_concept))
+    concept_x_values = concept_df["x_position"].to_numpy(dtype=float) + np.asarray(jitter)
+    concept_coefficients = concept_df["observed_spearman_coefficient"].to_numpy(dtype=float)
+    concept_errors = concept_df[NULL_STANDARD_DEVIATION_COLUMN].to_numpy(dtype=float)
+
+    ax.vlines(concept_x_values, concept_coefficients - concept_errors, concept_coefficients + concept_errors, colors=colours, linewidth=0.8, alpha=alpha, zorder=1,)
+    ax.scatter(concept_x_values, concept_coefficients, s=10, c=colours, alpha=alpha, edgecolors="none", zorder=2,)
     ax.boxplot(boxplot_values, 
                positions=range(len(labels)), 
                widths=0.55, 
@@ -203,22 +239,22 @@ def main():
                medianprops={"linewidth": 1.5,},
                zorder=3,)
     mark_degenerate_boxplot_statistics(ax, boxplot_values)
-    ax.axhline(0.0, linestyle="--", linewidth=1.2, label="No rank correlation",)
+    ax.axhline(0.0, linestyle="--", linewidth=1.2, color="grey", label="Null expectation (no rank correlation)",)
+    add_model_family_annotations(ax, labels)
+    annotate_significance_band(ax, x, model_df["empirical_upper_tail_p_value"], model_df["q_value"])
 
     ax.set_xticks(range(len(labels)))
     ax.set_xticklabels(labels, rotation=55, ha="right",)
 
     ax.set_xlim(-0.6, len(labels) - 0.4)
-    ax.set_ylim(*spearman_ylim(concept_df["observed_spearman_coefficient"],))
+    ax.set_ylim(*spearman_ylim(np.concatenate([concept_coefficients - concept_errors, concept_coefficients + concept_errors]),))
 
-    ax.set_title(f"Concept-level LLM-brain Spearman alignment\n"
-                 f"dataset={args.dataset}, similarity={args.similarity_type}",
-                 pad=32,)
-    ax.set_xlabel("Model")
-    ax.set_ylabel("Spearman's rank correlation coefficient")
+    ax.set_title(plot_title(CONCEPT_LEVEL, BRAIN_MODEL_SPEARMAN_ALIGNMENT, args.dataset, args.similarity_type), pad=32,)
+    ax.set_xlabel(MODEL_AXIS_LABEL)
+    ax.set_ylabel(y_axis_label(SPEARMAN_COEFFICIENT_LABEL, NULL_STANDARD_DEVIATION))
     ax.grid(axis="y", alpha=0.25)
 
-    ax.legend()
+    add_legend(ax, significance_legend_handles() + concept_legend_handles(colour_by_concept))
     fig.tight_layout()
     fig.subplots_adjust(
         bottom=0.24,

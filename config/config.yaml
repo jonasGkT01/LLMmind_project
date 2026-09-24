@@ -2,6 +2,9 @@
 number_of_relabellings: 1000
 random_seed: 37
 
+# a stimulus is retained only if it was presented to at least this many different subjects
+minimum_subjects_per_stimulus: 2
+
 models:
   bloom_560m:
     name: "BLOOMZ-560M"

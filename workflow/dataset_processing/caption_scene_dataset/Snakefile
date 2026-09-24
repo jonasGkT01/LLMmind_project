@@ -170,6 +170,7 @@ checkpoint make_caption_scene_manifest:
         event_duration_s=config["caption_scene"]["event_duration_s"],
         onset_shift_s=config["caption_scene"]["onset_shift_s"],
         run_table_encoding=config["caption_scene"].get("run_table_encoding", "gbk"),
+        minimum_subjects_per_stimulus=MINIMUM_SUBJECTS_PER_STIMULUS,
     conda:
         "envs/caption_scene_dataset_processing_environment.yaml"
     shell:
@@ -186,7 +187,8 @@ checkpoint make_caption_scene_manifest:
                 --tr {params.tr} \
                 --event_duration_s {params.event_duration_s} \
                 --onset_shift_s {params.onset_shift_s} \
-                --run_table_encoding {params.run_table_encoding:q}
+                --run_table_encoding {params.run_table_encoding:q} \
+                --minimum_subjects_per_stimulus {params.minimum_subjects_per_stimulus}
         """
 
 rule split_caption_scene_bold_by_run_manifest:

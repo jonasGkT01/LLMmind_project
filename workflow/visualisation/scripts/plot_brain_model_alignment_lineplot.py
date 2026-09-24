@@ -9,7 +9,18 @@ import pandas as pd
 from libraries.compute_statistics import benjamini_hochberg
 from libraries.manage_model_metadata import model_family, model_sort_key, parse_model_parameters
 from libraries.path_metadata import parse_llm_brain_alignment_score_path
-from libraries.visualisation_utils import significance_label
+from libraries.visualisation_utils import (
+    add_legend,
+    annotate_significance,
+    BRAIN_MODEL_ALIGNMENT_SCORE,
+    MEAN_ALIGNMENT_SCORE_LABEL,
+    MODEL_AXIS_LABEL,
+    MODEL_LEVEL,
+    plot_title,
+    significance_legend_handles,
+    STANDARD_ERROR,
+    y_axis_label,
+)
 
 def read_alignment_score_summary(path):
     df = pd.read_parquet(
@@ -177,11 +188,7 @@ def main():
 
     ax.errorbar(x, values, yerr=errors, marker="o", linewidth=1.8, capsize=3,)
 
-    for (x_position, value, error, q_value,) in zip(x, values, errors, q_values,):
-        significance = significance_label(q_value)
-
-        if significance:
-            ax.annotate(significance, xy=(x_position, value + error,), xytext=(0, 4), textcoords="offset points", ha="center", va="bottom",)
+    annotate_significance(ax, x, np.add(values, errors), p_values, q_values)
 
     for family, start, end in family_ranges:
         if start > 0:
@@ -197,13 +204,12 @@ def main():
 
     ax.set_xticks(x)
     ax.set_xticklabels(model_labels, rotation=55, ha="right")
-    ax.set_xlabel("Model")
-    ax.set_ylabel("Mean brain-model alignment")
-    ax.set_title(f"Brain-model alignment\n"
-                 f"dataset={args.dataset}, similarity={args.similarity_type}, number_of_neighbours={args.number_of_neighbours}", 
-                 pad=32)
+    ax.set_xlabel(MODEL_AXIS_LABEL)
+    ax.set_ylabel(y_axis_label(MEAN_ALIGNMENT_SCORE_LABEL, STANDARD_ERROR))
+    ax.set_title(plot_title(MODEL_LEVEL, BRAIN_MODEL_ALIGNMENT_SCORE, args.dataset, args.similarity_type, args.number_of_neighbours), pad=32)
     ax.set_ylim(0, 1)
     ax.grid(axis="y", alpha=0.25)
+    add_legend(ax, significance_legend_handles())
 
     fig.tight_layout()
     fig.subplots_adjust(bottom=0.24, top=0.82)

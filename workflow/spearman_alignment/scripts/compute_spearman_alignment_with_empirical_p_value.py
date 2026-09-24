@@ -29,6 +29,15 @@ def rank_and_normalize(values, name):
 
     return ranks/norm
 
+def null_standard_deviation(null_sum, null_sum_of_squares, number_of_relabellings):
+    # sample standard deviation of the relabelled (null) coefficients, from their running sums
+    if number_of_relabellings < 2:
+        return np.full_like(np.asarray(null_sum, dtype=np.float64), np.nan)
+
+    variance = (null_sum_of_squares - null_sum**2/number_of_relabellings)/(number_of_relabellings - 1)
+
+    return np.sqrt(np.maximum(variance, 0.0))
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--brain_embeddings", required=True)
@@ -125,8 +134,10 @@ def main():
     model_global_rank_matrix[column_indices, row_indices] = model_model_rank
 
     model_null_sum = 0.0
+    model_null_sum_of_squares = 0.0
     model_exceedances = 0
     concept_null_sum = np.zeros(number_of_concepts, dtype=np.float64)
+    concept_null_sum_of_squares = np.zeros(number_of_concepts, dtype=np.float64)
     concept_exceedances = np.zeros(number_of_concepts, dtype=np.int64)
 
     rng = np.random.default_rng(args.random_seed)
@@ -146,6 +157,7 @@ def main():
             )
         )
         model_null_sum += model_coefficient
+        model_null_sum_of_squares += model_coefficient**2
         model_exceedances += model_coefficient >= observed_model_coefficient
 
         relabelled_concept_rank = model_concept_rank[
@@ -161,6 +173,7 @@ def main():
             1.0,
         )
         concept_null_sum += concept_coefficients
+        concept_null_sum_of_squares += concept_coefficients**2
         concept_exceedances += concept_coefficients >= observed_concept_coefficients
 
         if shuffle_i == 0 or (shuffle_i + 1) % 100 == 0 or shuffle_i + 1 == args.number_of_relabellings:
@@ -185,6 +198,7 @@ def main():
             "number_of_pairs": [len(row_indices)],
             "observed_spearman_coefficient": [observed_model_coefficient],
             "empirical_null_mean_spearman_coefficient": [model_null_sum/args.number_of_relabellings],
+            "empirical_null_standard_deviation_spearman_coefficient": [float(null_standard_deviation(model_null_sum, model_null_sum_of_squares, args.number_of_relabellings))],
             "number_of_relabellings": [args.number_of_relabellings],
             "number_of_null_scores_at_least_as_large": [model_exceedances],
             "empirical_upper_tail_p_value": [model_empirical_p_value],
@@ -200,6 +214,7 @@ def main():
             "number_of_relations": number_of_concepts - 1,
             "observed_spearman_coefficient": observed_concept_coefficients,
             "empirical_null_mean_spearman_coefficient": concept_null_sum/args.number_of_relabellings,
+            "empirical_null_standard_deviation_spearman_coefficient": null_standard_deviation(concept_null_sum, concept_null_sum_of_squares, args.number_of_relabellings),
             "number_of_relabellings": args.number_of_relabellings,
             "number_of_null_scores_at_least_as_large": concept_exceedances,
             "empirical_upper_tail_p_value": concept_empirical_p_values,

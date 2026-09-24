@@ -9,7 +9,7 @@ import pandas as pd
 
 from libraries.manage_model_metadata import model_sort_key, parse_model_parameters
 from libraries.path_metadata import parse_llm_brain_alignment_score_path
-from libraries.visualisation_utils import contrasting_text_color
+from libraries.visualisation_utils import contrasting_text_color, MEAN_ALIGNMENT_SCORE_LABEL, PAIRWISE_ALIGNMENT_SCORE, PAIRWISE_AXIS_LABEL, PAIRWISE_LEVEL, plot_title
 
 def parse_llm_llm_path(path):
     filename = Path(path).name
@@ -180,14 +180,13 @@ def main():
     ax.set_xticklabels(labels, rotation=90)
     ax.set_yticklabels(labels)
 
-    ax.set_title(f"Alignment scores\n"
-                 f"dataset={args.dataset}, similarity={args.similarity_type}, neighbours={args.number_of_neighbours}\n"
-                 f"expected alignment score={expected_alignment_score:.4f}")
-    ax.set_xlabel("Model / brain")
-    ax.set_ylabel("Model / brain")
+    ax.set_title(plot_title(PAIRWISE_LEVEL, PAIRWISE_ALIGNMENT_SCORE, args.dataset, args.similarity_type, args.number_of_neighbours)
+                 + f"\nexpected alignment score (hypergeometric): {expected_alignment_score:.4f}")
+    ax.set_xlabel(PAIRWISE_AXIS_LABEL)
+    ax.set_ylabel(PAIRWISE_AXIS_LABEL)
 
     colorbar = fig.colorbar(image, ax=ax)
-    colorbar.set_label("Mean alignment score")
+    colorbar.set_label(MEAN_ALIGNMENT_SCORE_LABEL)
 
     fig.tight_layout()
     fig.savefig(output_path, dpi=300)

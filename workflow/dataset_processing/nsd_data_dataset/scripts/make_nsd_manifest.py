@@ -93,6 +93,7 @@ def main():
     parser.add_argument("--tr", type=float, required=True)
     parser.add_argument("--event_duration_s", type=float, required=True)
     parser.add_argument("--onset_shift_volumes", type=int, required=True)
+    parser.add_argument("--minimum_subjects_per_stimulus", type=int, required=True)
     parser.add_argument("--output_manifest", required=True)
     parser.add_argument("--output_stimulus_manifest", required=True)
     parser.add_argument("--output_excluded_stimuli", required=True)
@@ -184,7 +185,7 @@ def main():
         occurrences_by_subject[subject] = occurrences_by_stimulus
 
     # Every presentation enters the image's ISC, but a stimulus is kept only if at least
-    # two different subjects saw it (not necessarily equally often), so its ISC is not
+    # minimum_subjects_per_stimulus different subjects saw it (not necessarily equally often), so its ISC is not
     # purely within-subject.
     observation_counts_by_stimulus = defaultdict(int)
     subject_counts_by_stimulus = defaultdict(int)
@@ -197,21 +198,21 @@ def main():
     retained_nsd_image_identifiers = sorted(
         nsd_image_identifier
         for nsd_image_identifier, subject_count in subject_counts_by_stimulus.items()
-        if subject_count >= 2
+        if subject_count >= arguments.minimum_subjects_per_stimulus
     )
 
     excluded_nsd_image_identifiers = sorted(
         nsd_image_identifier
         for nsd_image_identifier, subject_count in subject_counts_by_stimulus.items()
-        if subject_count < 2
+        if subject_count < arguments.minimum_subjects_per_stimulus
     )
 
     if not retained_nsd_image_identifiers:
-        raise ValueError("No NSD image was presented to at least two different subjects")
+        raise ValueError(f"No NSD image was presented to at least {arguments.minimum_subjects_per_stimulus} different subjects")
 
     if excluded_nsd_image_identifiers:
         warnings.warn(
-            f"Removing {len(excluded_nsd_image_identifiers)} NSD stimuli presented to fewer than two different subjects (listed in {arguments.output_excluded_stimuli})",
+            f"Removing {len(excluded_nsd_image_identifiers)} NSD stimuli presented to fewer than {arguments.minimum_subjects_per_stimulus} different subjects (listed in {arguments.output_excluded_stimuli})",
             RuntimeWarning,
         )
 
@@ -276,6 +277,7 @@ def main():
         "tr": arguments.tr,
         "event_duration_s": arguments.event_duration_s,
         "onset_shift_volumes": arguments.onset_shift_volumes,
+        "minimum_subjects_per_stimulus": arguments.minimum_subjects_per_stimulus,
         "n_volumes_per_repetition": number_of_volumes_per_repetition,
         "n_retained_stimuli": len(retained_nsd_image_identifiers),
         "n_excluded_stimuli": len(excluded_nsd_image_identifiers),
@@ -285,7 +287,7 @@ def main():
     metadata_path.write_text(json.dumps(metadata, indent=2, sort_keys=True))
 
     print(f"Retained {len(retained_nsd_image_identifiers)} stimuli; wrote {len(occurrence_manifest)} occurrence rows")
-    print(f"Excluded {len(excluded_nsd_image_identifiers)} stimuli presented to fewer than two different subjects")
+    print(f"Excluded {len(excluded_nsd_image_identifiers)} stimuli presented to fewer than {arguments.minimum_subjects_per_stimulus} different subjects")
 
 if __name__ == "__main__":
     main()

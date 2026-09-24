@@ -92,7 +92,8 @@ rule make_nsd_manifest:
         subjects=" ".join(str(subject) for subject in NSD_SUBJECTS),
         tr=config["nsd_data"]["tr"],
         event_duration_s=config["nsd_data"]["event_duration_s"],
-        onset_shift_volumes=config["nsd_data"]["onset_shift_volumes"]
+        onset_shift_volumes=config["nsd_data"]["onset_shift_volumes"],
+        minimum_subjects_per_stimulus=MINIMUM_SUBJECTS_PER_STIMULUS
     conda:
         "envs/nsd_data_dataset_processing_environment.yaml"
     shell:
@@ -103,6 +104,7 @@ rule make_nsd_manifest:
                 --tr {params.tr} \
                 --event_duration_s {params.event_duration_s} \
                 --onset_shift_volumes {params.onset_shift_volumes} \
+                --minimum_subjects_per_stimulus {params.minimum_subjects_per_stimulus} \
                 --output_manifest {output.occurrence_manifest:q} \
                 --output_stimulus_manifest {output.stimulus_manifest:q} \
                 --output_excluded_stimuli {output.excluded_stimuli:q} \

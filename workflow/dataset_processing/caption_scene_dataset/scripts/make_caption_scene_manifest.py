@@ -148,6 +148,7 @@ def main():
     parser.add_argument("--event_duration_s", required=True, type=float)
     parser.add_argument("--onset_shift_s", default=0.0, type=float)
     parser.add_argument("--run_table_encoding", default="gbk")
+    parser.add_argument("--minimum_subjects_per_stimulus", required=True, type=int)
     args = parser.parse_args()
 
     if len(args.bold_files) != len(args.run_tables):
@@ -267,15 +268,15 @@ def main():
         raise ValueError("Global manifest is empty. No valid events were found after excluding unreadable or corrupted BOLD files")
 
     # Every valid presentation enters the ISC, but a stimulus is kept only if at least
-    # two different subjects saw it, so its ISC is not purely within-subject.
+    # minimum_subjects_per_stimulus different subjects saw it, so its ISC is not purely within-subject.
     subject_counts = out.groupby("stimulus_id")["subject"].nunique()
 
-    valid_stimuli = subject_counts[subject_counts >= 2].index
-    single_subject_stimuli = subject_counts[subject_counts < 2].index.tolist()
+    valid_stimuli = subject_counts[subject_counts >= args.minimum_subjects_per_stimulus].index
+    single_subject_stimuli = subject_counts[subject_counts < args.minimum_subjects_per_stimulus].index.tolist()
 
     if single_subject_stimuli:
         warnings.warn(
-            f"Removing {len(single_subject_stimuli)} stimuli presented to fewer than two different subjects (listed in {args.output_excluded_stimuli})",
+            f"Removing {len(single_subject_stimuli)} stimuli presented to fewer than {args.minimum_subjects_per_stimulus} different subjects (listed in {args.output_excluded_stimuli})",
             RuntimeWarning,
         )
 
@@ -303,7 +304,7 @@ def main():
     )
 
     if out.empty:
-        raise ValueError("Global manifest is empty after removing stimuli presented to fewer than two different subjects")
+        raise ValueError(f"Global manifest is empty after removing stimuli presented to fewer than {args.minimum_subjects_per_stimulus} different subjects")
 
     out = out.sort_values(["subject", "session", "run", "event_index"]).reset_index(drop=True)
 

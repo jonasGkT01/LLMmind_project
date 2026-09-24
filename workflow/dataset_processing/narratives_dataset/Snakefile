@@ -146,12 +146,12 @@ for c in NARRATIVES_BOLD_FILES:
 
     NARRATIVES_TASK_GROUPS.setdefault(c["task"], []).append(c)
 
-# Every scan is its own fMRI observation, but a task is retained only if it was presented
-# to at least two different subjects, so that its ISC is not purely a within-subject quantity.
+# Every scan is its own fMRI observation, but a task is retained only if it was presented to at
+# least MINIMUM_SUBJECTS_PER_STIMULUS different subjects, so that its ISC is not purely a within-subject quantity.
 NARRATIVES_TASK_GROUPS = {
     task: scans
     for task, scans in NARRATIVES_TASK_GROUPS.items()
-    if len({c["subject"] for c in scans}) >= 2
+    if len({c["subject"] for c in scans}) >= MINIMUM_SUBJECTS_PER_STIMULUS
 }
 
 def parcel_outputs_for_task(task):

@@ -86,7 +86,9 @@ stimuli/concepts and excluding unusable subjects/runs/stimuli before the
 shared parcel-extraction/ISC rules run.
 
 Every dataset applies the same final inclusion rule: a stimulus is kept only
-if it was presented to at least two different subjects. Each stimulus that
+if it was presented to at least `minimum_subjects_per_stimulus` different
+subjects (set at the top of `config.yaml`, default 2). Nature Stories is
+stricter: it requires every subject for every story. Each stimulus that
 is dropped, by this rule or by a dataset-specific check, is written to that
 dataset's `excluded_stimuli` file (path set in `config.yaml`). That file is
 the single list of stimuli left out of the analysis:
@@ -140,7 +142,7 @@ with empirical significance testing.
 
 Produces the summary plots described under [Outputs](#outputs): alignment
 heatmaps, p-value heatmaps, per-concept alignment scatterplots, line plots,
-and Spearman boxplots.
+alignment-enrichment plots (model- and concept-level), and Spearman plots.
 
 ### `libraries/`
 
@@ -163,7 +165,7 @@ parameters (TR, event duration, etc.), plus the neighbourhood sizes
 (`number_of_neighbours`) to evaluate for that dataset.
 
 In every dataset, a stimulus is included only if it was presented to at
-least two different subjects; every presentation (including repeats by the
+least `minimum_subjects_per_stimulus` different subjects; every presentation (including repeats by the
 same subject) then counts as one fMRI observation in its ISC. Stimuli that
 fail this or any other dataset-specific check are listed in that dataset's
 `excluded_stimuli` file, which both the ISC side and the model-embedding
@@ -395,6 +397,11 @@ using up to `<N>` worker processes at once. For that step, a higher `--cores` va
   can pull in a new major version. pandas 3, for example, broke
   `groupby(...).agg(list)` on the categorical neighbour columns (fixed
   2026-09-23).
+- **`plot_spearman_alignment` stops with a missing
+  `empirical_null_standard_deviation_spearman_coefficient` column**: the
+  Spearman TSVs predate the error bars added on 2026-09-24. Rebuild them
+  once with
+  `snakemake --use-conda --cores <N> --forcerun compute_spearman_alignmentwith_empirical_p_value`.
 - **"Requested k neighbours, but only n candidates"**: a dataset's
   `number_of_neighbours` must be smaller than its number of included
   stimuli (about 1,000 for `nsd_data` and `caption_scene`).
@@ -413,6 +420,8 @@ Key outputs land under `results/`:
   — combined summary tables across all configurations
 - `results/alignment_heatmaps/`, `results/alignment_p_value_heatmaps/`,
   `results/alignment_lineplots/`, `results/concept_alignment_scatterplots/`,
+  `results/alignment_enrichment_lineplots/`,
+  `results/concept_alignment_enrichment_scatterplots/`,
   `results/spearman_alignment/*_plots/` — summary visualisations. In the
   concept-level alignment and Spearman boxplots, a model whose per-concept
   scores show no spread renders as a flat, easy-to-miss box; those are
@@ -420,6 +429,33 @@ Key outputs land under `results/`:
   The model-level line plots and concept-level scatterplots for a given
   dataset/similarity/k share the same `[0, 1]` y-axis range, so the two can
   be compared directly side by side.
+
+  Conventions shared by all plots:
+
+  - Titles read `<level> <quantity>` (for example "Model-level brain-model
+    alignment enrichment"), with `dataset: …, similarity: …, neighbours: …`
+    on the second line. Y-axis labels read `<quantity> ± <error>`. Both
+    come from constants in `libraries/visualisation_utils.py`.
+  - Every non-heatmap plot draws dashed vertical lines between model
+    families.
+  - Brain-model plots (not heatmaps) mark each model's model-level
+    significance with two rows of asterisks: black for the empirical
+    p-value, red above it for the Benjamini-Hochberg q-value (`*` < 0.05,
+    `**` < 0.01, `***` < 0.001). On concept-level plots the asterisks sit in
+    a band along the top of each model's column.
+  - Concept-level plots colour each concept the same way for every model in
+    the plot. A concept legend is drawn only when there are at most 20
+    concepts.
+
+  The enrichment plots divide the observed alignment score by the expected
+  one, taken as the mean relabelled score of that model (over every
+  relabelling and concept). Their error bars are the SD of the relabelling
+  null in the same units, and a dashed line marks enrichment = 1. The
+  concept-level plot uses the same expected score as the model-level one,
+  so the model-level enrichment is the mean of the concept-level ones.
+  Both plots for a given dataset/similarity/k share one y-axis range,
+  computed from both. The Spearman plots' error bars are likewise the SD of
+  their permutation null (`empirical_null_standard_deviation_spearman_coefficient`).
 
 ## Code conventions
 
