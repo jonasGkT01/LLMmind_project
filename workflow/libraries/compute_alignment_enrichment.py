@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from matplotlib.ticker import FixedLocator, FuncFormatter
 import numpy as np
 import pandas as pd
 
@@ -164,26 +165,37 @@ def compute_alignment_enrichment(observed_paths, relabelled_paths, expected_data
 
     return pd.concat(concept_dataframes, ignore_index=True,), model_df
 
-def upper_whisker(values, whisker=1.5):
-    # Matplotlib's boxplot rule: the upper whisker ends at the highest value within
-    # Q3 + whisker*IQR (Tukey's fence); anything above it is a flier.
-    values = values[~np.isnan(values)]
-    q1, q3 = np.percentile(values, [25, 75])
+# Enrichment y-axis: linear on [0, 1] and log10 above 1, so enrichments well above 1 do not
+# squash everything else. With linthresh = 1 and linscale = 1 - 1/base, matplotlib's symlog
+# maps y to y on [0, 1] and to 1 + log10(y) above, so [0, 1] is as tall as one decade.
+ENRICHMENT_Y_SCALE = {"linthresh": 1.0, "linscale": 0.9, "base": 10,}
+# quarter steps on the linear part, 1-2-5 steps on the log part; ticks beyond the y-limits are not drawn
+ENRICHMENT_Y_TICKS = [0.0, 0.25, 0.5, 0.75] + [step*10**exponent for exponent in range(6) for step in (1, 2, 5)]
 
-    return float(values[values <= q3 + whisker*(q3 - q1)].max())
+def enrichment_axis_position(value):
+    return value if value <= 1.0 else 1.0 + np.log10(value)
+
+def enrichment_axis_value(position):
+    return position if position <= 1.0 else 10.0**(position - 1.0)
+
+def set_enrichment_y_scale(ax):
+    ax.set_yscale("symlog", **ENRICHMENT_Y_SCALE)
+    ax.yaxis.set_major_locator(FixedLocator(ENRICHMENT_Y_TICKS))
+    ax.yaxis.set_major_formatter(FuncFormatter(lambda value, _: f"{value:g}"))
 
 def enrichment_ylim(concept_df, model_df, padding=0.15):
     # Shared by the concept- and model-level enrichment plots of one (dataset, similarity, k), so both
-    # scripts derive the same limits from the same inputs. The top fits every model's concept
-    # boxplot up to its upper whisker, so a few extreme concepts (the fliers, which the boxplot
-    # already hides) fall outside the axes instead of squashing everything else; they still count
-    # in every statistic. The model-level values ± null SD and the enrichment = 1 reference line
-    # always stay visible, and the padding leaves some room above the highest of them.
-    whisker_tops = [
-        upper_whisker(values["enrichment"].to_numpy(dtype=float))
-        for _, values in concept_df.groupby("label")
-    ]
-    model_tops = (model_df["enrichment"] + model_df["null_standard_deviation"]).to_numpy(dtype=float)
-    top = max(1.0, max(whisker_tops), float(np.nanmax(model_tops)))*(1.0 + padding)
+    # scripts derive the same limits from the same inputs. The top always leaves the enrichment = 1
+    # reference line visible, and the padding leaves some room above the highest point. Concepts are
+    # plotted without their null SD, so only the model-level values extend by it. Padding and legend
+    # headroom are fractions of the axis height, so they are applied to axis positions, not values.
+    upper_values = np.concatenate(
+        [
+            concept_df["enrichment"].to_numpy(dtype=float),
+            (model_df["enrichment"] + model_df["null_standard_deviation"]).to_numpy(dtype=float),
+        ]
+    )
+    top = max(1.0, float(np.nanmax(upper_values)))
+    top_position = legend_headroom_top(0.0, enrichment_axis_position(top)*(1.0 + padding))
 
-    return 0.0, legend_headroom_top(0.0, top)
+    return 0.0, enrichment_axis_value(top_position)

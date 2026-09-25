@@ -51,7 +51,7 @@ def pairings():
 
 PAIRINGS = pairings()
 
-from itertools import combinations, product
+from itertools import combinations
 
 def llm_llm_pairings():
     llm_llm_pairs = []
@@ -59,28 +59,32 @@ def llm_llm_pairings():
     for dataset in DATASETS:
         available_modalities = list(config[dataset]["stimuli_dir"].keys())
 
-        for number_of_neighbours in dataset_numbers_of_neighbours(dataset):
-            compatible_models = [
-                model
-                for model in MODEL_KEYS
-                if config["models"][model]["modality"] in set(available_modalities + ["multimodal"])
-            ]
+        # One representation per (model, stimuli_type) the model can embed: multimodal models contribute
+        # one per available stimuli_type. Pairing representations rather than models also compares a
+        # multimodal model with itself across stimuli types (e.g. gemma3n_e4b-language vs
+        # gemma3n_e4b-vision), while never pairing a representation with itself. Representations are
+        # model-major, so model_1 always precedes model_2 in MODEL_KEYS and existing filenames are unchanged.
+        representations = [
+            (model, stimuli_type)
+            for model in MODEL_KEYS
+            for stimuli_type in available_modalities
+            if config["models"][model]["modality"] in [stimuli_type, "multimodal"]
+        ]
 
-            for model_1, model_2 in combinations(compatible_models, 2):
-                for modality_1, modality_2 in product(available_modalities, repeat=2):
-                    if config["models"][model_1]["modality"] in [modality_1, "multimodal"] and config["models"][model_2]["modality"] in [modality_2, "multimodal"]:
-                        for similarity_type in SIMILARITY_TYPES:
-                            llm_llm_pairs.append(
-                                {
-                                    "dataset": dataset,
-                                    "number_of_neighbours": number_of_neighbours,
-                                    "model_1": model_1,
-                                    "stimuli_type_1": modality_1,
-                                    "model_2": model_2,
-                                    "stimuli_type_2": modality_2,
-                                    "similarity_type": similarity_type,
-                                }
-                            )
+        for number_of_neighbours in dataset_numbers_of_neighbours(dataset):
+            for (model_1, modality_1), (model_2, modality_2) in combinations(representations, 2):
+                for similarity_type in SIMILARITY_TYPES:
+                    llm_llm_pairs.append(
+                        {
+                            "dataset": dataset,
+                            "number_of_neighbours": number_of_neighbours,
+                            "model_1": model_1,
+                            "stimuli_type_1": modality_1,
+                            "model_2": model_2,
+                            "stimuli_type_2": modality_2,
+                            "similarity_type": similarity_type,
+                        }
+                    )
 
     return llm_llm_pairs
 
@@ -179,7 +183,7 @@ rule all:
             for pair in LLM_LLM_PAIRINGS
         ],
         [
-            f"results/alignment_heatmaps/dataset-{pair['dataset']}_{pair['similarity_type']}-alignment_score_{pair['number_of_neighbours']}NN.png"
+            f"results/pictures/alignment_heatmaps/dataset-{pair['dataset']}_{pair['similarity_type']}-alignment_score_{pair['number_of_neighbours']}NN.png"
             for pair in HEATMAP_PAIRINGS
         ],
         [
@@ -187,23 +191,23 @@ rule all:
             for pair in LLM_LLM_PAIRINGS
         ],
         [
-            f"results/alignment_p_value_heatmaps/dataset-{pair['dataset']}_{pair['similarity_type']}-alignment_score_{pair['number_of_neighbours']}NN_empirical_p_values.png"
+            f"results/pictures/alignment_p_value_heatmaps/dataset-{pair['dataset']}_{pair['similarity_type']}-alignment_score_{pair['number_of_neighbours']}NN_empirical_p_values.png"
             for pair in HEATMAP_PAIRINGS
         ],
         [
-            f"results/concept_alignment_scatterplots/dataset-{pair['dataset']}_{pair['similarity_type']}-concept_alignment_{pair['number_of_neighbours']}NN.png"
+            f"results/pictures/concept_alignment_scatterplots/dataset-{pair['dataset']}_{pair['similarity_type']}-concept_alignment_{pair['number_of_neighbours']}NN.png"
             for pair in HEATMAP_PAIRINGS
         ],
         [
-            f"results/alignment_lineplots/dataset-{pair['dataset']}_{pair['similarity_type']}-brain_model_alignment_{pair['number_of_neighbours']}NN.png"
+            f"results/pictures/alignment_lineplots/dataset-{pair['dataset']}_{pair['similarity_type']}-brain_model_alignment_{pair['number_of_neighbours']}NN.png"
             for pair in HEATMAP_PAIRINGS
         ],
         [
-            f"results/concept_alignment_enrichment_scatterplots/dataset-{pair['dataset']}_{pair['similarity_type']}-concept_alignment_enrichment_{pair['number_of_neighbours']}NN.png"
+            f"results/pictures/concept_alignment_enrichment_scatterplots/dataset-{pair['dataset']}_{pair['similarity_type']}-concept_alignment_enrichment_{pair['number_of_neighbours']}NN.png"
             for pair in HEATMAP_PAIRINGS
         ],
         [
-            f"results/alignment_enrichment_lineplots/dataset-{pair['dataset']}_{pair['similarity_type']}-brain_model_alignment_enrichment_{pair['number_of_neighbours']}NN.png"
+            f"results/pictures/alignment_enrichment_lineplots/dataset-{pair['dataset']}_{pair['similarity_type']}-brain_model_alignment_enrichment_{pair['number_of_neighbours']}NN.png"
             for pair in HEATMAP_PAIRINGS
         ],
         [
@@ -215,12 +219,12 @@ rule all:
             for pair in SPEARMAN_PAIRINGS
         ],
         [
-            f"results/spearman_alignment_lineplots/dataset-{dataset}_{similarity_type}-brain_model_spearman_alignment.png"
+            f"results/pictures/spearman_alignment_lineplots/dataset-{dataset}_{similarity_type}-brain_model_spearman_alignment.png"
             for dataset in DATASETS
             for similarity_type in SIMILARITY_TYPES
         ],
         [
-            f"results/concept_spearman_alignment_scatterplots/dataset-{dataset}_{similarity_type}-concept_spearman_alignment.png"
+            f"results/pictures/concept_spearman_alignment_scatterplots/dataset-{dataset}_{similarity_type}-concept_spearman_alignment.png"
             for dataset in DATASETS
             for similarity_type in SIMILARITY_TYPES
         ],

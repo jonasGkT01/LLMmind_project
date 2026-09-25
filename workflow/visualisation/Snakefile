@@ -1,36 +1,36 @@
 rule all_visualisation:
     input:
         [
-            f"results/alignment_heatmaps/dataset-{pair['dataset']}_{pair['similarity_type']}-alignment_score_{pair['number_of_neighbours']}NN.png"
+            f"results/pictures/alignment_heatmaps/dataset-{pair['dataset']}_{pair['similarity_type']}-alignment_score_{pair['number_of_neighbours']}NN.png"
             for pair in HEATMAP_PAIRINGS
         ],
         [
-            f"results/alignment_p_value_heatmaps/dataset-{pair['dataset']}_{pair['similarity_type']}-alignment_score_{pair['number_of_neighbours']}NN_empirical_p_values.png"
+            f"results/pictures/alignment_p_value_heatmaps/dataset-{pair['dataset']}_{pair['similarity_type']}-alignment_score_{pair['number_of_neighbours']}NN_empirical_p_values.png"
             for pair in HEATMAP_PAIRINGS
         ],
         [
-            f"results/concept_alignment_scatterplots/dataset-{pair['dataset']}_{pair['similarity_type']}-concept_alignment_{pair['number_of_neighbours']}NN.png"
+            f"results/pictures/concept_alignment_scatterplots/dataset-{pair['dataset']}_{pair['similarity_type']}-concept_alignment_{pair['number_of_neighbours']}NN.png"
             for pair in HEATMAP_PAIRINGS
         ],
         [
-            f"results/alignment_lineplots/dataset-{pair['dataset']}_{pair['similarity_type']}-brain_model_alignment_{pair['number_of_neighbours']}NN.png"
+            f"results/pictures/alignment_lineplots/dataset-{pair['dataset']}_{pair['similarity_type']}-brain_model_alignment_{pair['number_of_neighbours']}NN.png"
             for pair in HEATMAP_PAIRINGS
         ],
         [
-            f"results/concept_alignment_enrichment_scatterplots/dataset-{pair['dataset']}_{pair['similarity_type']}-concept_alignment_enrichment_{pair['number_of_neighbours']}NN.png"
+            f"results/pictures/concept_alignment_enrichment_scatterplots/dataset-{pair['dataset']}_{pair['similarity_type']}-concept_alignment_enrichment_{pair['number_of_neighbours']}NN.png"
             for pair in HEATMAP_PAIRINGS
         ],
         [
-            f"results/alignment_enrichment_lineplots/dataset-{pair['dataset']}_{pair['similarity_type']}-brain_model_alignment_enrichment_{pair['number_of_neighbours']}NN.png"
+            f"results/pictures/alignment_enrichment_lineplots/dataset-{pair['dataset']}_{pair['similarity_type']}-brain_model_alignment_enrichment_{pair['number_of_neighbours']}NN.png"
             for pair in HEATMAP_PAIRINGS
         ],
         [
-            f"results/spearman_alignment_lineplots/dataset-{dataset}_{similarity_type}-brain_model_spearman_alignment.png"
+            f"results/pictures/spearman_alignment_lineplots/dataset-{dataset}_{similarity_type}-brain_model_spearman_alignment.png"
             for dataset in DATASETS
             for similarity_type in SIMILARITY_TYPES
         ],
         [
-            f"results/concept_spearman_alignment_scatterplots/dataset-{dataset}_{similarity_type}-concept_spearman_alignment.png"
+            f"results/pictures/concept_spearman_alignment_scatterplots/dataset-{dataset}_{similarity_type}-concept_spearman_alignment.png"
             for dataset in DATASETS
             for similarity_type in SIMILARITY_TYPES
         ],
@@ -52,7 +52,7 @@ rule plot_alignment_heatmap:
             and str(pair["number_of_neighbours"]) == str(wc.number_of_neighbours)
         ]
     output:
-        heatmap="results/alignment_heatmaps/dataset-{dataset}_{similarity_type}-alignment_score_{number_of_neighbours}NN.png"
+        heatmap="results/pictures/alignment_heatmaps/dataset-{dataset}_{similarity_type}-alignment_score_{number_of_neighbours}NN.png"
     params:
         model_parameters=[
             f"{model}={config['models'][model]['parameters_millions']}"
@@ -83,7 +83,7 @@ rule plot_empirical_p_value_heatmap:
             and str(pair["number_of_neighbours"]) == str(wc.number_of_neighbours)
         ]
     output:
-        heatmap="results/alignment_p_value_heatmaps/dataset-{dataset}_{similarity_type}-alignment_score_{number_of_neighbours}NN_empirical_p_values.png"
+        heatmap="results/pictures/alignment_p_value_heatmaps/dataset-{dataset}_{similarity_type}-alignment_score_{number_of_neighbours}NN_empirical_p_values.png"
     params:
         model_parameters=[
             f"{model}={config['models'][model]['parameters_millions']}"
@@ -117,7 +117,7 @@ rule plot_concept_alignment_scatterplot:
         ],
         model_level_statistics="results/all_alignment_scores.tsv"
     output:
-        plot="results/concept_alignment_scatterplots/dataset-{dataset}_{similarity_type}-concept_alignment_{number_of_neighbours}NN.png"
+        plot="results/pictures/concept_alignment_scatterplots/dataset-{dataset}_{similarity_type}-concept_alignment_{number_of_neighbours}NN.png"
     params:
         model_parameters=[
             f"{model}={config['models'][model]['parameters_millions']}"
@@ -151,7 +151,7 @@ rule plot_brain_model_alignment_lineplot:
         ],
         model_level_statistics="results/all_alignment_scores.tsv",
     output:
-        plot="results/alignment_lineplots/dataset-{dataset}_{similarity_type}-brain_model_alignment_{number_of_neighbours}NN.png"
+        plot="results/pictures/alignment_lineplots/dataset-{dataset}_{similarity_type}-brain_model_alignment_{number_of_neighbours}NN.png"
     params:
         model_parameters=[
             f"{model}={config['models'][model]['parameters_millions']}"
@@ -189,7 +189,7 @@ rule plot_concept_alignment_enrichment_scatterplot:
         ],
         model_level_statistics="results/all_alignment_scores.tsv"
     output:
-        plot="results/concept_alignment_enrichment_scatterplots/dataset-{dataset}_{similarity_type}-concept_alignment_enrichment_{number_of_neighbours}NN.png"
+        plot="results/pictures/concept_alignment_enrichment_scatterplots/dataset-{dataset}_{similarity_type}-concept_alignment_enrichment_{number_of_neighbours}NN.png"
     params:
         model_parameters=[
             f"{model}={config['models'][model]['parameters_millions']}"
@@ -231,7 +231,7 @@ rule plot_brain_model_alignment_enrichment_lineplot:
         ],
         model_level_statistics="results/all_alignment_scores.tsv",
     output:
-        plot="results/alignment_enrichment_lineplots/dataset-{dataset}_{similarity_type}-brain_model_alignment_enrichment_{number_of_neighbours}NN.png"
+        plot="results/pictures/alignment_enrichment_lineplots/dataset-{dataset}_{similarity_type}-brain_model_alignment_enrichment_{number_of_neighbours}NN.png"
     params:
         model_parameters=[
             f"{model}={config['models'][model]['parameters_millions']}"
@@ -267,8 +267,8 @@ rule plot_spearman_alignment:
             and pair["similarity_type"] == wc.similarity_type
         ]
     output:
-        model_level_plot="results/spearman_alignment_lineplots/dataset-{dataset}_{similarity_type}-brain_model_spearman_alignment.png",
-        concept_level_plot="results/concept_spearman_alignment_scatterplots/dataset-{dataset}_{similarity_type}-concept_spearman_alignment.png"
+        model_level_plot="results/pictures/spearman_alignment_lineplots/dataset-{dataset}_{similarity_type}-brain_model_spearman_alignment.png",
+        concept_level_plot="results/pictures/concept_spearman_alignment_scatterplots/dataset-{dataset}_{similarity_type}-concept_spearman_alignment.png"
     params:
         model_parameters=[
             f"{model}={config['models'][model]['parameters_millions']}"

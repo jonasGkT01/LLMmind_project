@@ -429,9 +429,13 @@ using up to `<N>` worker processes at once. For that step, a higher `--cores` va
   once with
   `snakemake --use-conda --cores <N> --forcerun compute_spearman_alignmentwith_empirical_p_value`.
 - **Nothing under `results/spearman_alignment/`**: since 2026-09-25 the
-  Spearman outputs sit directly in `results/` (see [Outputs](#outputs)).
-  Point any script that still reads the old folder at
-  `results/spearman_alignment_scores/` and the two Spearman plot folders.
+  Spearman tables sit in `results/spearman_alignment_scores/` and the plots
+  in `results/pictures/` (see [Outputs](#outputs)). Point any script that
+  still reads the old folder there.
+- **Plot folders directly under `results/`** (for example
+  `results/alignment_heatmaps/`): these are left over from before plots moved
+  to `results/pictures/` on 2026-09-25. Move them into `results/pictures/`
+  to keep the existing plots without redrawing them, or delete them.
 - **"Requested k neighbours, but only n candidates"**: a dataset's
   `number_of_neighbours` must be smaller than its number of included
   stimuli (about 1,000 for `nsd_data` and `caption_scene`).
@@ -451,12 +455,13 @@ Key outputs land under `results/`:
   `_concept_level` TSV per configuration.
 - `results/all_alignment_scores.tsv`, `results/all_spearman_alignment_scores.tsv`
   — combined summary tables across all configurations
-- `results/alignment_heatmaps/`, `results/alignment_p_value_heatmaps/`,
-  `results/alignment_lineplots/`, `results/concept_alignment_scatterplots/`,
-  `results/alignment_enrichment_lineplots/`,
-  `results/concept_alignment_enrichment_scatterplots/`,
-  `results/spearman_alignment_lineplots/`,
-  `results/concept_spearman_alignment_scatterplots/` — summary visualisations. In the
+- `results/pictures/` — every plot and heatmap, one subfolder per plot type:
+  `alignment_heatmaps/`, `alignment_p_value_heatmaps/`,
+  `alignment_lineplots/`, `concept_alignment_scatterplots/`,
+  `alignment_enrichment_lineplots/`,
+  `concept_alignment_enrichment_scatterplots/`,
+  `spearman_alignment_lineplots/`,
+  `concept_spearman_alignment_scatterplots/`. In the
   concept-level alignment and Spearman boxplots, a model whose per-concept
   scores show no spread renders as a flat, easy-to-miss box; those are
   marked with a red diamond rather than left looking like missing data.
@@ -493,13 +498,11 @@ Key outputs land under `results/`:
   so the model-level enrichment is the mean of the concept-level ones.
   Both plots for a given dataset/similarity/k share one y-axis range,
   computed from both (`enrichment_ylim()` in
-  `libraries/compute_alignment_enrichment.py`). Its top is the highest
-  per-model boxplot upper whisker (Tukey's fence, Q3 + 1.5·IQR), or the
-  highest model-level value + SD if that is higher, so a few extreme
-  concepts cannot squash the rest. Concepts above the fence are not drawn,
-  but they still count in every statistic, and the concept-level plot's
-  legend states how many are hidden. When a model's concepts have zero IQR,
-  every concept that differs from the box is hidden. The model-level Spearman plot's error bars are likewise
+  `libraries/compute_alignment_enrichment.py`), which fits every concept and
+  every model-level value + SD. The y-axis is linear from 0 to 1 and log10
+  above 1 (matplotlib `symlog`, set by `set_enrichment_y_scale()`), and
+  [0, 1] is as tall as one decade. This way a few very high concepts don't
+  squash the rest, and every point is still drawn. The model-level Spearman plot's error bars are likewise
   the SD of its permutation null
   (`empirical_null_standard_deviation_spearman_coefficient`); the
   concept-level Spearman plot has no per-concept error bars.

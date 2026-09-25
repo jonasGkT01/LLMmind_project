@@ -5,7 +5,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
-from libraries.compute_alignment_enrichment import compute_alignment_enrichment, enrichment_ylim
+from libraries.compute_alignment_enrichment import compute_alignment_enrichment, enrichment_ylim, set_enrichment_y_scale
 from libraries.compute_statistics import benjamini_hochberg, read_model_level_empirical_p_values
 from libraries.manage_model_metadata import model_sort_key, parse_model_parameters
 from libraries.visualisation_utils import (
@@ -91,6 +91,7 @@ def main():
     ax.set_xlabel(MODEL_AXIS_LABEL)
     ax.set_ylabel(y_axis_label(ALIGNMENT_ENRICHMENT_LABEL, NULL_STANDARD_DEVIATION))
     ax.set_title(plot_title(MODEL_LEVEL, BRAIN_MODEL_ALIGNMENT_ENRICHMENT, args.dataset, args.similarity_type, args.number_of_neighbours), pad=32)
+    set_enrichment_y_scale(ax)
     ax.set_ylim(*enrichment_ylim(concept_df, model_df))
     add_legend(ax, significance_legend_handles())
 
