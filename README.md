@@ -169,7 +169,12 @@ least `minimum_subjects_per_stimulus` different subjects; every presentation (in
 same subject) then counts as one fMRI observation in its ISC. Stimuli that
 fail this or any other dataset-specific check are listed in that dataset's
 `excluded_stimuli` file, which both the ISC side and the model-embedding
-side read, so the two always cover the same stimuli. For `nsd_data` and
+side read, so the two always cover the same stimuli. The value must be at
+least 2 (ISC needs two observations) and at most 8 (the number of subjects
+in `caption_scene` and `nsd_data`). In `narratives` it drops a story only
+from 15 upwards, and `nature_stories` ignores it. Changing it rebuilds that
+dataset's brain inputs *and* its model embeddings. See
+[Running the pipeline](#running-the-pipeline) to preview the effect. For `nsd_data` and
 `caption_scene` this leaves about 1,000 stimuli each (the images shown to
 several subjects), so their `number_of_neighbours` values must stay below
 that. The similarity and
@@ -333,6 +338,12 @@ snakemake --use-conda --cores <N> -n
 
 # build a specific target only, e.g. one dataset's alignment scores
 snakemake --use-conda --cores <N> results/all_alignment_scores.tsv
+
+# preview what a config change would rebuild, without editing config.yaml;
+# the rerun triggers leave out conda-env changes, so only the setting's own effect is listed
+snakemake --use-conda --cores <N> -n --quiet rules \
+    --rerun-triggers mtime params input code \
+    --config minimum_subjects_per_stimulus=3
 ```
 
 Pipeline behavior (datasets, models, similarity metrics, neighbourhood sizes,
@@ -384,6 +395,13 @@ using up to `<N>` worker processes at once. For that step, a higher `--cores` va
   `libraries/` modules. After the 2026-09-23 chunking and constant-signal
   fixes, for example, rerun
   `--forcerun get_embeddings compute_narratives_isc compute_nature_stories_isc`.
+- **`MissingOutputException` in `compute_narratives_isc` after lowering
+  `minimum_subjects_per_stimulus`**: this only happens once the value is
+  15 or more. The Narratives parcel and ISC manifests are `run:` rules
+  without params, so Snakemake doesn't rebuild them when a story comes back
+  into the analysis. Add `--forcerun write_narratives_parcel_manifest`.
+  Raising the value doesn't need this: the stale manifests only cost extra
+  compute.
 - **A rule fails with only `CalledProcessError … returned non-zero exit
   status 1`**: the Snakemake log doesn't include the script's own error
   message. Copy the rule's `shell:` command from the log and re-run it
