@@ -25,12 +25,12 @@ rule all_visualisation:
             for pair in HEATMAP_PAIRINGS
         ],
         [
-            f"results/spearman_alignment/model_level_plots/dataset-{dataset}_{similarity_type}-brain_model_spearman.png"
+            f"results/spearman_alignment_lineplots/dataset-{dataset}_{similarity_type}-brain_model_spearman_alignment.png"
             for dataset in DATASETS
             for similarity_type in SIMILARITY_TYPES
         ],
         [
-            f"results/spearman_alignment/concept_level_plots/dataset-{dataset}_{similarity_type}-concept_spearman_coefficients.png"
+            f"results/concept_spearman_alignment_scatterplots/dataset-{dataset}_{similarity_type}-concept_spearman_alignment.png"
             for dataset in DATASETS
             for similarity_type in SIMILARITY_TYPES
         ],
@@ -255,20 +255,20 @@ rule plot_brain_model_alignment_enrichment_lineplot:
 rule plot_spearman_alignment:
     input:
         model_level_spearman_scores=lambda wc: [
-            f"results/spearman_alignment/model_level/dataset-{wc.dataset}_model-{pair['model']}-{pair['stimuli_type']}_brain_{wc.similarity_type}-similarity_spearman_alignment_empirical.p_value.tsv"
+            f"results/spearman_alignment_scores/dataset-{wc.dataset}_model-{pair['model']}-{pair['stimuli_type']}_brain_empirical_{wc.similarity_type}-spearman_alignment_model_level.p_value.tsv"
             for pair in SPEARMAN_PAIRINGS
             if pair["dataset"] == wc.dataset
             and pair["similarity_type"] == wc.similarity_type
         ],
         concept_level_spearman_scores=lambda wc: [
-            f"results/spearman_alignment/concept_level/dataset-{wc.dataset}_model-{pair['model']}-{pair['stimuli_type']}_brain_{wc.similarity_type}-similarity_spearman_alignment_empirical.p_value.tsv"
+            f"results/spearman_alignment_scores/dataset-{wc.dataset}_model-{pair['model']}-{pair['stimuli_type']}_brain_empirical_{wc.similarity_type}-spearman_alignment_concept_level.p_value.tsv"
             for pair in SPEARMAN_PAIRINGS
             if pair["dataset"] == wc.dataset
             and pair["similarity_type"] == wc.similarity_type
         ]
     output:
-        model_level_plot="results/spearman_alignment/model_level_plots/dataset-{dataset}_{similarity_type}-brain_model_spearman.png",
-        concept_level_plot="results/spearman_alignment/concept_level_plots/dataset-{dataset}_{similarity_type}-concept_spearman_coefficients.png"
+        model_level_plot="results/spearman_alignment_lineplots/dataset-{dataset}_{similarity_type}-brain_model_spearman_alignment.png",
+        concept_level_plot="results/concept_spearman_alignment_scatterplots/dataset-{dataset}_{similarity_type}-concept_spearman_alignment.png"
     params:
         model_parameters=[
             f"{model}={config['models'][model]['parameters_millions']}"

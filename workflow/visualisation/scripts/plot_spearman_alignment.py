@@ -11,12 +11,11 @@ from libraries.manage_model_metadata import model_family, model_sort_key, parse_
 from libraries.validate_data import validate_required_columns
 from libraries.visualisation_utils import (
     add_legend,
+    legend_headroom_top,
     add_model_family_annotations,
     annotate_significance,
-    annotate_significance_band,
     BRAIN_MODEL_SPEARMAN_ALIGNMENT,
     concept_colours,
-    concept_legend_handles,
     CONCEPT_LEVEL,
     concept_point_alpha,
     deterministic_jitter,
@@ -40,7 +39,8 @@ def spearman_ylim(values, padding=0.10, minimum_limit=0.10, step=0.05):
     limit = np.ceil(limit / step) * step
     limit = min(1.0, limit)
 
-    return -limit, limit
+    # symmetric around 0, plus room above the data for the legend
+    return -limit, legend_headroom_top(-limit, limit)
 
 def main():
     parser = argparse.ArgumentParser()
@@ -160,7 +160,7 @@ def main():
 
     ax.errorbar(x, model_coefficients, yerr=model_errors, marker="o", linewidth=1.8, capsize=3,)
 
-    annotate_significance(ax, x, model_coefficients + model_errors, model_df["empirical_upper_tail_p_value"], model_df["q_value"])
+    annotate_significance(ax, x, model_df["empirical_upper_tail_p_value"], model_df["q_value"])
 
     ax.axhline(0.0, linestyle="--", linewidth=1.2, color="grey", label="Null expectation (no rank correlation)",)
 
@@ -225,9 +225,7 @@ def main():
     alpha = concept_point_alpha(len(colour_by_concept))
     concept_x_values = concept_df["x_position"].to_numpy(dtype=float) + np.asarray(jitter)
     concept_coefficients = concept_df["observed_spearman_coefficient"].to_numpy(dtype=float)
-    concept_errors = concept_df[NULL_STANDARD_DEVIATION_COLUMN].to_numpy(dtype=float)
 
-    ax.vlines(concept_x_values, concept_coefficients - concept_errors, concept_coefficients + concept_errors, colors=colours, linewidth=0.8, alpha=alpha, zorder=1,)
     ax.scatter(concept_x_values, concept_coefficients, s=10, c=colours, alpha=alpha, edgecolors="none", zorder=2,)
     ax.boxplot(boxplot_values, 
                positions=range(len(labels)), 
@@ -241,20 +239,20 @@ def main():
     mark_degenerate_boxplot_statistics(ax, boxplot_values)
     ax.axhline(0.0, linestyle="--", linewidth=1.2, color="grey", label="Null expectation (no rank correlation)",)
     add_model_family_annotations(ax, labels)
-    annotate_significance_band(ax, x, model_df["empirical_upper_tail_p_value"], model_df["q_value"])
+    annotate_significance(ax, x, model_df["empirical_upper_tail_p_value"], model_df["q_value"])
 
     ax.set_xticks(range(len(labels)))
     ax.set_xticklabels(labels, rotation=55, ha="right",)
 
     ax.set_xlim(-0.6, len(labels) - 0.4)
-    ax.set_ylim(*spearman_ylim(np.concatenate([concept_coefficients - concept_errors, concept_coefficients + concept_errors]),))
+    ax.set_ylim(*spearman_ylim(concept_coefficients))
 
     ax.set_title(plot_title(CONCEPT_LEVEL, BRAIN_MODEL_SPEARMAN_ALIGNMENT, args.dataset, args.similarity_type), pad=32,)
     ax.set_xlabel(MODEL_AXIS_LABEL)
-    ax.set_ylabel(y_axis_label(SPEARMAN_COEFFICIENT_LABEL, NULL_STANDARD_DEVIATION))
+    ax.set_ylabel(y_axis_label(SPEARMAN_COEFFICIENT_LABEL))
     ax.grid(axis="y", alpha=0.25)
 
-    add_legend(ax, significance_legend_handles() + concept_legend_handles(colour_by_concept))
+    add_legend(ax, significance_legend_handles())
     fig.tight_layout()
     fig.subplots_adjust(
         bottom=0.24,

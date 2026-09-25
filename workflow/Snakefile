@@ -207,20 +207,20 @@ rule all:
             for pair in HEATMAP_PAIRINGS
         ],
         [
-            f"results/spearman_alignment/model_level/dataset-{pair['dataset']}_model-{pair['model']}-{pair['stimuli_type']}_brain_{pair['similarity_type']}-similarity_spearman_alignment_empirical.p_value.tsv"
+            f"results/spearman_alignment_scores/dataset-{pair['dataset']}_model-{pair['model']}-{pair['stimuli_type']}_brain_empirical_{pair['similarity_type']}-spearman_alignment_model_level.p_value.tsv"
             for pair in SPEARMAN_PAIRINGS
         ],
         [
-            f"results/spearman_alignment/concept_level/dataset-{pair['dataset']}_model-{pair['model']}-{pair['stimuli_type']}_brain_{pair['similarity_type']}-similarity_spearman_alignment_empirical.p_value.tsv"
+            f"results/spearman_alignment_scores/dataset-{pair['dataset']}_model-{pair['model']}-{pair['stimuli_type']}_brain_empirical_{pair['similarity_type']}-spearman_alignment_concept_level.p_value.tsv"
             for pair in SPEARMAN_PAIRINGS
         ],
         [
-            f"results/spearman_alignment/model_level_plots/dataset-{dataset}_{similarity_type}-brain_model_spearman.png"
+            f"results/spearman_alignment_lineplots/dataset-{dataset}_{similarity_type}-brain_model_spearman_alignment.png"
             for dataset in DATASETS
             for similarity_type in SIMILARITY_TYPES
         ],
         [
-            f"results/spearman_alignment/concept_level_plots/dataset-{dataset}_{similarity_type}-concept_spearman_coefficients.png"
+            f"results/concept_spearman_alignment_scatterplots/dataset-{dataset}_{similarity_type}-concept_spearman_alignment.png"
             for dataset in DATASETS
             for similarity_type in SIMILARITY_TYPES
         ],

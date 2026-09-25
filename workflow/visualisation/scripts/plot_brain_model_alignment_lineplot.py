@@ -11,6 +11,7 @@ from libraries.manage_model_metadata import model_family, model_sort_key, parse_
 from libraries.path_metadata import parse_llm_brain_alignment_score_path
 from libraries.visualisation_utils import (
     add_legend,
+    legend_headroom_top,
     annotate_significance,
     BRAIN_MODEL_ALIGNMENT_SCORE,
     MEAN_ALIGNMENT_SCORE_LABEL,
@@ -188,7 +189,7 @@ def main():
 
     ax.errorbar(x, values, yerr=errors, marker="o", linewidth=1.8, capsize=3,)
 
-    annotate_significance(ax, x, np.add(values, errors), p_values, q_values)
+    annotate_significance(ax, x, p_values, q_values)
 
     for family, start, end in family_ranges:
         if start > 0:
@@ -207,7 +208,9 @@ def main():
     ax.set_xlabel(MODEL_AXIS_LABEL)
     ax.set_ylabel(y_axis_label(MEAN_ALIGNMENT_SCORE_LABEL, STANDARD_ERROR))
     ax.set_title(plot_title(MODEL_LEVEL, BRAIN_MODEL_ALIGNMENT_SCORE, args.dataset, args.similarity_type, args.number_of_neighbours), pad=32)
-    ax.set_ylim(0, 1)
+    # alignment scores live in [0, 1]; the space above 1 is left free for the legend
+    ax.set_ylim(0, legend_headroom_top(0, 1))
+    ax.set_yticks(np.linspace(0, 1, 6))
     ax.grid(axis="y", alpha=0.25)
     add_legend(ax, significance_legend_handles())
 

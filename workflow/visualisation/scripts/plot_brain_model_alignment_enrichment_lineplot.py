@@ -85,7 +85,7 @@ def main():
     ax.errorbar(x, values, yerr=errors, marker="o", linewidth=1.8, capsize=3,)
     ax.axhline(1.0, linestyle="--", linewidth=1.2, color="grey", label="Null expectation (enrichment = 1)",)
 
-    annotate_significance(ax, x, values + errors, p_values, q_values)
+    annotate_significance(ax, x, p_values, q_values)
     add_model_family_annotations(ax, models)
 
     ax.set_xlabel(MODEL_AXIS_LABEL)

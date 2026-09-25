@@ -12,17 +12,15 @@ from libraries.visualisation_utils import (
     add_legend,
     add_model_family_annotations,
     ALIGNMENT_ENRICHMENT_LABEL,
-    annotate_significance_band,
+    annotate_significance,
     BRAIN_MODEL_ALIGNMENT_ENRICHMENT,
     concept_colours,
-    concept_legend_handles,
     CONCEPT_LEVEL,
     concept_point_alpha,
     deterministic_jitter,
     mark_degenerate_boxplot_statistics,
     MODEL_AXIS_LABEL,
     model_figure_width,
-    NULL_STANDARD_DEVIATION,
     plot_title,
     save_model_figure,
     significance_legend_handles,
@@ -94,7 +92,6 @@ def main():
     colours = concept_df["concept"].map(colour_by_concept).tolist()
     alpha = concept_point_alpha(len(colour_by_concept))
     values = concept_df["enrichment"].to_numpy(dtype=float)
-    errors = concept_df["null_standard_deviation"].to_numpy(dtype=float)
 
     output_path = Path(args.plot)
     output_path.parent.mkdir(parents=True, exist_ok=True,)
@@ -102,7 +99,6 @@ def main():
     fig, ax = plt.subplots(figsize=(model_figure_width(len(labels)), 7,))
 
     style_model_x_axis(ax, labels)
-    ax.vlines(x_values, values - errors, values + errors, colors=colours, linewidth=0.8, alpha=alpha, zorder=1,)
     ax.scatter(x_values, values, s=10, c=colours, alpha=alpha, edgecolors="none", zorder=2,)
     ax.boxplot(boxplot_values,
                positions=range(len(labels)),
@@ -116,7 +112,7 @@ def main():
     mark_degenerate_boxplot_statistics(ax, boxplot_values)
     ax.axhline(1.0, linestyle="--", linewidth=1.2, color="grey", label="Null expectation (enrichment = 1)",)
     add_model_family_annotations(ax, labels)
-    annotate_significance_band(ax, range(len(labels)), p_values, q_values)
+    annotate_significance(ax, range(len(labels)), p_values, q_values)
 
     # boxplot() resets the ticks, so restore the model labels
     style_model_x_axis(ax, labels)
@@ -124,8 +120,8 @@ def main():
 
     ax.set_title(plot_title(CONCEPT_LEVEL, BRAIN_MODEL_ALIGNMENT_ENRICHMENT, args.dataset, args.similarity_type, args.number_of_neighbours), pad=32,)
     ax.set_xlabel(MODEL_AXIS_LABEL)
-    ax.set_ylabel(y_axis_label(ALIGNMENT_ENRICHMENT_LABEL, NULL_STANDARD_DEVIATION))
-    add_legend(ax, significance_legend_handles() + concept_legend_handles(colour_by_concept))
+    ax.set_ylabel(y_axis_label(ALIGNMENT_ENRICHMENT_LABEL))
+    add_legend(ax, significance_legend_handles())
 
     save_model_figure(fig, output_path)
 

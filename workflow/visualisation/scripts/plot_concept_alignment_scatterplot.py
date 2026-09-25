@@ -11,12 +11,12 @@ from libraries.manage_model_metadata import model_sort_key, parse_model_paramete
 from libraries.path_metadata import parse_llm_brain_alignment_score_path
 from libraries.visualisation_utils import (
     add_legend,
+    legend_headroom_top,
     add_model_family_annotations,
     ALIGNMENT_SCORE_LABEL,
-    annotate_significance_band,
+    annotate_significance,
     BRAIN_MODEL_ALIGNMENT_SCORE,
     concept_colours,
-    concept_legend_handles,
     CONCEPT_LEVEL,
     concept_point_alpha,
     deterministic_jitter,
@@ -193,19 +193,21 @@ def main():
     mark_degenerate_boxplot_statistics(ax, boxplot_values)
     ax.axhline(expected_alignment_score, linestyle="--", linewidth=1.2, color="grey", label="Null expectation (hypergeometric)",)
     add_model_family_annotations(ax, labels)
-    annotate_significance_band(ax, range(len(labels)), p_values, q_values)
+    annotate_significance(ax, range(len(labels)), p_values, q_values)
 
     ax.set_xticks(range(len(labels)))
     ax.set_xticklabels(labels, rotation=55, ha="right",)
 
     ax.set_xlim(-0.6, len(labels) - 0.4,)
-    ax.set_ylim(0, 1,)
+    # alignment scores live in [0, 1]; the space above 1 is left free for the legend
+    ax.set_ylim(0, legend_headroom_top(0, 1))
+    ax.set_yticks(np.linspace(0, 1, 6))
 
     ax.set_title(plot_title(CONCEPT_LEVEL, BRAIN_MODEL_ALIGNMENT_SCORE, args.dataset, args.similarity_type, args.number_of_neighbours), pad=32,)
     ax.set_xlabel(MODEL_AXIS_LABEL)
     ax.set_ylabel(ALIGNMENT_SCORE_LABEL)
     ax.grid(axis="y", alpha=0.25,)
-    add_legend(ax, significance_legend_handles() + concept_legend_handles(colour_by_concept))
+    add_legend(ax, significance_legend_handles())
 
     fig.tight_layout()
     fig.subplots_adjust(

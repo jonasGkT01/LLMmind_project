@@ -24,31 +24,26 @@ P_VALUE_SIGNIFICANCE_COLOUR = "black"
 Q_VALUE_SIGNIFICANCE_COLOUR = "red"
 SIGNIFICANCE_ROW_OFFSET_POINTS = 10
 
-def annotate_significance(ax, x_positions, y_positions, p_values, q_values):
-    """
-    Draw two rows of asterisks above each point: the uncorrected empirical
-    p-value (lower row) and the Benjamini-Hochberg q-value (upper row). The
-    rows keep fixed heights, so the q-value row does not shift when the
-    p-value row is empty.
-    """
-    for x_position, y_position, p_value, q_value in zip(x_positions, y_positions, p_values, q_values):
-        for row, (value, colour) in enumerate([(p_value, P_VALUE_SIGNIFICANCE_COLOUR), (q_value, Q_VALUE_SIGNIFICANCE_COLOUR),]):
-            significance = significance_label(value)
+# Extra distance between the x-axis and the model names, leaving room for the two asterisk rows.
+SIGNIFICANCE_TICK_LABEL_PAD_POINTS = 29
 
-            if significance:
-                ax.annotate(significance, xy=(x_position, y_position,), xytext=(0, 4 + row*SIGNIFICANCE_ROW_OFFSET_POINTS), textcoords="offset points", ha="center", va="bottom", color=colour,)
+def annotate_significance(ax, x_positions, p_values, q_values):
+    """
+    Draw each model's model-level significance as two rows of asterisks just
+    below the x-axis, above the model name: the uncorrected empirical p-value
+    (upper row) and the Benjamini-Hochberg q-value (lower row). The rows keep
+    fixed heights, so the q-value row does not shift when the p-value row is
+    empty. Keeping them out of the axes leaves the plot area free for the
+    legend.
+    """
+    ax.tick_params(axis="x", pad=SIGNIFICANCE_TICK_LABEL_PAD_POINTS)
 
-def annotate_significance_band(ax, x_positions, p_values, q_values):
-    """
-    Concept-level plots: the model-level asterisks, in the same two rows,
-    placed in a band along the top of the axes instead of above a point.
-    """
     for x_position, p_value, q_value in zip(x_positions, p_values, q_values):
         for row, (value, colour) in enumerate([(p_value, P_VALUE_SIGNIFICANCE_COLOUR), (q_value, Q_VALUE_SIGNIFICANCE_COLOUR),]):
             significance = significance_label(value)
 
             if significance:
-                ax.annotate(significance, xy=(x_position, 1.0,), xycoords=ax.get_xaxis_transform(), xytext=(0, -4 - (1 - row)*SIGNIFICANCE_ROW_OFFSET_POINTS), textcoords="offset points", ha="center", va="top", color=colour,)
+                ax.annotate(significance, xy=(x_position, 0.0,), xycoords=ax.get_xaxis_transform(), xytext=(0, -5 - row*SIGNIFICANCE_ROW_OFFSET_POINTS), textcoords="offset points", ha="center", va="top", color=colour, annotation_clip=False,)
 
 def significance_legend_handles():
     return [
@@ -95,7 +90,8 @@ def y_axis_label(quantity, error=None):
 
     return f"{quantity} ± {error}"
 
-CONCEPT_LEGEND_MAX_CONCEPTS = 20
+# above this many concepts the points are drawn more transparent, so overlapping points stay readable
+DENSE_CONCEPT_THRESHOLD = 20
 
 def concept_colours(concepts):
     """
@@ -124,25 +120,28 @@ def concept_colours(concepts):
     }
 
 def concept_point_alpha(number_of_concepts):
-    return 0.85 if number_of_concepts <= CONCEPT_LEGEND_MAX_CONCEPTS else 0.30
+    return 0.85 if number_of_concepts <= DENSE_CONCEPT_THRESHOLD else 0.30
 
-def concept_legend_handles(colour_by_concept):
-    # only drawn when the concepts are few enough for a legend to be readable
-    if len(colour_by_concept) > CONCEPT_LEGEND_MAX_CONCEPTS:
-        return []
+# Fraction of the axes height kept empty above the data for the in-plot legend.
+LEGEND_HEADROOM_FRACTION = 0.25
 
-    return [
-        Line2D([], [], linestyle="none", marker="o", markersize=6, color=colour, label=concept)
-        for concept, colour in colour_by_concept.items()
-    ]
+def legend_headroom_top(bottom, data_top):
+    """
+    Upper y-limit that keeps the data in the lower part of the axes, leaving the top
+    LEGEND_HEADROOM_FRACTION free for the legend, so dense concept points are never hidden
+    behind it.
+    """
+    return bottom + (data_top - bottom)/(1.0 - LEGEND_HEADROOM_FRACTION)
 
 def add_legend(ax, handles=None,):
-    # the plot's own labelled artists come first; extra handles (e.g. concepts) go after them
+    # the plot's own labelled artists come first; extra handles (e.g. significance) go after them.
+    # The legend sits inside the axes, in the empty band that legend_headroom_top() leaves above the
+    # data; concepts are only colour-coded, never listed.
     own_handles, _ = ax.get_legend_handles_labels()
     handles = own_handles + list(handles or [])
 
     if handles:
-        ax.legend(handles=handles, loc="upper left", bbox_to_anchor=(1.01, 1.0), borderaxespad=0.0, fontsize=8,)
+        ax.legend(handles=handles, loc="upper left", fontsize=8, framealpha=0.9,)
 
 def contrasting_text_color(image, value):
     rgba = image.cmap(image.norm(value))

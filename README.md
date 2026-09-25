@@ -344,6 +344,13 @@ snakemake --use-conda --cores <N> results/all_alignment_scores.tsv
 snakemake --use-conda --cores <N> -n --quiet rules \
     --rerun-triggers mtime params input code \
     --config minimum_subjects_per_stimulus=3
+
+# redraw every plot after the plotting code changed: the scripts run from shell
+# rules, so Snakemake does not notice edits to them on its own
+snakemake --use-conda --cores <N> --rerun-triggers mtime \
+    --forcerun plot_brain_model_alignment_lineplot plot_concept_alignment_scatterplot \
+               plot_brain_model_alignment_enrichment_lineplot \
+               plot_concept_alignment_enrichment_scatterplot plot_spearman_alignment
 ```
 
 Pipeline behavior (datasets, models, similarity metrics, neighbourhood sizes,
@@ -420,6 +427,10 @@ using up to `<N>` worker processes at once. For that step, a higher `--cores` va
   Spearman TSVs predate the error bars added on 2026-09-24. Rebuild them
   once with
   `snakemake --use-conda --cores <N> --forcerun compute_spearman_alignmentwith_empirical_p_value`.
+- **Nothing under `results/spearman_alignment/`**: since 2026-09-25 the
+  Spearman outputs sit directly in `results/` (see [Outputs](#outputs)).
+  Point any script that still reads the old folder at
+  `results/spearman_alignment_scores/` and the two Spearman plot folders.
 - **"Requested k neighbours, but only n candidates"**: a dataset's
   `number_of_neighbours` must be smaller than its number of included
   stimuli (about 1,000 for `nsd_data` and `caption_scene`).
@@ -434,46 +445,56 @@ Key outputs land under `results/`:
   model-model results get a single model-pair-level empirical p-value (no
   per-concept or hypergeometric test). Both use the same random-shuffling
   method to build their null distributions.
+- `results/spearman_alignment_scores/` — per-(dataset, model, similarity)
+  Spearman alignment with its empirical p-value, one `_model_level` and one
+  `_concept_level` TSV per configuration.
 - `results/all_alignment_scores.tsv`, `results/all_spearman_alignment_scores.tsv`
   — combined summary tables across all configurations
 - `results/alignment_heatmaps/`, `results/alignment_p_value_heatmaps/`,
   `results/alignment_lineplots/`, `results/concept_alignment_scatterplots/`,
   `results/alignment_enrichment_lineplots/`,
   `results/concept_alignment_enrichment_scatterplots/`,
-  `results/spearman_alignment/*_plots/` — summary visualisations. In the
+  `results/spearman_alignment_lineplots/`,
+  `results/concept_spearman_alignment_scatterplots/` — summary visualisations. In the
   concept-level alignment and Spearman boxplots, a model whose per-concept
   scores show no spread renders as a flat, easy-to-miss box; those are
   marked with a red diamond rather than left looking like missing data.
   The model-level line plots and concept-level scatterplots for a given
-  dataset/similarity/k share the same `[0, 1]` y-axis range, so the two can
-  be compared directly side by side.
+  dataset/similarity/k share the same y-axis range (scores on `[0, 1]`, with
+  empty space above 1 for the legend), so the two can be compared directly
+  side by side.
 
   Conventions shared by all plots:
 
   - Titles read `<level> <quantity>` (for example "Model-level brain-model
     alignment enrichment"), with `dataset: …, similarity: …, neighbours: …`
-    on the second line. Y-axis labels read `<quantity> ± <error>`. Both
-    come from constants in `libraries/visualisation_utils.py`.
+    on the second line. Y-axis labels read `<quantity> ± <error>`, or just
+    `<quantity>` when the plot has no error bars. Both come from constants
+    in `libraries/visualisation_utils.py`.
+  - The legend sits inside the plot, in its top-left corner. The top quarter
+    of every plot's y-range is left empty so the legend never hides data.
   - Every non-heatmap plot draws dashed vertical lines between model
     families.
   - Brain-model plots (not heatmaps) mark each model's model-level
-    significance with two rows of asterisks: black for the empirical
-    p-value, red above it for the Benjamini-Hochberg q-value (`*` < 0.05,
-    `**` < 0.01, `***` < 0.001). On concept-level plots the asterisks sit in
-    a band along the top of each model's column.
+    significance with two rows of asterisks just below the x-axis, above
+    the model name: black for the empirical p-value, red below it for the
+    Benjamini-Hochberg q-value (`*` < 0.05, `**` < 0.01, `***` < 0.001).
   - Concept-level plots colour each concept the same way for every model in
-    the plot. A concept legend is drawn only when there are at most 20
-    concepts.
+    the plot. Concept names are never listed in the legend.
 
   The enrichment plots divide the observed alignment score by the expected
   one, taken as the mean relabelled score of that model (over every
-  relabelling and concept). Their error bars are the SD of the relabelling
-  null in the same units, and a dashed line marks enrichment = 1. The
+  relabelling and concept). The model-level plot's error bars are the SD of
+  the relabelling null in the same units; the concept-level plot shows no
+  per-concept error bars, to stay readable. A dashed line marks
+  enrichment = 1. The
   concept-level plot uses the same expected score as the model-level one,
   so the model-level enrichment is the mean of the concept-level ones.
   Both plots for a given dataset/similarity/k share one y-axis range,
-  computed from both. The Spearman plots' error bars are likewise the SD of
-  their permutation null (`empirical_null_standard_deviation_spearman_coefficient`).
+  computed from both. The model-level Spearman plot's error bars are likewise
+  the SD of its permutation null
+  (`empirical_null_standard_deviation_spearman_coefficient`); the
+  concept-level Spearman plot has no per-concept error bars.
 
 ## Code conventions
 

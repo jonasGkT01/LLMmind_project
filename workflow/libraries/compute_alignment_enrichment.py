@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 
 from libraries.path_metadata import parse_llm_brain_alignment_score_path
+from libraries.visualisation_utils import legend_headroom_top
 
 RELABELLED_SUFFIX = "_relabelled.parquet"
 
@@ -166,13 +167,14 @@ def compute_alignment_enrichment(observed_paths, relabelled_paths, expected_data
 def enrichment_ylim(concept_df, model_df, padding=0.15):
     # Shared by the concept- and model-level enrichment plots of one (dataset, similarity, k), so both
     # scripts derive the same limits from the same inputs. The top always leaves the enrichment = 1
-    # reference line visible, and the padding leaves room for the significance asterisks.
+    # reference line visible, and the padding leaves some room above the highest point. Concepts are
+    # plotted without their null SD, so only the model-level values extend by it.
     upper_values = np.concatenate(
         [
-            (concept_df["enrichment"] + concept_df["null_standard_deviation"]).to_numpy(dtype=float),
+            concept_df["enrichment"].to_numpy(dtype=float),
             (model_df["enrichment"] + model_df["null_standard_deviation"]).to_numpy(dtype=float),
         ]
     )
     top = max(1.0, float(np.nanmax(upper_values)))*(1.0 + padding)
 
-    return 0.0, top
+    return 0.0, legend_headroom_top(0.0, top)
