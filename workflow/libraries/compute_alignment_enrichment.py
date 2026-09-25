@@ -164,17 +164,26 @@ def compute_alignment_enrichment(observed_paths, relabelled_paths, expected_data
 
     return pd.concat(concept_dataframes, ignore_index=True,), model_df
 
+def upper_whisker(values, whisker=1.5):
+    # Matplotlib's boxplot rule: the upper whisker ends at the highest value within
+    # Q3 + whisker*IQR (Tukey's fence); anything above it is a flier.
+    values = values[~np.isnan(values)]
+    q1, q3 = np.percentile(values, [25, 75])
+
+    return float(values[values <= q3 + whisker*(q3 - q1)].max())
+
 def enrichment_ylim(concept_df, model_df, padding=0.15):
     # Shared by the concept- and model-level enrichment plots of one (dataset, similarity, k), so both
-    # scripts derive the same limits from the same inputs. The top always leaves the enrichment = 1
-    # reference line visible, and the padding leaves some room above the highest point. Concepts are
-    # plotted without their null SD, so only the model-level values extend by it.
-    upper_values = np.concatenate(
-        [
-            concept_df["enrichment"].to_numpy(dtype=float),
-            (model_df["enrichment"] + model_df["null_standard_deviation"]).to_numpy(dtype=float),
-        ]
-    )
-    top = max(1.0, float(np.nanmax(upper_values)))*(1.0 + padding)
+    # scripts derive the same limits from the same inputs. The top fits every model's concept
+    # boxplot up to its upper whisker, so a few extreme concepts (the fliers, which the boxplot
+    # already hides) fall outside the axes instead of squashing everything else; they still count
+    # in every statistic. The model-level values ± null SD and the enrichment = 1 reference line
+    # always stay visible, and the padding leaves some room above the highest of them.
+    whisker_tops = [
+        upper_whisker(values["enrichment"].to_numpy(dtype=float))
+        for _, values in concept_df.groupby("label")
+    ]
+    model_tops = (model_df["enrichment"] + model_df["null_standard_deviation"]).to_numpy(dtype=float)
+    top = max(1.0, max(whisker_tops), float(np.nanmax(model_tops)))*(1.0 + padding)
 
     return 0.0, legend_headroom_top(0.0, top)

@@ -3,6 +3,7 @@ import argparse
 from pathlib import Path
 
 import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
 import numpy as np
 
 from libraries.compute_alignment_enrichment import compute_alignment_enrichment, enrichment_ylim
@@ -116,12 +117,20 @@ def main():
 
     # boxplot() resets the ticks, so restore the model labels
     style_model_x_axis(ax, labels)
-    ax.set_ylim(*enrichment_ylim(concept_df, model_df))
+    ylim = enrichment_ylim(concept_df, model_df)
+    ax.set_ylim(*ylim)
+
+    # concepts above the shared limit are not drawn, so say how many there are
+    number_above_axis = int((values > ylim[1]).sum())
+    legend_handles = significance_legend_handles()
+
+    if number_above_axis:
+        legend_handles.append(Line2D([], [], linestyle="none", label=f"{number_above_axis} of {len(values)} concept points above the axis (not shown)"))
 
     ax.set_title(plot_title(CONCEPT_LEVEL, BRAIN_MODEL_ALIGNMENT_ENRICHMENT, args.dataset, args.similarity_type, args.number_of_neighbours), pad=32,)
     ax.set_xlabel(MODEL_AXIS_LABEL)
     ax.set_ylabel(y_axis_label(ALIGNMENT_ENRICHMENT_LABEL))
-    add_legend(ax, significance_legend_handles())
+    add_legend(ax, legend_handles)
 
     save_model_figure(fig, output_path)
 

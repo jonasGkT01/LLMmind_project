@@ -346,7 +346,8 @@ snakemake --use-conda --cores <N> -n --quiet rules \
     --config minimum_subjects_per_stimulus=3
 
 # redraw every plot after the plotting code changed: the scripts run from shell
-# rules, so Snakemake does not notice edits to them on its own
+# rules and are not declared inputs, so Snakemake does not notice edits to them
+# (or to the workflow/libraries/ modules they import) on its own
 snakemake --use-conda --cores <N> --rerun-triggers mtime \
     --forcerun plot_brain_model_alignment_lineplot plot_concept_alignment_scatterplot \
                plot_brain_model_alignment_enrichment_lineplot \
@@ -491,7 +492,14 @@ Key outputs land under `results/`:
   concept-level plot uses the same expected score as the model-level one,
   so the model-level enrichment is the mean of the concept-level ones.
   Both plots for a given dataset/similarity/k share one y-axis range,
-  computed from both. The model-level Spearman plot's error bars are likewise
+  computed from both (`enrichment_ylim()` in
+  `libraries/compute_alignment_enrichment.py`). Its top is the highest
+  per-model boxplot upper whisker (Tukey's fence, Q3 + 1.5·IQR), or the
+  highest model-level value + SD if that is higher, so a few extreme
+  concepts cannot squash the rest. Concepts above the fence are not drawn,
+  but they still count in every statistic, and the concept-level plot's
+  legend states how many are hidden. When a model's concepts have zero IQR,
+  every concept that differs from the box is hidden. The model-level Spearman plot's error bars are likewise
   the SD of its permutation null
   (`empirical_null_standard_deviation_spearman_coefficient`); the
   concept-level Spearman plot has no per-concept error bars.
