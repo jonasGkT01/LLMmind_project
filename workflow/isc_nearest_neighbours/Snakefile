@@ -69,7 +69,8 @@ rule compute_isc_nearest_neighbours:
         isc_dataframe="results/mind/{dataset}/isc_dataframe.parquet"
     output:
         isc_cosine_nearest_neighbours="results/mind/{dataset}/isc_cosine_nearest_neighbours.parquet",
-        isc_pearson_nearest_neighbours="results/mind/{dataset}/isc_pearson_nearest_neighbours.parquet"
+        isc_pearson_nearest_neighbours="results/mind/{dataset}/isc_pearson_nearest_neighbours.parquet",
+        isc_spearman_nearest_neighbours="results/mind/{dataset}/isc_spearman_nearest_neighbours.parquet"
     params:
         number_of_neighbours=lambda wc: max_number_of_neighbours(wc.dataset)
     conda:
@@ -80,5 +81,6 @@ rule compute_isc_nearest_neighbours:
                 --isc_dataframe {input.isc_dataframe:q} \
                 --number_of_neighbours {params.number_of_neighbours:q} \
                 --isc_cosine_nearest_neighbours {output.isc_cosine_nearest_neighbours:q} \
-                --isc_pearson_nearest_neighbours {output.isc_pearson_nearest_neighbours:q}
+                --isc_pearson_nearest_neighbours {output.isc_pearson_nearest_neighbours:q} \
+                --isc_spearman_nearest_neighbours {output.isc_spearman_nearest_neighbours:q}
         """

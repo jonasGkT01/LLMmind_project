@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.stats import rankdata
 
 def normalize_l2(x):
     x = np.asarray(x, dtype=np.float64)
@@ -28,6 +29,17 @@ def pearson_normalize(x):
 
     return normalize_l2(x)
 
+def spearman_normalize(x):
+    x = np.asarray(x, dtype=np.float64)
+
+    if x.ndim != 2:
+        raise ValueError(f"Expected 2D embedding matrix, got {x.ndim}D")
+
+    # tied values share their average rank
+    x = rankdata(x, method="average", axis=1)
+
+    return pearson_normalize(x)
+
 def cosine_similarity(x):
     x = normalize_l2(x)
 
@@ -35,6 +47,11 @@ def cosine_similarity(x):
 
 def pearson_similarity(x):
     x = pearson_normalize(x)
+
+    return x @ x.T
+
+def spearman_similarity(x):
+    x = spearman_normalize(x)
 
     return x @ x.T
 
@@ -90,6 +107,7 @@ def extract_embedding_matrix(embedding_df):
 NORMALIZE_FUNCTIONS_BY_SIMILARITY_TYPE = {
     "cosine": normalize_l2,
     "pearson": pearson_normalize,
+    "spearman": spearman_normalize,
 }
 
 def normalize_fn_for_similarity_type(similarity_type):

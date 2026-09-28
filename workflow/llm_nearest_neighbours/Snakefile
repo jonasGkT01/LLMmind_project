@@ -57,7 +57,8 @@ rule compute_llm_nearest_neighbours:
         embedding_dataframe="results/{stimuli_type}_models/{dataset}/embeddings/{model}_embeddings.parquet"
     output:
         cosine_nearest_neighbours="results/{stimuli_type}_models/{dataset}/cosine_nearest_neighbours/{model}_cosine_nearest_neighbours.parquet",
-        pearson_nearest_neighbours="results/{stimuli_type}_models/{dataset}/pearson_nearest_neighbours/{model}_pearson_nearest_neighbours.parquet"
+        pearson_nearest_neighbours="results/{stimuli_type}_models/{dataset}/pearson_nearest_neighbours/{model}_pearson_nearest_neighbours.parquet",
+        spearman_nearest_neighbours="results/{stimuli_type}_models/{dataset}/spearman_nearest_neighbours/{model}_spearman_nearest_neighbours.parquet"
     params:
         number_of_neighbours=lambda wc: max_number_of_neighbours(wc.dataset)
     conda:
@@ -68,5 +69,6 @@ rule compute_llm_nearest_neighbours:
                 --embedding_dataframe {input.embedding_dataframe:q} \
                 --number_of_neighbours {params.number_of_neighbours:q} \
                 --cosine_nearest_neighbours {output.cosine_nearest_neighbours:q} \
-                --pearson_nearest_neighbours {output.pearson_nearest_neighbours:q}
+                --pearson_nearest_neighbours {output.pearson_nearest_neighbours:q} \
+                --spearman_nearest_neighbours {output.spearman_nearest_neighbours:q}
         """

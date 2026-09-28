@@ -13,7 +13,7 @@ the pipeline:
 2. Extracts model embeddings for the same stimuli from a set of pretrained
    language/vision models.
 3. Computes nearest-neighbour graphs in both spaces (brain and model) under a
-   chosen similarity metric (cosine or Pearson).
+   chosen similarity metric (cosine, Pearson or Spearman).
 4. Scores brain-model alignment as the overlap between the two
    nearest-neighbour graphs, with empirical (permutation-based) and
    hypergeometric significance testing.
@@ -104,14 +104,15 @@ volumes to disk.
 ### `isc_nearest_neighbours/`
 
 Takes the per-dataset ISC "mind" representations, computes concept-concept
-similarity (cosine or Pearson), and builds the brain-side nearest-neighbour
-graphs.
+similarity (cosine, Pearson or Spearman), and builds the brain-side
+nearest-neighbour graphs.
 
 ### `llm_nearest_neighbours/`
 
 Downloads each configured pretrained model (`download_pretrained_llm`),
 extracts its embeddings for the same stimuli, computes embedding-embedding
-similarity, and builds the model-side nearest-neighbour graphs.
+similarity (cosine, Pearson or Spearman), and builds the model-side
+nearest-neighbour graphs.
 
 Text stimuli longer than the model's context are split into overlapping
 token chunks (`--chunk_overlap`, default 256 tokens). The stimulus embedding
@@ -136,7 +137,10 @@ geometries are to each other — with empirical significance testing.
 
 A complementary alignment metric using Spearman rank-correlation instead of
 nearest-neighbour overlap, computed at both model- and concept-level, again
-with empirical significance testing.
+with empirical significance testing. It runs once per similarity type, so with
+`similarity_type=spearman` it is a Spearman correlation between two Spearman
+similarity structures: the first one compares stimuli, the second compares the
+brain and model similarity structures.
 
 ### `visualisation/`
 
@@ -345,6 +349,10 @@ snakemake --use-conda --cores <N> -n --quiet rules \
     --rerun-triggers mtime params input code \
     --config minimum_subjects_per_stimulus=3
 
+# run only some of the similarity metrics (here: skip Spearman) for this run,
+# without editing config.yaml
+snakemake --use-conda --cores <N> --config 'similarity_types=["cosine","pearson"]'
+
 # redraw every plot after the plotting code changed: the scripts run from shell
 # rules and are not declared inputs, so Snakemake does not notice edits to them
 # (or to the workflow/libraries/ modules they import) on its own
@@ -353,6 +361,12 @@ snakemake --use-conda --cores <N> --rerun-triggers mtime \
                plot_brain_model_alignment_enrichment_lineplot \
                plot_concept_alignment_enrichment_scatterplot plot_spearman_alignment
 ```
+
+The similarity metrics are listed under `similarity_types` in
+`config/config.yaml`: `cosine` (angle between two vectors), `pearson` (linear
+correlation of their values) and `spearman` (correlation of the ranks of their
+values, so only the order of the values counts). Every analysis and plot is
+produced once per listed metric.
 
 Pipeline behavior (datasets, models, similarity metrics, neighbourhood sizes,
 number of permutations for significance testing) is controlled entirely
@@ -379,6 +393,13 @@ using up to `<N>` worker processes at once. For that step, a higher `--cores` va
   `snakemake --cleanup-metadata <path>` for the affected outputs if you're
   confident the already-downloaded weights don't actually need
   re-fetching.
+- **A long rerun after adding a similarity metric**: the nearest-neighbour
+  rules (`compute_llm_nearest_neighbours`, `compute_isc_nearest_neighbours`)
+  write one file per metric in a single job. Adding a metric to
+  `similarity_types` therefore reruns them and rewrites the existing metrics'
+  files as well, and everything downstream of those files reruns too, even
+  with `--rerun-triggers mtime`. Preview the size with `-n --quiet rules`
+  first. Adding `spearman` (2026-09-28) plans about 11,900 jobs.
 - **Disk space for `nsd_data`**: similarity computation never writes a full
   stimulus × stimulus matrix (see [Datasets](#datasets) above), so
   per-model disk use is now driven by the dataset's largest configured
@@ -442,7 +463,9 @@ using up to `<N>` worker processes at once. For that step, a higher `--cores` va
 
 ## Outputs
 
-Key outputs land under `results/`:
+Key outputs land under `results/`. Per-configuration files carry the
+similarity metric (`cosine`, `pearson` or `spearman`) in their name; the
+combined summary tables have a `similarity_type` column instead.
 
 - `results/alignment_scores/` — per-(dataset, model, similarity, k) alignment
   scores and significance tests. Brain-model results get a per-concept

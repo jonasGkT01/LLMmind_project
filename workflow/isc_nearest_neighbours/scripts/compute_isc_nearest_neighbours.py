@@ -3,7 +3,7 @@ import argparse
 import pandas as pd
 
 from libraries.compute_nearest_neighbours import compute_blockwise_topk_from_embeddings, write_nearest_neighbours_parquet
-from libraries.compute_similarity import dataframe_to_embedding_matrix, normalize_l2, pearson_normalize
+from libraries.compute_similarity import dataframe_to_embedding_matrix, normalize_l2, pearson_normalize, spearman_normalize
 
 def main():
     parser = argparse.ArgumentParser()
@@ -20,6 +20,9 @@ def main():
     parser.add_argument("--isc_pearson_nearest_neighbours",
                         type=str,
                         help="Path to the file containing the Pearson nearest neighbours of concepts")
+    parser.add_argument("--isc_spearman_nearest_neighbours",
+                        type=str,
+                        help="Path to the file containing the Spearman nearest neighbours of concepts")
     args = parser.parse_args()
 
     if args.number_of_neighbours <= 0:
@@ -56,6 +59,21 @@ def main():
         neighbour_scores=pearson_scores,
         number_of_neighbours=args.number_of_neighbours,
         output_path=args.isc_pearson_nearest_neighbours,
+    )
+    del pearson_indices, pearson_scores
+
+    ##### SPEARMAN SIMILARITY #####
+    spearman_indices, spearman_scores = compute_blockwise_topk_from_embeddings(
+        embedding_matrix=embedding_matrix,
+        number_of_neighbours=args.number_of_neighbours,
+        normalize_fn=spearman_normalize,
+    )
+    write_nearest_neighbours_parquet(
+        concepts=concepts,
+        neighbour_indices=spearman_indices,
+        neighbour_scores=spearman_scores,
+        number_of_neighbours=args.number_of_neighbours,
+        output_path=args.isc_spearman_nearest_neighbours,
     )
 
 if __name__ == "__main__":

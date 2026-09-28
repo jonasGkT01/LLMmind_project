@@ -254,6 +254,7 @@ models:
 similarity_types:
   - "cosine"
   - "pearson"
+  - "spearman"
 
 datasets:
   - "caption_scene"
