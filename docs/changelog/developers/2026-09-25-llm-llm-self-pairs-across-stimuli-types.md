@@ -34,6 +34,10 @@ from wildcards, so the two inputs of a self-pair are different files.
 
 ## Known limitation (not fixed): heatmaps label cells by model only
 
+> **Update 2026-09-29:** fixed. Both heatmaps now label by
+> `model_key(model, stimuli_type)`; see
+> `2026-09-29-stimulus-type-colour-code-and-colourblind-safe-plots.md`.
+
 `plot_alignment_heatmap.py` and `plot_empirical_p_value_heatmap.py` use
 `model` alone as the row/column label, not `model-stimuli_type`. Once a
 multimodal model is enabled on `caption_scene`:

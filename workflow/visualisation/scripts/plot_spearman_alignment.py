@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 
 from libraries.compute_statistics import benjamini_hochberg
-from libraries.manage_model_metadata import model_family, model_sort_key, parse_model_parameters
+from libraries.manage_model_metadata import model_key, model_sort_key, parse_model_parameters
 from libraries.validate_data import validate_required_columns
 from libraries.visualisation_utils import (
     add_legend,
@@ -15,6 +15,7 @@ from libraries.visualisation_utils import (
     add_model_family_annotations,
     annotate_significance,
     BRAIN_MODEL_SPEARMAN_ALIGNMENT,
+    colour_tick_labels_by_stimuli_type,
     concept_colours,
     CONCEPT_LEVEL,
     concept_point_alpha,
@@ -23,9 +24,11 @@ from libraries.visualisation_utils import (
     MODEL_AXIS_LABEL,
     MODEL_LEVEL,
     NULL_STANDARD_DEVIATION,
+    plot_model_points,
     plot_title,
     significance_legend_handles,
     SPEARMAN_COEFFICIENT_LABEL,
+    stimuli_type_legend_handles,
     y_axis_label,
 )
 
@@ -114,7 +117,7 @@ def main():
             raise ValueError(f"{name} Spearman data contains invalid null standard deviations")
 
         df[NULL_STANDARD_DEVIATION_COLUMN] = null_standard_deviations
-        df["label"] = df["model"].astype(str)
+        df["label"] = [model_key(model, stimuli_type) for model, stimuli_type in zip(df["model"].astype(str), df["stimuli_type"].astype(str))]
 
     if model_df["label"].duplicated().any():
         raise ValueError("More than one model-level Spearman coefficient was provided for the same model/stimuli type")
@@ -134,6 +137,7 @@ def main():
                 row.label: model_sort_key(
                     model=row.model,
                     parameters_by_model=parameters_by_model,
+                    stimuli_type=row.stimuli_type,
                 )
                 for row in model_df.itertuples(index=False)
             }
@@ -143,6 +147,8 @@ def main():
     model_df["q_value"] = benjamini_hochberg(model_df["empirical_upper_tail_p_value"].to_numpy(dtype=float))
 
     labels = model_df["label"].tolist()
+    models = model_df["model"].tolist()
+    stimuli_types = model_df["stimuli_type"].tolist()
     x_positions = {
         label: position
         for position, label in enumerate(labels)
@@ -158,33 +164,17 @@ def main():
     model_coefficients = model_df["observed_spearman_coefficient"].to_numpy(dtype=float)
     model_errors = model_df[NULL_STANDARD_DEVIATION_COLUMN].to_numpy(dtype=float)
 
-    ax.errorbar(x, model_coefficients, yerr=model_errors, marker="o", linewidth=1.8, capsize=3,)
+    plot_model_points(ax, x, model_coefficients, model_errors, stimuli_types)
 
     annotate_significance(ax, x, model_df["empirical_upper_tail_p_value"], model_df["q_value"])
 
     ax.axhline(0.0, linestyle="--", linewidth=1.2, color="grey", label="Null expectation (no rank correlation)",)
 
-    start = 0
-
-    while start < len(model_df):
-        family = model_family(model_df.loc[start, "model"])
-        end = start + 1
-
-        while (
-            end < len(model_df)
-            and model_family(model_df.loc[end, "model"]) == family
-        ):
-            end += 1
-
-        if start > 0:
-            ax.axvline(start - 0.5, linewidth=1, linestyle="--", alpha=0.6,)
-
-        midpoint = (start + end - 1)/2
-        ax.text(midpoint, 1.015, family.replace("_", " "), transform=ax.get_xaxis_transform(), ha="center", va="bottom", fontweight="bold",)
-        start = end
+    add_model_family_annotations(ax, models)
 
     ax.set_xticks(x)
     ax.set_xticklabels(labels, rotation=55, ha="right",)
+    colour_tick_labels_by_stimuli_type(ax, stimuli_types)
 
     ax.set_xlabel(MODEL_AXIS_LABEL)
     ax.set_ylabel(y_axis_label(SPEARMAN_COEFFICIENT_LABEL, NULL_STANDARD_DEVIATION))
@@ -238,11 +228,12 @@ def main():
                zorder=3,)
     mark_degenerate_boxplot_statistics(ax, boxplot_values)
     ax.axhline(0.0, linestyle="--", linewidth=1.2, color="grey", label="Null expectation (no rank correlation)",)
-    add_model_family_annotations(ax, labels)
+    add_model_family_annotations(ax, models)
     annotate_significance(ax, x, model_df["empirical_upper_tail_p_value"], model_df["q_value"])
 
     ax.set_xticks(range(len(labels)))
     ax.set_xticklabels(labels, rotation=55, ha="right",)
+    colour_tick_labels_by_stimuli_type(ax, stimuli_types)
 
     ax.set_xlim(-0.6, len(labels) - 0.4)
     ax.set_ylim(*spearman_ylim(concept_coefficients))
@@ -252,7 +243,7 @@ def main():
     ax.set_ylabel(y_axis_label(SPEARMAN_COEFFICIENT_LABEL))
     ax.grid(axis="y", alpha=0.25)
 
-    add_legend(ax, significance_legend_handles())
+    add_legend(ax, stimuli_type_legend_handles(stimuli_types) + significance_legend_handles())
     fig.tight_layout()
     fig.subplots_adjust(
         bottom=0.24,

@@ -22,6 +22,8 @@
   rows and columns by model only, not by model plus stimulus type. With a
   multimodal model enabled, the p-value heatmap will stop with a
   "provided more than once" error. The score files themselves are correct.
+  *Update 2026-09-29: fixed. The heatmaps now show each model's language and
+  vision entries separately.*
 
 ---
 *AI disclosure: this note was written by an AI coding assistant.*

@@ -7,9 +7,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from libraries.manage_model_metadata import model_sort_key, parse_model_parameters
+from libraries.manage_model_metadata import model_key, model_sort_key, parse_model_parameters
 from libraries.path_metadata import parse_llm_brain_alignment_score_path
-from libraries.visualisation_utils import contrasting_text_color, MEAN_ALIGNMENT_SCORE_LABEL, PAIRWISE_ALIGNMENT_SCORE, PAIRWISE_AXIS_LABEL, PAIRWISE_LEVEL, plot_title
+from libraries.visualisation_utils import colour_tick_labels_by_stimuli_type, contrasting_text_color, MEAN_ALIGNMENT_SCORE_LABEL, PAIRWISE_ALIGNMENT_SCORE, PAIRWISE_AXIS_LABEL, PAIRWISE_LEVEL, plot_title, SEQUENTIAL_COLOURMAP, stimuli_type_legend_handles
 
 def parse_llm_llm_path(path):
     filename = Path(path).name
@@ -57,7 +57,7 @@ def heatmap_label_sort_key(label, model_metadata, parameters_by_model):
 
     metadata = model_metadata[label]
 
-    return (0, model_sort_key(model=metadata["model"], parameters_by_model=parameters_by_model,),)
+    return (0, model_sort_key(model=metadata["model"], parameters_by_model=parameters_by_model, stimuli_type=metadata["stimuli_type"],),)
 
 def main():
     parser = argparse.ArgumentParser()
@@ -80,7 +80,7 @@ def main():
     for path in args.llm_brain_alignment_scores:
         metadata = parse_llm_brain_alignment_score_path(path)
 
-        label = metadata["model"]
+        label = model_key(metadata["model"], metadata["stimuli_type"])
 
         score, expected_score = read_alignment_score(path, args.number_of_neighbours,)
         expected_alignment_scores.append(expected_score)
@@ -99,8 +99,8 @@ def main():
     for path in args.llm_llm_alignment_scores:
         metadata = parse_llm_llm_path(path)
 
-        label_1 = metadata["model_1"]
-        label_2 = metadata["model_2"]
+        label_1 = model_key(metadata["model_1"], metadata["stimuli_type_1"])
+        label_2 = model_key(metadata["model_2"], metadata["stimuli_type_2"])
 
         score, expected_score = read_alignment_score(path, args.number_of_neighbours,)
         expected_alignment_scores.append(expected_score)
@@ -159,7 +159,7 @@ def main():
 
     fig, ax = plt.subplots(figsize=(fig_width, fig_height))
 
-    image = ax.imshow(matrix, vmin=0, vmax=1)
+    image = ax.imshow(matrix, vmin=0, vmax=1, cmap=SEQUENTIAL_COLOURMAP)
 
     # Write the alignment score inside each heatmap cell
     for i in range(matrix.shape[0]):
@@ -180,15 +180,21 @@ def main():
     ax.set_xticklabels(labels, rotation=90)
     ax.set_yticklabels(labels)
 
+    stimuli_types = [None if label == "brain" else model_metadata[label]["stimuli_type"] for label in labels]
+    colour_tick_labels_by_stimuli_type(ax, stimuli_types, axes="xy")
+
     ax.set_title(plot_title(PAIRWISE_LEVEL, PAIRWISE_ALIGNMENT_SCORE, args.dataset, args.similarity_type, args.number_of_neighbours)
                  + f"\nexpected alignment score (hypergeometric): {expected_alignment_score:.4f}")
     ax.set_xlabel(PAIRWISE_AXIS_LABEL)
     ax.set_ylabel(PAIRWISE_AXIS_LABEL)
 
-    colorbar = fig.colorbar(image, ax=ax)
+    # fraction/pad size the bar to the square heatmap, so it no longer rises into the title
+    colorbar = fig.colorbar(image, ax=ax, fraction=0.046, pad=0.04)
     colorbar.set_label(MEAN_ALIGNMENT_SCORE_LABEL)
 
     fig.tight_layout()
+    # the bottom-left corner, under the row names, is the only area free of labels
+    fig.legend(handles=stimuli_type_legend_handles([stimuli_type for stimuli_type in stimuli_types if stimuli_type is not None]), loc="lower left", fontsize=8, frameon=False,)
     fig.savefig(output_path, dpi=300)
     plt.close(fig)
 

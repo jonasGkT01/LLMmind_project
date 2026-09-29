@@ -4,6 +4,7 @@ from matplotlib.ticker import FixedLocator, FuncFormatter
 import numpy as np
 import pandas as pd
 
+from libraries.manage_model_metadata import model_key
 from libraries.path_metadata import parse_llm_brain_alignment_score_path
 from libraries.visualisation_utils import legend_headroom_top
 
@@ -114,7 +115,7 @@ def compute_model_alignment_enrichment(observed_path, relabelled_path, expected_
         {
             "model": metadata["model"],
             "stimuli_type": metadata["stimuli_type"],
-            "label": metadata["model"],
+            "label": model_key(metadata["model"], metadata["stimuli_type"]),
             "concept": observed_df["concept"].to_numpy(),
             "enrichment": observed_scores/expected_alignment_score,
             "null_standard_deviation": null_values.std(axis=0, ddof=1)/expected_alignment_score,
@@ -124,7 +125,7 @@ def compute_model_alignment_enrichment(observed_path, relabelled_path, expected_
     model_summary = {
         "model": metadata["model"],
         "stimuli_type": metadata["stimuli_type"],
-        "label": metadata["model"],
+        "label": model_key(metadata["model"], metadata["stimuli_type"]),
         "enrichment": float(observed_scores.mean()/expected_alignment_score),
         "null_standard_deviation": float(null_values.mean(axis=1).std(ddof=1)/expected_alignment_score),
         "expected_alignment_score": expected_alignment_score,

@@ -7,8 +7,8 @@ import numpy as np
 import pandas as pd
 
 from libraries.compute_statistics import benjamini_hochberg
-from libraries.manage_model_metadata import model_family, parse_model_parameters
-from libraries.visualisation_utils import contrasting_text_color, EMPIRICAL_P_VALUE_LABEL, PAIRWISE_AXIS_LABEL, PAIRWISE_EMPIRICAL_P_VALUE, PAIRWISE_LEVEL, plot_title, significance_label
+from libraries.manage_model_metadata import model_family, model_key, parse_model_parameters
+from libraries.visualisation_utils import colour_tick_labels_by_stimuli_type, contrasting_text_color, EMPIRICAL_P_VALUE_LABEL, PAIRWISE_AXIS_LABEL, PAIRWISE_EMPIRICAL_P_VALUE, PAIRWISE_LEVEL, plot_title, SEQUENTIAL_COLOURMAP, significance_label, stimuli_type_legend_handles
 
 def validate_p_value(value, source):
     p_value = float(value)
@@ -24,7 +24,7 @@ def model_sort_key(label, model_metadata):
     
     metadata = model_metadata[label]
 
-    return (0, model_family(metadata["model"]), metadata["number_of_parameters"], metadata["model"],)
+    return (0, model_family(metadata["model"]), metadata["number_of_parameters"], metadata["model"], metadata["stimuli_type"],)
 
 def read_llm_llm_records(paths, parameters_by_model):
     required_columns = {
@@ -159,8 +159,8 @@ def main():
     pair_values = {}
 
     for record, q_value in zip(records, q_values):
-        label_1 = record["model_1"]
-        label_2 = "brain" if record["model_2"] == "brain" else record["model_2"]
+        label_1 = model_key(record["model_1"], record["stimuli_type_1"])
+        label_2 = "brain" if record["model_2"] == "brain" else model_key(record["model_2"], record["stimuli_type_2"])
 
         for model, stimuli_type, label in [(record["model_1"], record["stimuli_type_1"], label_1), (record["model_2"], record["stimuli_type_2"], label_2),]:
             if label == "brain":
@@ -214,13 +214,16 @@ def main():
 
     fig, ax = plt.subplots(figsize=(figure_size, figure_size))
 
-    image = ax.imshow(masked_matrix, vmin=0, vmax=max(1.0, float(finite_values.max())))
+    image = ax.imshow(masked_matrix, vmin=0, vmax=max(1.0, float(finite_values.max())), cmap=SEQUENTIAL_COLOURMAP)
 
     ax.set_xticks(np.arange(len(labels)))
     ax.set_yticks(np.arange(len(labels)))
 
     ax.set_xticklabels(labels, rotation=90)
     ax.set_yticklabels(labels)
+
+    stimuli_types = [None if label == "brain" else model_metadata[label]["stimuli_type"] for label in labels]
+    colour_tick_labels_by_stimuli_type(ax, stimuli_types, axes="xy")
 
     for row_i in range(len(labels)):
         for column_i in range(len(labels)):
@@ -246,10 +249,13 @@ def main():
     ax.set_xlabel(PAIRWISE_AXIS_LABEL)
     ax.set_ylabel(PAIRWISE_AXIS_LABEL)
 
-    colorbar = fig.colorbar(image, ax=ax)
+    # fraction/pad size the bar to the square heatmap, so it no longer rises into the title
+    colorbar = fig.colorbar(image, ax=ax, fraction=0.046, pad=0.04)
     colorbar.set_label(EMPIRICAL_P_VALUE_LABEL)
 
     fig.tight_layout()
+    # the bottom-left corner, under the row names, is the only area free of labels
+    fig.legend(handles=stimuli_type_legend_handles([stimuli_type for stimuli_type in stimuli_types if stimuli_type is not None]), loc="lower left", fontsize=8, frameon=False,)
     fig.savefig(output_path, dpi=300)
     plt.close(fig)
 

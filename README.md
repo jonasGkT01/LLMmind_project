@@ -122,6 +122,11 @@ path, whatever its length. Chunking stops at the first chunk that reaches
 the end of the text, so a text that fits in one chunk gets exactly one.
 Each embeddings file records `n_tokens` and `n_chunks` per stimulus.
 
+Image stimuli are pooled differently depending on the model's `modality`. A
+`vision` encoder (ViT, CLIP, DINOv2) takes its first (CLS) token. A
+`multimodal` model is a causal decoder whose first token only sees itself, so
+it averages over all of the image's tokens instead (`--pool` overrides both).
+
 ### `llm_mind_alignment/`
 
 Scores brain-model alignment as the overlap between the brain and model
@@ -132,6 +137,11 @@ hypergeometric significance testing.
 
 Scores model-model alignment — how similar two models' representational
 geometries are to each other — with empirical significance testing.
+
+Pairs are formed between *(model, stimulus type)* entries, not between
+models. So on a dataset with both text and image stimuli, a multimodal model
+is also compared with itself: its text-based geometry against its image-based
+one (for example `gemma3n_e4b-language` vs `gemma3n_e4b-vision`).
 
 ### `spearman_alignment/`
 
@@ -302,6 +312,24 @@ with a Hugging Face identifier, modality (`language`, `vision`, or
 configured: the BLOOMZ, OpenLLaMA, and Gemma language model families; CLIP,
 DINOv2, and ImageNet-21K ViT vision model families. Models are downloaded
 on demand by the `llm_nearest_neighbours` module.
+
+A model runs on every stimulus type of a dataset that matches its modality.
+A `multimodal` model matches both, so on a dataset with text and image
+stimuli (currently `caption_scene`) it appears twice: once fed the text, once
+fed the images. Every output and plot therefore names a model together with
+its stimulus type, as `<model>-<stimuli_type>` (for example
+`gemma3n_e4b-vision`).
+
+More Gemma models are listed but commented out in `config/config.yaml`,
+including the multimodal Gemma 3n and Gemma 4 families. To add one, uncomment
+its block and rerun the pipeline. Snakemake runs only the jobs that involve
+the new model: its embeddings, its alignment with the brain and with every
+other model. It then rebuilds the summary tables and plots. To list the rules
+that would run before starting them:
+
+```bash
+snakemake --use-conda --cores <N> -n --quiet rules
+```
 
 ## Setup
 
@@ -487,7 +515,7 @@ combined summary tables have a `similarity_type` column instead.
   `concept_spearman_alignment_scatterplots/`. In the
   concept-level alignment and Spearman boxplots, a model whose per-concept
   scores show no spread renders as a flat, easy-to-miss box; those are
-  marked with a red diamond rather than left looking like missing data.
+  marked with a black diamond rather than left looking like missing data.
   The model-level line plots and concept-level scatterplots for a given
   dataset/similarity/k share the same y-axis range (scores on `[0, 1]`, with
   empty space above 1 for the legend), so the two can be compared directly
@@ -504,14 +532,29 @@ combined summary tables have a `similarity_type` column instead.
     in `libraries/visualisation_utils.py`.
   - The legend sits inside the plot, in its top-left corner. The top quarter
     of every plot's y-range is left empty so the legend never hides data.
+    The heatmaps are the exception: their only legend (the stimulus-type
+    colours) sits in the figure's bottom-left corner.
   - Every non-heatmap plot draws dashed vertical lines between model
     families.
   - Brain-model plots (not heatmaps) mark each model's model-level
     significance with two rows of asterisks just below the x-axis, above
-    the model name: black for the empirical p-value, red below it for the
+    the model name: black for the empirical p-value, blue below it for the
     Benjamini-Hochberg q-value (`*` < 0.05, `**` < 0.01, `***` < 0.001).
+  - Model names read `<model>-<stimuli_type>` and are coloured by stimulus
+    type: dark orange (`#A84800`) for language, dark green (`#007A5A`) for
+    vision. The brain stays black. This applies to both axes of the heatmaps.
+    In the model-level line plots, the points also take the colour, as
+    circles (language) or squares (vision). Boxes are not coloured. The
+    colours are set in `STIMULI_TYPE_COLOURS` in
+    `libraries/visualisation_utils.py`.
   - Concept-level plots colour each concept the same way for every model in
     the plot. Concept names are never listed in the legend.
+  - Colour-vision deficiency: the stimulus-type pair was checked with a
+    colour-blindness simulation (protan, deutan, tritan) and passes, with
+    ≥ 5:1 contrast on white. The heatmaps use `viridis`. Red is avoided for
+    the q-value asterisks and the degenerate-box marker. The per-concept
+    colours are the exception: with 11 to 1,000 concepts, no palette keeps
+    them distinguishable for colourblind readers.
 
   The enrichment plots divide the observed alignment score by the expected
   one, taken as the mean relabelled score of that model (over every

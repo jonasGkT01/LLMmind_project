@@ -14,6 +14,7 @@ from libraries.visualisation_utils import (
     ALIGNMENT_ENRICHMENT_LABEL,
     annotate_significance,
     BRAIN_MODEL_ALIGNMENT_ENRICHMENT,
+    colour_tick_labels_by_stimuli_type,
     concept_colours,
     CONCEPT_LEVEL,
     concept_point_alpha,
@@ -24,6 +25,7 @@ from libraries.visualisation_utils import (
     plot_title,
     save_model_figure,
     significance_legend_handles,
+    stimuli_type_legend_handles,
     style_model_x_axis,
     y_axis_label,
 )
@@ -55,10 +57,14 @@ def main():
     if missing_parameters:
         raise ValueError(f"No number of parameters was provided for models: {sorted(missing_parameters)}")
 
+    model_by_label = dict(zip(model_df["label"], model_df["model"]))
+    stimuli_type_by_label = dict(zip(model_df["label"], model_df["stimuli_type"]))
     labels = sorted(
         model_df["label"],
-        key=lambda label: model_sort_key(model=label, parameters_by_model=parameters_by_model,),
+        key=lambda label: model_sort_key(model=model_by_label[label], parameters_by_model=parameters_by_model, stimuli_type=stimuli_type_by_label[label],),
     )
+    models = [model_by_label[label] for label in labels]
+    stimuli_types = [stimuli_type_by_label[label] for label in labels]
 
     p_value_by_model = read_model_level_empirical_p_values(
         path=args.model_level_statistics,
@@ -111,18 +117,19 @@ def main():
                zorder=3,)
     mark_degenerate_boxplot_statistics(ax, boxplot_values)
     ax.axhline(1.0, linestyle="--", linewidth=1.2, color="grey", label="Null expectation (enrichment = 1)",)
-    add_model_family_annotations(ax, labels)
+    add_model_family_annotations(ax, models)
     annotate_significance(ax, range(len(labels)), p_values, q_values)
 
     # boxplot() resets the ticks, so restore the model labels
     style_model_x_axis(ax, labels)
+    colour_tick_labels_by_stimuli_type(ax, stimuli_types)
     set_enrichment_y_scale(ax)
     ax.set_ylim(*enrichment_ylim(concept_df, model_df))
 
     ax.set_title(plot_title(CONCEPT_LEVEL, BRAIN_MODEL_ALIGNMENT_ENRICHMENT, args.dataset, args.similarity_type, args.number_of_neighbours), pad=32,)
     ax.set_xlabel(MODEL_AXIS_LABEL)
     ax.set_ylabel(y_axis_label(ALIGNMENT_ENRICHMENT_LABEL))
-    add_legend(ax, significance_legend_handles())
+    add_legend(ax, stimuli_type_legend_handles(stimuli_types) + significance_legend_handles())
 
     save_model_figure(fig, output_path)
 

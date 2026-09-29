@@ -14,10 +14,12 @@ from libraries.visualisation_utils import (
     ALIGNMENT_ENRICHMENT_LABEL,
     annotate_significance,
     BRAIN_MODEL_ALIGNMENT_ENRICHMENT,
+    colour_tick_labels_by_stimuli_type,
     MODEL_AXIS_LABEL,
     model_figure_width,
     MODEL_LEVEL,
     NULL_STANDARD_DEVIATION,
+    plot_model_points,
     plot_title,
     save_model_figure,
     significance_legend_handles,
@@ -52,11 +54,14 @@ def main():
     if missing_parameters:
         raise ValueError(f"No number of parameters was provided for models: {sorted(missing_parameters)}")
 
-    model_df = model_df.sort_values(
-        "model",
-        key=lambda models: models.map(lambda model: model_sort_key(model=model, parameters_by_model=parameters_by_model,)),
-    ).reset_index(drop=True)
+    model_df["sort_key"] = [
+        model_sort_key(model=row.model, parameters_by_model=parameters_by_model, stimuli_type=row.stimuli_type,)
+        for row in model_df.itertuples(index=False)
+    ]
+    model_df = model_df.sort_values("sort_key").drop(columns="sort_key").reset_index(drop=True)
+    labels = model_df["label"].tolist()
     models = model_df["model"].tolist()
+    stimuli_types = model_df["stimuli_type"].tolist()
 
     p_value_by_model = read_model_level_empirical_p_values(
         path=args.model_level_statistics,
@@ -65,28 +70,29 @@ def main():
         number_of_neighbours=args.number_of_neighbours,
     )
 
-    missing_p_values = set(models) - set(p_value_by_model)
+    missing_p_values = set(labels) - set(p_value_by_model)
 
     if missing_p_values:
         raise ValueError(f"Missing model-level empirical p-values for models: {sorted(missing_p_values)}")
 
-    p_values = np.asarray([p_value_by_model[model] for model in models], dtype=float,)
+    p_values = np.asarray([p_value_by_model[label] for label in labels], dtype=float,)
     q_values = benjamini_hochberg(p_values)
 
     output_path = Path(args.plot)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    fig, ax = plt.subplots(figsize=(model_figure_width(len(models)), 7))
+    fig, ax = plt.subplots(figsize=(model_figure_width(len(labels)), 7))
 
-    x = style_model_x_axis(ax, models)
+    x = style_model_x_axis(ax, labels)
     values = model_df["enrichment"].to_numpy(dtype=float)
     errors = model_df["null_standard_deviation"].to_numpy(dtype=float)
 
-    ax.errorbar(x, values, yerr=errors, marker="o", linewidth=1.8, capsize=3,)
+    plot_model_points(ax, x, values, errors, stimuli_types)
     ax.axhline(1.0, linestyle="--", linewidth=1.2, color="grey", label="Null expectation (enrichment = 1)",)
 
     annotate_significance(ax, x, p_values, q_values)
     add_model_family_annotations(ax, models)
+    colour_tick_labels_by_stimuli_type(ax, stimuli_types)
 
     ax.set_xlabel(MODEL_AXIS_LABEL)
     ax.set_ylabel(y_axis_label(ALIGNMENT_ENRICHMENT_LABEL, NULL_STANDARD_DEVIATION))

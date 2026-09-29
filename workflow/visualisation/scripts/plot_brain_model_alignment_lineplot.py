@@ -6,17 +6,20 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from libraries.compute_statistics import benjamini_hochberg
-from libraries.manage_model_metadata import model_family, model_sort_key, parse_model_parameters
+from libraries.compute_statistics import benjamini_hochberg, read_model_level_empirical_p_values
+from libraries.manage_model_metadata import model_key, model_sort_key, parse_model_parameters
 from libraries.path_metadata import parse_llm_brain_alignment_score_path
 from libraries.visualisation_utils import (
     add_legend,
+    add_model_family_annotations,
     legend_headroom_top,
     annotate_significance,
     BRAIN_MODEL_ALIGNMENT_SCORE,
+    colour_tick_labels_by_stimuli_type,
     MEAN_ALIGNMENT_SCORE_LABEL,
     MODEL_AXIS_LABEL,
     MODEL_LEVEL,
+    plot_model_points,
     plot_title,
     significance_legend_handles,
     STANDARD_ERROR,
@@ -71,43 +74,8 @@ def main():
     args = parser.parse_args()
 
     parameters_by_model = parse_model_parameters(args.model_parameters)
-    statistics_df = pd.read_csv(
-        args.model_level_statistics,
-        sep="\t",
-    )
-
-    required_statistic_columns = {"dataset", "stimuli_type", "similarity_type", "number_of_neighbours", "model", "statistic", "value",}
-
-    missing_statistic_columns = required_statistic_columns - set(statistics_df.columns)
-
-    if missing_statistic_columns:
-        raise ValueError(f"Model-level statistics file is missing columns: {sorted(missing_statistic_columns)}")
-
-    statistics_df["number_of_neighbours"] = pd.to_numeric(statistics_df["number_of_neighbours"], errors="raise",).astype(int)
-    selected_statistics = statistics_df[
-        (statistics_df["dataset"].astype(str) == args.dataset)
-        & (statistics_df["similarity_type"].astype(str) == args.similarity_type)
-        & (statistics_df["number_of_neighbours"] == args.number_of_neighbours)
-        & (statistics_df["statistic"].astype(str) == "model_level_empirical_p_value")
-    ].copy()
-
-    if selected_statistics.empty:
-        raise ValueError(f"No model-level empirical p-values were found for dataset={args.dataset}, similarity_type={args.similarity_type}, number_of_neighbours={args.number_of_neighbours}")
-
-    selected_statistics["value"] = pd.to_numeric(selected_statistics["value"], errors="raise",)
-
-    invalid_p_values = ((selected_statistics["value"] <= 0) | (selected_statistics["value"] > 1))
-
-    if invalid_p_values.any():
-        raise ValueError("Model-level statistics contain invalid empirical p-values")
-
-    if selected_statistics["model"].duplicated().any():
-        duplicated_models = selected_statistics.loc[selected_statistics["model"].duplicated(keep=False), "model",].unique()
-
-        raise ValueError(f"More than one model-level empirical p-value was found for: {sorted(duplicated_models)}")
-
     alignment_scores = {}
-    available_models = set()
+    model_metadata = {}
     expected_alignment_scores = set()
 
     for path in args.llm_brain_alignment_scores:
@@ -128,18 +96,21 @@ def main():
         if model not in parameters_by_model:
             raise ValueError(f"No number of parameters was provided for model {model}")
 
-        key = (model, number_of_neighbours)
+        label = model_key(model, metadata["stimuli_type"])
 
-        if key in alignment_scores:
-            raise ValueError(f"More than one alignment score was found for model {model} and k={number_of_neighbours}")
+        if label in alignment_scores:
+            raise ValueError(f"More than one alignment score was found for {label} and k={number_of_neighbours}")
 
         mean_alignment_score, standard_error, expected_alignment_score = read_alignment_score_summary(path, number_of_neighbours)
-        alignment_scores[key] = {
+        alignment_scores[label] = {
             "mean": mean_alignment_score,
             "standard_error": standard_error,
         }
 
-        available_models.add(model)
+        model_metadata[label] = {
+            "model": model,
+            "stimuli_type": metadata["stimuli_type"],
+        }
         expected_alignment_scores.add(expected_alignment_score)
 
     if not alignment_scores:
@@ -150,77 +121,51 @@ def main():
 
     expected_alignment_score = expected_alignment_scores.pop()
 
-    models = sorted(
-        available_models,
-        key=lambda model: model_sort_key(
-            model=model,
+    labels = sorted(
+        model_metadata,
+        key=lambda label: model_sort_key(
+            model=model_metadata[label]["model"],
             parameters_by_model=parameters_by_model,
+            stimuli_type=model_metadata[label]["stimuli_type"],
         ),
     )
+    models = [model_metadata[label]["model"] for label in labels]
+    stimuli_types = [model_metadata[label]["stimuli_type"] for label in labels]
 
-    p_value_by_model = dict(zip(selected_statistics["model"].astype(str), selected_statistics["value"],))
+    p_value_by_model = read_model_level_empirical_p_values(
+        path=args.model_level_statistics,
+        dataset=args.dataset,
+        similarity_type=args.similarity_type,
+        number_of_neighbours=args.number_of_neighbours,
+    )
 
-    missing_p_values = set(models) - set(p_value_by_model)
+    missing_p_values = set(labels) - set(p_value_by_model)
 
     if missing_p_values:
         raise ValueError(f"Missing model-level empirical p-values for models: {sorted(missing_p_values)}")
 
-    p_values = np.asarray(
-        [
-            p_value_by_model[model]
-            for model in models
-        ], dtype=float,)
-
+    p_values = np.asarray([p_value_by_model[label] for label in labels], dtype=float,)
     q_values = benjamini_hochberg(p_values)
 
-    family_ranges = []
-    start = 0
-
-    while start < len(models):
-        family = model_family(models[start])
-        end = start + 1
-
-        while end < len(models) and model_family(models[end]) == family:
-            end += 1
-
-        family_ranges.append((family, start, end))
-        start = end
-
-    x = list(range(len(models)))
+    x = list(range(len(labels)))
     output_path = Path(args.plot)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    fig_width = max(10, 0.75 * len(models))
+    fig_width = max(10, 0.75 * len(labels))
     fig, ax = plt.subplots(figsize=(fig_width, 7))
 
-    values = [
-        alignment_scores[(model, args.number_of_neighbours)]["mean"]
-        for model in models
-    ]
-    errors = [
-        alignment_scores[(model, args.number_of_neighbours)]["standard_error"]
-        for model in models
-    ]
+    values = [alignment_scores[label]["mean"] for label in labels]
+    errors = [alignment_scores[label]["standard_error"] for label in labels]
 
-    ax.errorbar(x, values, yerr=errors, marker="o", linewidth=1.8, capsize=3,)
+    plot_model_points(ax, x, values, errors, stimuli_types)
     ax.axhline(expected_alignment_score, linestyle="--", linewidth=1.2, color="grey", label="Null expectation (hypergeometric)",)
 
     annotate_significance(ax, x, p_values, q_values)
-
-    for family, start, end in family_ranges:
-        if start > 0:
-            ax.axvline(start - 0.5, linewidth=1, linestyle="--", alpha=0.6)
-
-        midpoint = (start + end - 1) / 2
-        ax.text(midpoint, 1.015, family.replace("_", " "), transform=ax.get_xaxis_transform(), ha="center", va="bottom", fontweight="bold")
-
-    model_labels = [
-        f"{model}"
-        for model in models
-    ]
+    add_model_family_annotations(ax, models)
 
     ax.set_xticks(x)
-    ax.set_xticklabels(model_labels, rotation=55, ha="right")
+    ax.set_xticklabels(labels, rotation=55, ha="right")
+    colour_tick_labels_by_stimuli_type(ax, stimuli_types)
     ax.set_xlabel(MODEL_AXIS_LABEL)
     ax.set_ylabel(y_axis_label(MEAN_ALIGNMENT_SCORE_LABEL, STANDARD_ERROR))
     ax.set_title(plot_title(MODEL_LEVEL, BRAIN_MODEL_ALIGNMENT_SCORE, args.dataset, args.similarity_type, args.number_of_neighbours), pad=32)

@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 
 from libraries.compute_statistics import benjamini_hochberg, read_model_level_empirical_p_values
-from libraries.manage_model_metadata import model_sort_key, parse_model_parameters
+from libraries.manage_model_metadata import model_key, model_sort_key, parse_model_parameters
 from libraries.path_metadata import parse_llm_brain_alignment_score_path
 from libraries.visualisation_utils import (
     add_legend,
@@ -16,6 +16,7 @@ from libraries.visualisation_utils import (
     ALIGNMENT_SCORE_LABEL,
     annotate_significance,
     BRAIN_MODEL_ALIGNMENT_SCORE,
+    colour_tick_labels_by_stimuli_type,
     concept_colours,
     CONCEPT_LEVEL,
     concept_point_alpha,
@@ -24,6 +25,7 @@ from libraries.visualisation_utils import (
     MODEL_AXIS_LABEL,
     plot_title,
     significance_legend_handles,
+    stimuli_type_legend_handles,
 )
 
 def read_model_alignment_scores(
@@ -85,7 +87,7 @@ def read_model_alignment_scores(
     output_df["alignment_score"] = alignment_scores
     output_df["model"] = metadata["model"]
     output_df["stimuli_type"] = metadata["stimuli_type"]
-    output_df["label"] = metadata["model"]
+    output_df["label"] = model_key(metadata["model"], metadata["stimuli_type"])
 
     return output_df, metadata, expected_alignment_score
 
@@ -140,8 +142,11 @@ def main():
         key=lambda label: model_sort_key(
             model=model_metadata[label]["model"],
             parameters_by_model=parameters_by_model,
+            stimuli_type=model_metadata[label]["stimuli_type"],
         ),
     )
+    models = [model_metadata[label]["model"] for label in labels]
+    stimuli_types = [model_metadata[label]["stimuli_type"] for label in labels]
 
     p_value_by_model = read_model_level_empirical_p_values(
         path=args.model_level_statistics,
@@ -192,11 +197,12 @@ def main():
                zorder=3,)
     mark_degenerate_boxplot_statistics(ax, boxplot_values)
     ax.axhline(expected_alignment_score, linestyle="--", linewidth=1.2, color="grey", label="Null expectation (hypergeometric)",)
-    add_model_family_annotations(ax, labels)
+    add_model_family_annotations(ax, models)
     annotate_significance(ax, range(len(labels)), p_values, q_values)
 
     ax.set_xticks(range(len(labels)))
     ax.set_xticklabels(labels, rotation=55, ha="right",)
+    colour_tick_labels_by_stimuli_type(ax, stimuli_types)
 
     ax.set_xlim(-0.6, len(labels) - 0.4,)
     # alignment scores live in [0, 1]; the space above 1 is left free for the legend
@@ -207,7 +213,7 @@ def main():
     ax.set_xlabel(MODEL_AXIS_LABEL)
     ax.set_ylabel(ALIGNMENT_SCORE_LABEL)
     ax.grid(axis="y", alpha=0.25,)
-    add_legend(ax, significance_legend_handles())
+    add_legend(ax, stimuli_type_legend_handles(stimuli_types) + significance_legend_handles())
 
     fig.tight_layout()
     fig.subplots_adjust(

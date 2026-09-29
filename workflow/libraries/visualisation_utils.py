@@ -2,6 +2,7 @@ import colorsys
 import hashlib
 
 from matplotlib.lines import Line2D
+from matplotlib.patches import Patch
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -19,9 +20,28 @@ def significance_label(q_value):
 
     return ""
 
-# Asterisks for the uncorrected empirical p-value and for the Benjamini-Hochberg q-value.
+# Stimulus-type colour code: darkened Okabe-Ito vermillion and bluish green. The usual orange/green
+# pair collapses under protanopia; this one stays apart for protan, deutan and tritan readers, and
+# both reach >= 5:1 contrast on white, so they also work as text colours for the model names.
+# Markers differ in shape too, and every label names the stimulus type, so colour is never the
+# only cue.
+STIMULI_TYPE_COLOURS = {
+    "language": "#A84800",
+    "vision": "#007A5A",
+}
+STIMULI_TYPE_MARKERS = {
+    "language": "o",
+    "vision": "s",
+}
+# neutral ink for everything that is not a stimulus type: connecting lines, separators
+NEUTRAL_COLOUR = "#595959"
+# viridis is perceptually uniform and readable under every common colour-vision deficiency
+SEQUENTIAL_COLOURMAP = "viridis"
+
+# Asterisks for the uncorrected empirical p-value and for the Benjamini-Hochberg q-value. Blue, not
+# red: red and black look alike under protanopia. The two rows also differ in position.
 P_VALUE_SIGNIFICANCE_COLOUR = "black"
-Q_VALUE_SIGNIFICANCE_COLOUR = "red"
+Q_VALUE_SIGNIFICANCE_COLOUR = "#0072B2"
 SIGNIFICANCE_ROW_OFFSET_POINTS = 10
 
 # Extra distance between the x-axis and the model names, leaving room for the two asterisk rows.
@@ -158,6 +178,43 @@ def deterministic_jitter(label, concept, width=0.5):
 
     return (unit_interval_value - 0.5)*width
 
+def stimuli_type_colour(stimuli_type):
+    return STIMULI_TYPE_COLOURS.get(stimuli_type, NEUTRAL_COLOUR)
+
+def stimuli_type_legend_handles(stimuli_types):
+    # colour swatches for plots whose model names, not marks, carry the stimulus-type colour
+    return [
+        Patch(color=stimuli_type_colour(stimuli_type), label=f"{stimuli_type.capitalize()} stimuli (model name colour)")
+        for stimuli_type in sorted(set(stimuli_types))
+    ]
+
+def colour_tick_labels_by_stimuli_type(ax, stimuli_types, axes="x",):
+    """
+    Colour each model name on the given axes ("x", "y" or "xy") by its stimulus type; the brain
+    and anything else without a stimulus type stays black. Call after the tick labels are final,
+    since set_xticks()/boxplot() rebuild them.
+    """
+    for axis_name in axes:
+        axis = ax.xaxis if axis_name == "x" else ax.yaxis
+
+        for tick_label, stimuli_type in zip(axis.get_ticklabels(), stimuli_types):
+            tick_label.set_color(STIMULI_TYPE_COLOURS.get(stimuli_type, "black"))
+
+def plot_model_points(ax, x, values, errors, stimuli_types,):
+    # model-level values with error bars: a neutral line joins the models in axis order, and each
+    # point wears its stimulus type's colour and marker
+    x = np.asarray(x, dtype=float)
+    values = np.asarray(values, dtype=float)
+    errors = np.asarray(errors, dtype=float)
+    stimuli_types = np.asarray(stimuli_types)
+
+    ax.plot(x, values, color=NEUTRAL_COLOUR, linewidth=1.2, zorder=1,)
+
+    for stimuli_type in sorted(set(stimuli_types)):
+        selected = stimuli_types == stimuli_type
+
+        ax.errorbar(x[selected], values[selected], yerr=errors[selected], fmt=STIMULI_TYPE_MARKERS[stimuli_type], color=stimuli_type_colour(stimuli_type), markersize=7, capsize=3, zorder=2, label=f"{stimuli_type.capitalize()} stimuli",)
+
 MODEL_TICK_ROTATION = 55
 MODEL_FIGURE_HEIGHT = 7
 MODEL_FIGURE_MIN_WIDTH = 10
@@ -187,7 +244,7 @@ def add_model_family_annotations(ax, models,):
             end += 1
 
         if start > 0:
-            ax.axvline(start - 0.5, linewidth=1, linestyle="--", alpha=0.6,)
+            ax.axvline(start - 0.5, linewidth=1, linestyle="--", color=NEUTRAL_COLOUR, alpha=0.6,)
 
         midpoint = (start + end - 1) / 2
 
@@ -201,13 +258,13 @@ def save_model_figure(fig, output_path,):
     fig.savefig(output_path, dpi=300, bbox_inches="tight",)
     plt.close(fig)
 
-def mark_degenerate_boxplot_statistics(ax, boxplot_values, marker="D", color="red", markersize=5, zorder=4):
+def mark_degenerate_boxplot_statistics(ax, boxplot_values, marker="D", color="black", markersize=6, zorder=4):
     """
     Draw a visible marker over any boxplot whose quartiles collapse onto each
     other (Q1 == Q3, or the median coincides with Q1 or Q3). Matplotlib renders
     such boxes as a flat, easy-to-miss line rather than raising a warning, so
     without this marker a real "no spread" result looks identical to missing
-    data.
+    data. Black with a white edge rather than red, which protanopes see as near-black.
     """
     labelled = False
 
@@ -227,6 +284,7 @@ def mark_degenerate_boxplot_statistics(ax, boxplot_values, marker="D", color="re
             median,
             marker=marker,
             color=color,
+            markeredgecolor="white",
             markersize=markersize,
             zorder=zorder,
             linestyle="none",

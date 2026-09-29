@@ -1,6 +1,8 @@
 import numpy as np
 import pandas as pd
 
+from libraries.manage_model_metadata import model_key
+
 def empirical_upper_tail_p_value(number_at_least_as_large, number_of_relabellings,):
     return (number_at_least_as_large + 1)/(number_of_relabellings + 1)
 
@@ -28,7 +30,8 @@ def benjamini_hochberg(p_values):
 
 def read_model_level_empirical_p_values(path, dataset, similarity_type, number_of_neighbours):
     # the per-model 'model_level_empirical_p_value' rows of results/all_alignment_scores.tsv for one
-    # (dataset, similarity type, k), as {model: p-value}
+    # (dataset, similarity type, k), as {model_key(model, stimuli_type): p-value}, so the language
+    # and vision entries of a multimodal model stay apart
     statistics_df = pd.read_csv(path, sep="\t",)
 
     required_statistic_columns = {"dataset", "stimuli_type", "similarity_type", "number_of_neighbours", "model", "statistic", "value",}
@@ -56,9 +59,14 @@ def read_model_level_empirical_p_values(path, dataset, similarity_type, number_o
     if invalid_p_values.any():
         raise ValueError("Model-level statistics contain invalid empirical p-values")
 
-    if selected_statistics["model"].duplicated().any():
-        duplicated_models = selected_statistics.loc[selected_statistics["model"].duplicated(keep=False), "model",].unique()
+    labels = [
+        model_key(model, stimuli_type)
+        for model, stimuli_type in zip(selected_statistics["model"].astype(str), selected_statistics["stimuli_type"].astype(str))
+    ]
 
-        raise ValueError(f"More than one model-level empirical p-value was found for: {sorted(duplicated_models)}")
+    duplicated_labels = sorted({label for label in labels if labels.count(label) > 1})
 
-    return dict(zip(selected_statistics["model"].astype(str), selected_statistics["value"],))
+    if duplicated_labels:
+        raise ValueError(f"More than one model-level empirical p-value was found for: {duplicated_labels}")
+
+    return dict(zip(labels, selected_statistics["value"],))

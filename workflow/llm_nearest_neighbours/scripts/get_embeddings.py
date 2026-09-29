@@ -335,7 +335,8 @@ def embed_image(
     with torch.inference_mode():
         model_output = model(**inputs, return_dict=True,)
 
-    embedding = extract_embedding_from_output(output=model_output, pool=pool, attention_mask=None,)
+    # vision encoders return no attention mask; multimodal processors do, alongside the image tokens
+    embedding = extract_embedding_from_output(output=model_output, pool=pool, attention_mask=inputs.get("attention_mask"),)
 
     embedding = embedding.squeeze(0).detach().cpu().float()
 
@@ -423,7 +424,9 @@ def main():
         raise ValueError("A vision model requires visual stimuli")
 
     if args.pool is None:
-        if input_type == "image":
+        # a multimodal model is a causal decoder: its first token (BOS) only attends to itself, so
+        # "cls" would give every image the same embedding; average over the image's tokens instead
+        if input_type == "image" and args.modality != "multimodal":
             pool = "cls"
 
         else:
