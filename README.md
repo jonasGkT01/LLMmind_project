@@ -491,7 +491,9 @@ combined summary tables have a `similarity_type` column instead.
   The model-level line plots and concept-level scatterplots for a given
   dataset/similarity/k share the same y-axis range (scores on `[0, 1]`, with
   empty space above 1 for the legend), so the two can be compared directly
-  side by side.
+  side by side. Both draw the hypergeometric null expectation k/(n−1)
+  (k neighbours, n concepts) as a grey dashed line, so a model or concept
+  above it aligns better than chance.
 
   Conventions shared by all plots:
 

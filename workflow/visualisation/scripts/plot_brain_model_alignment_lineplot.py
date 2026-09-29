@@ -23,7 +23,7 @@ from libraries.visualisation_utils import (
     y_axis_label,
 )
 
-def read_alignment_score_summary(path):
+def read_alignment_score_summary(path, number_of_neighbours):
     df = pd.read_parquet(
         path,
         engine="pyarrow",
@@ -45,11 +45,19 @@ def read_alignment_score_summary(path):
     if number_of_concepts < 2:
         raise ValueError(f"{path} contains fewer than two concepts")
 
+    population_size = number_of_concepts - 1
+
+    if number_of_neighbours > population_size:
+        raise ValueError(f"{path} uses {number_of_neighbours} neighbours, but only {number_of_concepts} concepts are available")
+
+    # every concept has the same hypergeometric expectation, so it is also the expected mean
+    expected_alignment_score = number_of_neighbours/population_size
+
     mean_alignment_score = float(alignment_scores.mean())
 
     standard_error = float(alignment_scores.std(ddof = 1)/np.sqrt(number_of_concepts))
 
-    return mean_alignment_score, standard_error
+    return mean_alignment_score, standard_error, expected_alignment_score
 
 def main():
     parser = argparse.ArgumentParser()
@@ -100,6 +108,7 @@ def main():
 
     alignment_scores = {}
     available_models = set()
+    expected_alignment_scores = set()
 
     for path in args.llm_brain_alignment_scores:
         metadata = parse_llm_brain_alignment_score_path(path)
@@ -124,16 +133,22 @@ def main():
         if key in alignment_scores:
             raise ValueError(f"More than one alignment score was found for model {model} and k={number_of_neighbours}")
 
-        mean_alignment_score, standard_error = read_alignment_score_summary(path)
+        mean_alignment_score, standard_error, expected_alignment_score = read_alignment_score_summary(path, number_of_neighbours)
         alignment_scores[key] = {
             "mean": mean_alignment_score,
             "standard_error": standard_error,
         }
 
         available_models.add(model)
+        expected_alignment_scores.add(expected_alignment_score)
 
     if not alignment_scores:
         raise ValueError("No alignment score files were provided")
+
+    if len(expected_alignment_scores) > 1:
+        raise ValueError(f"Inconsistent hypergeometric expected alignment scores across input files: {sorted(expected_alignment_scores)}")
+
+    expected_alignment_score = expected_alignment_scores.pop()
 
     models = sorted(
         available_models,
@@ -188,6 +203,7 @@ def main():
     ]
 
     ax.errorbar(x, values, yerr=errors, marker="o", linewidth=1.8, capsize=3,)
+    ax.axhline(expected_alignment_score, linestyle="--", linewidth=1.2, color="grey", label="Null expectation (hypergeometric)",)
 
     annotate_significance(ax, x, p_values, q_values)
 
