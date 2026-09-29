@@ -61,7 +61,7 @@ def main():
     stimuli_type_by_label = dict(zip(model_df["label"], model_df["stimuli_type"]))
     labels = sorted(
         model_df["label"],
-        key=lambda label: model_sort_key(model=model_by_label[label], parameters_by_model=parameters_by_model, stimuli_type=stimuli_type_by_label[label],),
+        key=lambda label: model_sort_key(model=model_by_label[label], parameters_by_model=parameters_by_model,),
     )
     models = [model_by_label[label] for label in labels]
     stimuli_types = [stimuli_type_by_label[label] for label in labels]

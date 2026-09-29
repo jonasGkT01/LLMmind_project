@@ -39,7 +39,7 @@ def suggest_batch_size(
     if parameters_millions <= 0:
         raise ValueError("parameters_millions must be positive")
 
-    if modality not in ("vision", "language", "multimodal"):
+    if modality not in ("vision", "language"):
         raise ValueError(f"Unknown modality: {modality}")
 
     if quantization_method not in QUANTIZATION_MEMORY_MULTIPLIERS:
@@ -47,7 +47,7 @@ def suggest_batch_size(
 
     budget = VISION_BATCH_PARAMETER_BUDGET_MILLIONS*(available_vram_gb/REFERENCE_VRAM_GB)
 
-    if modality in ("language", "multimodal") and sequence_length is not None:
+    if modality == "language" and sequence_length is not None:
         budget = budget*(REFERENCE_SEQUENCE_LENGTH/sequence_length)
 
     elif modality == "language":

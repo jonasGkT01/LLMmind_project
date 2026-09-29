@@ -35,7 +35,7 @@ def pairings():
         for number_of_neighbours in dataset_numbers_of_neighbours(dataset):
             for stimuli_type in list(config[dataset]["stimuli_dir"].keys()):
                 for model in MODEL_KEYS:
-                    if config["models"][model]["modality"] in [stimuli_type, "multimodal"]:
+                    if config["models"][model]["modality"] == stimuli_type:
                         for similarity_type in SIMILARITY_TYPES:
                             pairs.append(
                                 {
@@ -59,16 +59,13 @@ def llm_llm_pairings():
     for dataset in DATASETS:
         available_modalities = list(config[dataset]["stimuli_dir"].keys())
 
-        # One representation per (model, stimuli_type) the model can embed: multimodal models contribute
-        # one per available stimuli_type. Pairing representations rather than models also compares a
-        # multimodal model with itself across stimuli types (e.g. gemma3n_e4b-language vs
-        # gemma3n_e4b-vision), while never pairing a representation with itself. Representations are
-        # model-major, so model_1 always precedes model_2 in MODEL_KEYS and existing filenames are unchanged.
+        # One representation per (model, stimuli_type) the model can embed. Representations are
+        # model-major, so model_1 always precedes model_2 in MODEL_KEYS.
         representations = [
             (model, stimuli_type)
             for model in MODEL_KEYS
             for stimuli_type in available_modalities
-            if config["models"][model]["modality"] in [stimuli_type, "multimodal"]
+            if config["models"][model]["modality"] == stimuli_type
         ]
 
         for number_of_neighbours in dataset_numbers_of_neighbours(dataset):
@@ -115,7 +112,7 @@ LLM_NEIGHBOUR_GENERATION_PAIRINGS = [
     for dataset in DATASETS
     for stimuli_type in list(config[dataset]["stimuli_dir"].keys())
     for model in MODEL_KEYS
-    if config["models"][model]["modality"] in [stimuli_type, "multimodal"]
+    if config["models"][model]["modality"] == stimuli_type
     for similarity_type in SIMILARITY_TYPES
 ]
 
@@ -139,7 +136,7 @@ SPEARMAN_PAIRINGS = [
     for dataset in DATASETS
     for stimuli_type in config[dataset]["stimuli_dir"]
     for model in MODEL_KEYS
-    if config["models"][model]["modality"] in [stimuli_type, "multimodal"]
+    if config["models"][model]["modality"] == stimuli_type
     for similarity_type in SIMILARITY_TYPES
 ]
 

@@ -8,7 +8,7 @@ SPEARMAN_PAIRINGS = [
     for dataset in DATASETS
     for stimuli_type in config[dataset]["stimuli_dir"]
     for model in MODEL_KEYS
-    if config["models"][model]["modality"] in [stimuli_type, "multimodal"]
+    if config["models"][model]["modality"] == stimuli_type
     for similarity_type in SIMILARITY_TYPES
 ]
 

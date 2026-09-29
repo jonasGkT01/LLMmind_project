@@ -1,5 +1,11 @@
 # 2026-09-25 — LLM–LLM pairings: compare a multimodal model with itself across stimuli types
 
+> **Update 2026-09-29:** multimodal model support has been
+> removed, so the multimodal parts of this entry no longer apply. Gemma 3n and
+> Gemma 4 now run as language models. See
+> `2026-09-29-remove-multimodal-model-support.md`. *(Note added by Claude Code,
+> Claude Opus 5.5, `claude-opus-5-5`.)*
+
 ## Summary
 
 `llm_llm_pairings()` in `workflow/Snakefile` now also pairs a multimodal

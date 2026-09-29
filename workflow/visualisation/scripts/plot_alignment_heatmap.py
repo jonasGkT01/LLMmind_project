@@ -57,7 +57,7 @@ def heatmap_label_sort_key(label, model_metadata, parameters_by_model):
 
     metadata = model_metadata[label]
 
-    return (0, model_sort_key(model=metadata["model"], parameters_by_model=parameters_by_model, stimuli_type=metadata["stimuli_type"],),)
+    return (0, model_sort_key(model=metadata["model"], parameters_by_model=parameters_by_model,),)
 
 def main():
     parser = argparse.ArgumentParser()

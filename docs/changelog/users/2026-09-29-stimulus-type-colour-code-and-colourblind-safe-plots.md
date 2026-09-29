@@ -1,5 +1,11 @@
 # 2026-09-29 — Plots now show language vs vision, and are more colourblind-friendly
 
+> **Update 2026-09-29 (later the same day):** multimodal model support has been
+> removed, so the multimodal parts of this entry no longer apply. Gemma 3n and
+> Gemma 4 now run as language models. See
+> `2026-09-29-remove-multimodal-model-support.md`. *(Note added by Claude Code,
+> Claude Opus 5.5, `claude-opus-5-5`.)*
+
 ## What changed
 
 - **Every model is labelled with its stimulus type**, for example

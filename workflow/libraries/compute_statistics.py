@@ -30,8 +30,7 @@ def benjamini_hochberg(p_values):
 
 def read_model_level_empirical_p_values(path, dataset, similarity_type, number_of_neighbours):
     # the per-model 'model_level_empirical_p_value' rows of results/all_alignment_scores.tsv for one
-    # (dataset, similarity type, k), as {model_key(model, stimuli_type): p-value}, so the language
-    # and vision entries of a multimodal model stay apart
+    # (dataset, similarity type, k), as {model_key(model, stimuli_type): p-value}
     statistics_df = pd.read_csv(path, sep="\t",)
 
     required_statistic_columns = {"dataset", "stimuli_type", "similarity_type", "number_of_neighbours", "model", "statistic", "value",}

@@ -137,7 +137,6 @@ def main():
                 row.label: model_sort_key(
                     model=row.model,
                     parameters_by_model=parameters_by_model,
-                    stimuli_type=row.stimuli_type,
                 )
                 for row in model_df.itertuples(index=False)
             }

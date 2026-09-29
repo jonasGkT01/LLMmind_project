@@ -122,10 +122,8 @@ path, whatever its length. Chunking stops at the first chunk that reaches
 the end of the text, so a text that fits in one chunk gets exactly one.
 Each embeddings file records `n_tokens` and `n_chunks` per stimulus.
 
-Image stimuli are pooled differently depending on the model's `modality`. A
-`vision` encoder (ViT, CLIP, DINOv2) takes its first (CLS) token. A
-`multimodal` model is a causal decoder whose first token only sees itself, so
-it averages over all of the image's tokens instead (`--pool` overrides both).
+Image stimuli are embedded by `vision` encoders (ViT, CLIP, DINOv2), which
+take their first (CLS) token (`--pool` overrides this).
 
 ### `llm_mind_alignment/`
 
@@ -138,10 +136,9 @@ hypergeometric significance testing.
 Scores model-model alignment — how similar two models' representational
 geometries are to each other — with empirical significance testing.
 
-Pairs are formed between *(model, stimulus type)* entries, not between
-models. So on a dataset with both text and image stimuli, a multimodal model
-is also compared with itself: its text-based geometry against its image-based
-one (for example `gemma3n_e4b-language` vs `gemma3n_e4b-vision`).
+Pairs are formed between *(model, stimulus type)* entries, so on a dataset
+with both text and image stimuli a language model is also compared with a
+vision model (for example `bloom_560m-language` vs `clip_b-vision`).
 
 ### `spearman_alignment/`
 
@@ -307,22 +304,24 @@ listed above end up at the same relative paths under
 ## Models
 
 Supported models are declared under `models:` in `config/config.yaml`, each
-with a Hugging Face identifier, modality (`language`, `vision`, or
-`multimodal`), optional quantization method, and parameter count. Currently
-configured: the BLOOMZ, OpenLLaMA, and Gemma language model families; CLIP,
-DINOv2, and ImageNet-21K ViT vision model families. Models are downloaded
-on demand by the `llm_nearest_neighbours` module.
+with a Hugging Face identifier, modality (`language` or `vision`), optional
+quantization method, and parameter count. Currently configured: the BLOOMZ,
+OpenLLaMA, and Gemma (Gemma, Gemma 2, Gemma 3, Gemma 3n, Gemma 4) language
+model families; CLIP, DINOv2, and ImageNet-21K ViT vision model families.
+Models are downloaded on demand by the `llm_nearest_neighbours` module.
 
-A model runs on every stimulus type of a dataset that matches its modality.
-A `multimodal` model matches both, so on a dataset with text and image
-stimuli (currently `caption_scene`) it appears twice: once fed the text, once
-fed the images. Every output and plot therefore names a model together with
-its stimulus type, as `<model>-<stimuli_type>` (for example
-`gemma3n_e4b-vision`).
+A model runs on the stimulus type of a dataset that matches its modality:
+`language` models on text, `vision` models on images. Every output and plot
+names a model together with its stimulus type, as `<model>-<stimuli_type>`
+(for example `clip_b-vision`).
 
-More Gemma models are listed but commented out in `config/config.yaml`,
-including the multimodal Gemma 3n and Gemma 4 families. To add one, uncomment
-its block and rerun the pipeline. Snakemake runs only the jobs that involve
+Multimodal models are not supported. Gemma 3n and Gemma 4 can read images,
+but their processor requires a text prompt with an image placeholder token,
+and the pipeline passes images alone. They are therefore configured as
+`modality: "language"` and embedded from text only.
+
+To add a model, add its block to `config/config.yaml` and rerun the
+pipeline. Snakemake runs only the jobs that involve
 the new model: its embeddings, its alignment with the brain and with every
 other model. It then rebuilds the summary tables and plots. To list the rules
 that would run before starting them:
@@ -619,4 +618,6 @@ or editing scripts.
 Parts of this README and of the changelog entries were drafted with AI
 coding assistants: Claude Code with Claude Sonnet 5 and, from 2026-09-23,
 Claude Opus 5.5. Each changelog entry ends with a note saying which model
-was used and whether the entry has been reviewed.
+was used and whether the entry has been reviewed. The latest AI edit, on
+2026-09-29 with Claude Opus 5.5 (`claude-opus-5-5`) via Claude Code, removed
+multimodal model support from the "Models" and module sections.

@@ -1,5 +1,11 @@
 # 2026-09-29 — Stimulus-type colour code, colourblind-safe plots, multimodal-ready labels and pooling
 
+> **Update 2026-09-29 (later the same day):** multimodal model support has been
+> removed, so the multimodal parts of this entry no longer apply. Gemma 3n and
+> Gemma 4 now run as language models. See
+> `2026-09-29-remove-multimodal-model-support.md`. *(Note added by Claude Code,
+> Claude Opus 5.5, `claude-opus-5-5`.)*
+
 ## Summary
 
 - Every plot now separates a model's **language** and **vision** entries.

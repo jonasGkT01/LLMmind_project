@@ -142,7 +142,6 @@ def main():
         key=lambda label: model_sort_key(
             model=model_metadata[label]["model"],
             parameters_by_model=parameters_by_model,
-            stimuli_type=model_metadata[label]["stimuli_type"],
         ),
     )
     models = [model_metadata[label]["model"] for label in labels]

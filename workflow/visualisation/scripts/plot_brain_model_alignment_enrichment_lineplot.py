@@ -55,7 +55,7 @@ def main():
         raise ValueError(f"No number of parameters was provided for models: {sorted(missing_parameters)}")
 
     model_df["sort_key"] = [
-        model_sort_key(model=row.model, parameters_by_model=parameters_by_model, stimuli_type=row.stimuli_type,)
+        model_sort_key(model=row.model, parameters_by_model=parameters_by_model,)
         for row in model_df.itertuples(index=False)
     ]
     model_df = model_df.sort_values("sort_key").drop(columns="sort_key").reset_index(drop=True)
