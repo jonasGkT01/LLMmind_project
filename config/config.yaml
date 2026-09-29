@@ -199,12 +199,14 @@ models:
     modality: "language"
     quantization_method: "8bit"
     parameters_millions: 12000
-  gemma4_26ba4b:
-    name: "Gemma 4 26B A4B"
-    hf_name: "google/gemma-4-26B-A4B"
-    modality: "language"
-    quantization_method: "4bit"
-    parameters_millions: 25200
+  # disabled: mixture-of-experts model whose experts are fused nn.Parameter tensors, which bitsandbytes does not quantize.
+  # ~22.8B expert parameters stay in bf16 (~46 GB) even with 4bit, so the model does not fit on node5's 24 GB GPU
+  # gemma4_26ba4b:
+  #   name: "Gemma 4 26B A4B"
+  #   hf_name: "google/gemma-4-26B-A4B"
+  #   modality: "language"
+  #   quantization_method: "4bit"
+  #   parameters_millions: 25200
   gemma4_31b:
     name: "Gemma 4 31B"
     hf_name: "google/gemma-4-31B"

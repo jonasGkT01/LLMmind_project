@@ -345,6 +345,17 @@ but their processor requires a text prompt with an image placeholder token,
 and the pipeline passes images alone. They are therefore configured as
 `modality: "language"` and embedded from text only.
 
+Mixture-of-experts (MoE) models are not supported on node5's 24 GB GPU.
+In Transformers, their experts are stored as fused `nn.Parameter` tensors
+rather than `nn.Linear` layers, and bitsandbytes quantizes only
+`nn.Linear`. The experts therefore stay in bf16 whatever
+`quantization_method` says. Gemma 4 26B A4B (`gemma4_26ba4b`) is commented
+out in `config/config.yaml` for this reason: about 22.8B of its 25B
+parameters are experts (~46 GB in bf16). Loading fails with `ValueError:
+Some modules are dispatched on the CPU or the disk`. Before adding a model,
+check its `config.json` for `num_experts`, `num_local_experts` or
+`enable_moe_block`.
+
 To add a model, add its block to `config/config.yaml` and rerun the
 pipeline. Snakemake runs only the jobs that involve
 the new model: its embeddings, its alignment with the brain and with every
@@ -453,6 +464,10 @@ using up to `<N>` worker processes at once. For that step, a higher `--cores` va
   2048 (see [`llm_nearest_neighbours/`](#llm_nearest_neighbours)). Don't
   switch such a model from 4-bit to 8-bit: that shrinks only the weights,
   and 27B parameters at 8-bit (~27 GB) don't fit on the GPU at all.
+  If loading fails with `ValueError: Some modules are dispatched on the CPU
+  or the disk`, the quantized model doesn't fit even before any text is
+  read. For mixture-of-experts models this is expected (see
+  [Models](#models)).
 - **A long rerun after adding a similarity metric**: the nearest-neighbour
   rules (`compute_llm_nearest_neighbours`, `compute_isc_nearest_neighbours`)
   write one file per metric in a single job. Adding a metric to
@@ -655,4 +670,6 @@ was used and whether the entry has been reviewed. The latest AI edit, on
 2026-09-29 with Claude Opus 5.5 (`claude-opus-5-5`) via Claude Code,
 documented the `max_chunk_length` setting in the `llm_nearest_neighbours/`
 section and added the GPU out-of-memory entry to "Troubleshooting", after
-gemma2_27b crashed with 8192-token chunks.
+gemma2_27b crashed with 8192-token chunks. It also noted in "Models" that
+mixture-of-experts models are not supported, after gemma4_26ba4b failed to
+load, and commented that model out.
