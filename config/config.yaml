@@ -113,99 +113,99 @@ models:
     quantization_method: null
     parameters_millions: 8540
 
-#  gemma2_2b:
-#    name: "Gemma 2 2B"
-#    hf_name: "google/gemma-2-2b"
-#    modality: "language"
-#    quantization_method: null
-#    parameters_millions: 2600
-#  gemma2_9b:
-#    name: "Gemma 2 9B"
-#    hf_name: "google/gemma-2-9b"
-#    modality: "language"
-#    quantization_method: "8bit"
-#    parameters_millions: 9200
-#  gemma2_27b:
-#    name: "Gemma 2 27B"
-#    hf_name: "google/gemma-2-27b"
-#    modality: "language"
-#    quantization_method: "4bit"
-#    parameters_millions: 27200
+  gemma2_2b:
+    name: "Gemma 2 2B"
+    hf_name: "google/gemma-2-2b"
+    modality: "language"
+    quantization_method: null
+    parameters_millions: 2600
+  gemma2_9b:
+    name: "Gemma 2 9B"
+    hf_name: "google/gemma-2-9b"
+    modality: "language"
+    quantization_method: "8bit"
+    parameters_millions: 9200
+  gemma2_27b:
+    name: "Gemma 2 27B"
+    hf_name: "google/gemma-2-27b"
+    modality: "language"
+    quantization_method: "4bit"
+    parameters_millions: 27200
 
-#  gemma3_270m:
-#    name: "Gemma 3 270M"
-#    hf_name: "google/gemma-3-270m"
-#    modality: "language"
-#    quantization_method: null
-#    parameters_millions: 270
-#  gemma3_1b:
-#    name: "Gemma 3 1B"
-#    hf_name: "google/gemma-3-1b-pt"
-#    modality: "language"
-#    quantization_method: null
-#    parameters_millions: 1000
-#  gemma3_4b:
-#    name: "Gemma 3 4B"
-#    hf_name: "google/gemma-3-4b-pt"
-#    modality: "language"
-#    quantization_method: null
-#    parameters_millions: 4300
-#  gemma3_12b:
-#    name: "Gemma 3 12B"
-#    hf_name: "google/gemma-3-12b-pt"
-#    modality: "language"
-#    quantization_method: "8bit"
-#    parameters_millions: 12000
-#  gemma3_27b:
-#    name: "Gemma 3 27B"
-#    hf_name: "google/gemma-3-27b-pt"
-#    modality: "language"
-#    quantization_method: "4bit"
-#    parameters_millions: 27000
+  gemma3_270m:
+    name: "Gemma 3 270M"
+    hf_name: "google/gemma-3-270m"
+    modality: "language"
+    quantization_method: null
+    parameters_millions: 270
+  gemma3_1b:
+    name: "Gemma 3 1B"
+    hf_name: "google/gemma-3-1b-pt"
+    modality: "language"
+    quantization_method: null
+    parameters_millions: 1000
+  gemma3_4b:
+    name: "Gemma 3 4B"
+    hf_name: "google/gemma-3-4b-pt"
+    modality: "language"
+    quantization_method: null
+    parameters_millions: 4300
+  gemma3_12b:
+    name: "Gemma 3 12B"
+    hf_name: "google/gemma-3-12b-pt"
+    modality: "language"
+    quantization_method: "8bit"
+    parameters_millions: 12000
+  gemma3_27b:
+    name: "Gemma 3 27B"
+    hf_name: "google/gemma-3-27b-pt"
+    modality: "language"
+    quantization_method: "4bit"
+    parameters_millions: 27000
 
-#  gemma3n_e2b:
-#    name: "Gemma 3n E2B"
-#    hf_name: "google/gemma-3n-E2B"
-#    modality: "multimodal"
-#    quantization_method: null
-#    parameters_millions: 6000
-#  gemma3n_e4b:
-#    name: "Gemma 3n E4B"
-#    hf_name: "google/gemma-3n-E4B"
-#    modality: "multimodal"
-#    quantization_method: null
-#    parameters_millions: 8000
+  gemma3n_e2b:
+    name: "Gemma 3n E2B"
+    hf_name: "google/gemma-3n-E2B"
+    modality: "multimodal"
+    quantization_method: null
+    parameters_millions: 6000
+  gemma3n_e4b:
+    name: "Gemma 3n E4B"
+    hf_name: "google/gemma-3n-E4B"
+    modality: "multimodal"
+    quantization_method: null
+    parameters_millions: 8000
 
-#  gemma4_e2b:
-#    name: "Gemma 4 E2B"
-#    hf_name: "google/gemma-4-E2B"
-#    modality: "multimodal"
-#    quantization_method: null
-#    parameters_millions: 5100
-#  gemma4_e4b:
-#    name: "Gemma 4 E4B"
-#    hf_name: "google/gemma-4-E4B"
-#    modality: "multimodal"
-#    quantization_method: null
-#    parameters_millions: 8000
-#  gemma4_12b:
-#    name: "Gemma 4 12B"
-#    hf_name: "google/gemma-4-12B"
-#    modality: "multimodal"
-#    quantization_method: "8bit"
-#    parameters_millions: 12000
-#  gemma4_26ba4b:
-#    name: "Gemma 4 26B A4B"
-#    hf_name: "google/gemma-4-26B-A4B"
-#    modality: "multimodal"
-#    quantization_method: "4bit"
-#    parameters_millions: 25200
-#  gemma4_31b:
-#    name: "Gemma 4 31B"
-#    hf_name: "google/gemma-4-31B"
-#    modality: "multimodal"
-#    quantization_method: "4bit"
-#    parameters_millions: 31000
+  gemma4_e2b:
+    name: "Gemma 4 E2B"
+    hf_name: "google/gemma-4-E2B"
+    modality: "multimodal"
+    quantization_method: null
+    parameters_millions: 5100
+  gemma4_e4b:
+    name: "Gemma 4 E4B"
+    hf_name: "google/gemma-4-E4B"
+    modality: "multimodal"
+    quantization_method: null
+    parameters_millions: 8000
+  gemma4_12b:
+    name: "Gemma 4 12B"
+    hf_name: "google/gemma-4-12B"
+    modality: "multimodal"
+    quantization_method: "8bit"
+    parameters_millions: 12000
+  gemma4_26ba4b:
+    name: "Gemma 4 26B A4B"
+    hf_name: "google/gemma-4-26B-A4B"
+    modality: "multimodal"
+    quantization_method: "4bit"
+    parameters_millions: 25200
+  gemma4_31b:
+    name: "Gemma 4 31B"
+    hf_name: "google/gemma-4-31B"
+    modality: "multimodal"
+    quantization_method: "4bit"
+    parameters_millions: 31000
 
   i21k_t:
     name: "ViT-Tiny/16 ImageNet-21K"
