@@ -114,13 +114,38 @@ extracts its embeddings for the same stimuli, computes embedding-embedding
 similarity (cosine, Pearson or Spearman), and builds the model-side
 nearest-neighbour graphs.
 
-Text stimuli longer than the model's context are split into overlapping
+Text stimuli longer than one chunk are split into overlapping
 token chunks (`--chunk_overlap`, default 256 tokens). The stimulus embedding
 is the mean of the chunk embeddings, weighted by chunk length, so tokens in
 an overlap contribute to two chunks. Every text stimulus goes through this
 path, whatever its length. Chunking stops at the first chunk that reaches
 the end of the text, so a text that fits in one chunk gets exactly one.
 Each embeddings file records `n_tokens` and `n_chunks` per stimulus.
+
+**Chunk length: `max_chunk_length` in `config/config.yaml`.** This one
+top-level key sets the chunk length for every language model. Its value
+decides whether `get_embeddings` passes `--chunk_max_length` to
+`get_embeddings.py` at all:
+
+| `max_chunk_length` | What `get_embeddings.py` receives | Chunk length used |
+|---|---|---|
+| an integer, e.g. `2048` (default) | `--chunk_max_length 2048` | exactly that value, for **every** language model |
+| `null`, `"none"`, `"null"`, `""`, or the key left out | **no** `--chunk_max_length` argument | inferred per model by `get_safe_max_length()`: the smaller of the tokenizer's `model_max_length` and the config's `max_position_embeddings`, ignoring values above 100,000 and falling back to 2048 when none are left |
+
+> **Watch out:** with `null`/`"none"`, the chunk length is **not the same
+> across models**. Gemma 1/2 get 8192 (their `max_position_embeddings`),
+> BLOOM and OpenLLaMA 2048, and Gemma 3/3n/4 fall back to 2048 because
+> their context lengths exceed 100,000. Since chunk length changes the
+> embeddings, models are then compared under different conditions. Longer
+> chunks also need much more GPU memory. At 8192 tokens, gemma2_27b runs out
+> of memory on node5's 24 GB GPU (see [Troubleshooting](#troubleshooting)).
+> Use `null` only if you want each model's native context on purpose.
+
+The setting applies only to `language` models. Vision models never receive
+`--chunk_max_length`, because images are not chunked. The value is
+recorded per stimulus in the `chunk_max_length` column of each embeddings
+file. Changing it reruns every language model's `get_embeddings` job and
+everything downstream.
 
 Image stimuli are embedded by `vision` encoders (ViT, CLIP, DINOv2), which
 take their first (CLS) token (`--pool` overrides this).
@@ -420,6 +445,14 @@ using up to `<N>` worker processes at once. For that step, a higher `--cores` va
   `snakemake --cleanup-metadata <path>` for the affected outputs if you're
   confident the already-downloaded weights don't actually need
   re-fetching.
+- **`get_embeddings` crashes on a large language model (GPU out of
+  memory)**: the attention memory grows with the square of the chunk
+  length. With 8192-token chunks, gemma2_27b (4-bit) needs more than the
+  24 GB of node5's GPU: Gemma 2 must use eager attention, and one fp32
+  attention matrix is about 8.6 GB per layer. Keep `max_chunk_length` at
+  2048 (see [`llm_nearest_neighbours/`](#llm_nearest_neighbours)). Don't
+  switch such a model from 4-bit to 8-bit: that shrinks only the weights,
+  and 27B parameters at 8-bit (~27 GB) don't fit on the GPU at all.
 - **A long rerun after adding a similarity metric**: the nearest-neighbour
   rules (`compute_llm_nearest_neighbours`, `compute_isc_nearest_neighbours`)
   write one file per metric in a single job. Adding a metric to
@@ -619,5 +652,7 @@ Parts of this README and of the changelog entries were drafted with AI
 coding assistants: Claude Code with Claude Sonnet 5 and, from 2026-09-23,
 Claude Opus 5.5. Each changelog entry ends with a note saying which model
 was used and whether the entry has been reviewed. The latest AI edit, on
-2026-09-29 with Claude Opus 5.5 (`claude-opus-5-5`) via Claude Code, removed
-multimodal model support from the "Models" and module sections.
+2026-09-29 with Claude Opus 5.5 (`claude-opus-5-5`) via Claude Code,
+documented the `max_chunk_length` setting in the `llm_nearest_neighbours/`
+section and added the GPU out-of-memory entry to "Troubleshooting", after
+gemma2_27b crashed with 8192-token chunks.

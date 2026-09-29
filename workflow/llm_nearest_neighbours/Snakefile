@@ -1,5 +1,15 @@
 from pathlib import Path
 
+def chunk_max_length_arg(model):
+    # max_chunk_length set to null/"none"/"null"/"" (or missing) means no --chunk_max_length is passed, so
+    # get_embeddings.py infers the chunk length from the model; vision models never receive it (no text chunking)
+    max_chunk_length = config.get("max_chunk_length")
+    if config["models"][model]["modality"] != "language":
+        return ""
+    if max_chunk_length is None or str(max_chunk_length).strip().lower() in {"none", "null", ""}:
+        return ""
+    return f"--chunk_max_length {int(max_chunk_length)}"
+
 rule all_llm_nearest_neighbours:
     input:
         [
@@ -34,7 +44,8 @@ rule get_embeddings:
         quantization_arg=lambda wc: (
             "" if config["models"][wc.model]["quantization_method"] is None
             else f"--quantization_method {config['models'][wc.model]['quantization_method']}"
-        )
+        ),
+        chunk_max_length_arg=lambda wc: chunk_max_length_arg(wc.model)
     conda:
         "envs/llm_nearest_neighbours_environment.yaml"
     shell:
@@ -45,6 +56,7 @@ rule get_embeddings:
                 --model_path {input.model:q} \
                 --modality {params.modality:q} \
                 {params.quantization_arg} \
+                {params.chunk_max_length_arg} \
                 --excluded_stimuli {input.excluded_stimuli:q}
         """
 
