@@ -33,7 +33,7 @@ def parse_p_value_path(path):
 
     return metadata
 
-def parse_relabelled_alignment_score_path(path):
+def parse_relabelled_common_neighbours_path(path):
     filename = Path(path).name
 
     pattern = (
@@ -41,19 +41,15 @@ def parse_relabelled_alignment_score_path(path):
         r"_model-(?P<model_1>.+?)-(?P<stimuli_type_1>[^_]+)"
         r"_model-(?P<model_2>.+?)-(?P<stimuli_type_2>[^_]+)"
         r"_(?P<similarity_type>.+?)"
-        r"-alignment_score_(?P<number_of_neighbours>\d+)NN"
-        r"_relabelled\.parquet"
+        r"-relabelled_common_neighbours\.parquet"
     )
 
     match = re.fullmatch(pattern, filename)
 
     if match is None:
-        raise ValueError(f"Could not parse relabelled alignment-score filename: {path}")
+        raise ValueError(f"Could not parse relabelled common-neighbours filename: {path}")
 
-    metadata = match.groupdict()
-    metadata["number_of_neighbours"] = int(metadata["number_of_neighbours"])
-
-    return metadata
+    return match.groupdict()
 
 def validate_canonical_pair_order(paths, model_order):
     # Pairs are unordered; the workflow writes each one once, with model_1 no later than model_2 in
@@ -90,10 +86,10 @@ def main():
                         nargs="+",
                         required=True,
                         help="Concept-level hypergeometric p-value TSV files",)
-    parser.add_argument("--relabelled_alignment_scores",
+    parser.add_argument("--relabelled_common_neighbours",
                         nargs="+",
                         required=True,
-                        help="Relabelled alignment-score Parquet files",)
+                        help="All-k relabelled common-neighbours Parquet files",)
     parser.add_argument("--model_order",
                         nargs="+",
                         required=True,
@@ -108,9 +104,9 @@ def main():
     aggregate_all_p_value_outputs(
         empirical_p_values=args.empirical_p_values,
         hypergeometric_p_values=args.hypergeometric_p_values,
-        relabelled_alignment_scores=args.relabelled_alignment_scores,
+        relabelled_common_neighbours=args.relabelled_common_neighbours,
         parse_p_value_path=parse_p_value_path,
-        parse_relabelled_alignment_score_path=parse_relabelled_alignment_score_path,
+        parse_relabelled_common_neighbours_path=parse_relabelled_common_neighbours_path,
         key_columns=KEY_COLUMNS,
         metadata_columns=METADATA_COLUMNS,
         tsv_path=args.all_model_model_alignment_scores_tsv,

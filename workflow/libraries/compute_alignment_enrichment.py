@@ -4,19 +4,22 @@ from matplotlib.ticker import FixedLocator, FuncFormatter
 import numpy as np
 import pandas as pd
 
+from libraries.compute_alignment import read_relabelled_alignment_scores
 from libraries.manage_model_metadata import model_key
 from libraries.path_metadata import parse_llm_brain_alignment_score_path
 from libraries.visualisation_utils import legend_headroom_top
 
-RELABELLED_SUFFIX = "_relabelled.parquet"
+RELABELLED_SUFFIX = "-relabelled_common_neighbours.parquet"
 
-def observed_path_for_relabelled_path(relabelled_path):
-    relabelled_path = Path(relabelled_path)
+def relabelled_name_for_observed_path(observed_path, number_of_neighbours):
+    # dataset-..._brain_{similarity}-alignment_score_{k}NN.parquet -> dataset-..._brain_{similarity}-relabelled_common_neighbours.parquet
+    observed_name = Path(observed_path).name
+    observed_suffix = f"-alignment_score_{number_of_neighbours}NN.parquet"
 
-    if not relabelled_path.name.endswith(RELABELLED_SUFFIX):
-        raise ValueError(f"Relabelled alignment-score filename does not end in {RELABELLED_SUFFIX}: {relabelled_path.name}")
+    if not observed_name.endswith(observed_suffix):
+        raise ValueError(f"Observed alignment-score filename does not end in {observed_suffix}: {observed_name}")
 
-    return relabelled_path.with_name(relabelled_path.name[:-len(RELABELLED_SUFFIX)] + ".parquet")
+    return observed_name[:-len(observed_suffix)] + RELABELLED_SUFFIX
 
 def read_validated_alignment_scores(path, required_columns):
     df = pd.read_parquet(path, engine="pyarrow", columns=sorted(required_columns),)
@@ -92,7 +95,7 @@ def compute_model_alignment_enrichment(observed_path, relabelled_path, expected_
 
     observed_df = read_validated_alignment_scores(observed_path, {"concept", "alignment_score",})
     observed_df["concept"] = observed_df["concept"].astype(str)
-    relabelled_df = read_validated_alignment_scores(relabelled_path, {"shuffle_id", "concept", "alignment_score",})
+    relabelled_df = read_relabelled_alignment_scores(relabelled_path, expected_number_of_neighbours)
 
     duplicated_concepts = observed_df.loc[observed_df["concept"].duplicated(keep=False), "concept",].tolist()
 
@@ -134,18 +137,18 @@ def compute_model_alignment_enrichment(observed_path, relabelled_path, expected_
     return concept_df, model_summary
 
 def compute_alignment_enrichment(observed_paths, relabelled_paths, expected_dataset, expected_similarity_type, expected_number_of_neighbours):
-    observed_path_by_name = {Path(path).name: path for path in observed_paths}
-    relabelled_path_by_observed_name = {observed_path_for_relabelled_path(path).name: path for path in relabelled_paths}
+    relabelled_path_by_name = {Path(path).name: path for path in relabelled_paths}
+    relabelled_name_by_observed_path = {path: relabelled_name_for_observed_path(path, expected_number_of_neighbours) for path in observed_paths}
 
-    if set(observed_path_by_name) != set(relabelled_path_by_observed_name):
-        unmatched = sorted(set(observed_path_by_name) ^ set(relabelled_path_by_observed_name))
-        raise ValueError(f"Observed and relabelled alignment-score files do not match one-to-one, e.g. {unmatched[:5]}")
+    if set(relabelled_path_by_name) != set(relabelled_name_by_observed_path.values()):
+        unmatched = sorted(set(relabelled_path_by_name) ^ set(relabelled_name_by_observed_path.values()))
+        raise ValueError(f"Observed alignment-score and relabelled common-neighbours files do not match one-to-one, e.g. {unmatched[:5]}")
 
     concept_dataframes = []
     model_summaries = []
 
-    for observed_name, observed_path in observed_path_by_name.items():
-        relabelled_path = relabelled_path_by_observed_name[observed_name]
+    for observed_path, relabelled_name in relabelled_name_by_observed_path.items():
+        relabelled_path = relabelled_path_by_name[relabelled_name]
         concept_df, model_summary = compute_model_alignment_enrichment(
             observed_path=observed_path,
             relabelled_path=relabelled_path,

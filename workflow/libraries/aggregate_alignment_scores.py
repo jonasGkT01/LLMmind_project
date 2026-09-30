@@ -3,6 +3,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from libraries.compute_alignment import read_relabelled_alignment_scores
 from libraries.compute_statistics import empirical_upper_tail_p_value
 
 # Shared by the LLM-brain (aggregate_all_p_value_outputs.py) and LLM-LLM
@@ -63,37 +64,15 @@ def read_hypergeometric_p_values(path):
 
     return hypergeometric_df
 
-def read_relabelled_alignment_scores(path):
-    relabelled_df = pd.read_parquet(path, engine="pyarrow")
-
-    required_columns = {
-        "shuffle_id",
-        "concept",
-        "alignment_score",
-    }
-
-    missing_columns = required_columns - set(relabelled_df.columns)
-
-    if missing_columns:
-        raise ValueError(f"Relabelled alignment-score file {path} is missing columns: {sorted(missing_columns)}")
+def read_unique_relabelled_alignment_scores(path, number_of_neighbours):
+    relabelled_df = read_relabelled_alignment_scores(path, number_of_neighbours)
 
     duplicated_relabelled_scores = relabelled_df[
-        relabelled_df.duplicated(
-            subset=[
-                "shuffle_id",
-                "concept",
-            ],
-            keep=False,
-        )
-    ][
-        [
-            "shuffle_id",
-            "concept",
-        ]
-    ].head(10).to_dict(orient="records")
+        relabelled_df.duplicated(subset=["shuffle_id", "concept"], keep=False)
+    ][["shuffle_id", "concept"]].head(10).to_dict(orient="records")
 
     if duplicated_relabelled_scores:
-        raise ValueError(f"Relabelled alignment-score file {path} contains duplicated shuffle/concept scores: {duplicated_relabelled_scores}")
+        raise ValueError(f"Relabelled file {path} contains duplicated shuffle/concept scores for k={number_of_neighbours}: {duplicated_relabelled_scores}")
 
     return relabelled_df
 
@@ -343,32 +322,43 @@ def require_same_result_keys(keys_1, keys_2, description_1, description_2):
 def aggregate_all_p_value_outputs(
     empirical_p_values,
     hypergeometric_p_values,
-    relabelled_alignment_scores,
+    relabelled_common_neighbours,
     parse_p_value_path,
-    parse_relabelled_alignment_score_path,
+    parse_relabelled_common_neighbours_path,
     key_columns,
     metadata_columns,
     tsv_path,
 ):
-    # key_columns identify one result; metadata_columns are the same names in output order
+    # key_columns identify one result; metadata_columns are the same names in output order. One
+    # all-k relabelled file serves every k of a result, so it is keyed without number_of_neighbours.
+    relabelled_key_columns = [column for column in key_columns if column != "number_of_neighbours"]
+
     empirical_paths_by_key = collect_paths_by_key(empirical_p_values, parse_p_value_path, key_columns, "empirical p-value", method="empirical")
     hypergeometric_paths_by_key = collect_paths_by_key(hypergeometric_p_values, parse_p_value_path, key_columns, "hypergeometric p-value", method="hypergeometric")
-    relabelled_paths_by_key = collect_paths_by_key(relabelled_alignment_scores, parse_relabelled_alignment_score_path, key_columns, "relabelled alignment-score")
+    relabelled_paths_by_key = collect_paths_by_key(relabelled_common_neighbours, parse_relabelled_common_neighbours_path, relabelled_key_columns, "relabelled common-neighbours")
 
     empirical_keys = set(empirical_paths_by_key)
 
     require_same_result_keys(empirical_keys, set(hypergeometric_paths_by_key), "Empirical", "hypergeometric")
-    require_same_result_keys(empirical_keys, set(relabelled_paths_by_key), "Empirical p-value", "relabelled alignment-score")
+    require_same_result_keys(
+        {tuple(value for column, value in zip(key_columns, key) if column != "number_of_neighbours") for key in empirical_keys},
+        set(relabelled_paths_by_key),
+        "Empirical p-value",
+        "relabelled common-neighbours",
+    )
 
     summary_rows = []
 
     for key in sorted(empirical_keys):
+        metadata = dict(zip(key_columns, key))
+        relabelled_path = relabelled_paths_by_key[tuple(metadata[column] for column in relabelled_key_columns)]
+
         summary_rows.append(
             aggregate_model_results(
-                metadata=dict(zip(key_columns, key)),
+                metadata=metadata,
                 empirical_df=read_empirical_p_values(empirical_paths_by_key[key]),
                 hypergeometric_df=read_hypergeometric_p_values(hypergeometric_paths_by_key[key]),
-                relabelled_df=read_relabelled_alignment_scores(relabelled_paths_by_key[key]),
+                relabelled_df=read_unique_relabelled_alignment_scores(relabelled_path, metadata["number_of_neighbours"]),
             )
         )
 

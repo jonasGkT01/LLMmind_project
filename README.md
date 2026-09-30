@@ -163,7 +163,7 @@ geometries are to each other — with the same tests as `llm_mind_alignment/`:
 a per-concept empirical and hypergeometric p-value, and a model-pair-level
 empirical p-value. The second model of each pair is relabelled against the
 first, as the model is relabelled against the brain there. The rules reuse the
-`llm_mind_alignment/` per-k scripts and the shared `libraries/` modules.
+`llm_mind_alignment/` p-value scripts and the shared `libraries/` modules.
 
 Pairs are formed between *(model, stimulus type)* entries, so on a dataset
 with both text and image stimuli a language model is also compared with a
@@ -550,8 +550,10 @@ combined summary tables have a `similarity_type` column instead.
   scores and significance tests. Brain-model and model-model results both get
   a per-concept empirical and hypergeometric p-value plus a model-level
   (model-pair-level) empirical p-value, built with the same random-shuffling
-  method. The shuffled scores are kept, one all-k file per configuration in
-  `relabelled_common_neighbours/` plus one `_relabelled.parquet` per k.
+  method. The shuffled scores are kept as one compact all-k file per
+  configuration in `relabelled_common_neighbours/`: the shuffled number of
+  common neighbours for every relabelling, concept and k (the alignment score
+  is that number divided by k). Consumers read the k they need from it.
 - `results/spearman_alignment_scores/` — per-(dataset, model, similarity)
   Spearman alignment with its empirical p-value, one `_model_level` and one
   `_concept_level` TSV per configuration.
@@ -680,7 +682,6 @@ Parts of this README and of the changelog entries were drafted with AI
 coding assistants: Claude Code with Claude Sonnet 5 and, from 2026-09-23,
 Claude Opus 5.5. Each changelog entry ends with a note saying which model
 was used and whether the entry has been reviewed. The latest AI edit, on
-2026-09-30 with Claude Opus 5.5 (`claude-opus-5-5`) via Claude Code, added
-`results/all_model_model_alignment_scores.tsv` to "Outputs" and updated the
-`llm_llm_alignment/` section, after the model-model workflow was made to
-mirror the brain-model one.
+2026-09-30 with Claude Opus 5.5 (`claude-opus-5-5`) via Claude Code,
+described the compact relabelled files in "Outputs", after the per-k
+`_relabelled.parquet` copies were dropped to save disk space (TODO entry S23).

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 import argparse
 
-import numpy as np
 import pandas as pd
 
+from libraries.compute_alignment import read_relabelled_alignment_scores
 from libraries.compute_statistics import empirical_upper_tail_p_value
 
 def compute_empirical_statistics(observed_df: pd.DataFrame, relabelled_df: pd.DataFrame) -> pd.DataFrame:
@@ -65,13 +65,16 @@ def main() -> None:
     parser.add_argument("--observed_alignment_score",
                         required=True,
                         help="Path to the Parquet file containing the observed alignment scores",)
-    parser.add_argument("--relabelled_alignment_score",
+    parser.add_argument("--relabelled_common_neighbours",
                         required=True,
-                        help="Path to the Parquet file containing the alignment scores for all relabellings",)
+                        help="Path to the all-k Parquet file containing the common neighbours for all relabellings",)
+    parser.add_argument("--number_of_neighbours",
+                        type=int,
+                        required=True,)
     args = parser.parse_args()
 
     observed_df = pd.read_parquet(args.observed_alignment_score, engine="pyarrow")
-    relabelled_df = pd.read_parquet(args.relabelled_alignment_score, engine="pyarrow")
+    relabelled_df = read_relabelled_alignment_scores(args.relabelled_common_neighbours, args.number_of_neighbours)
 
     summary_df = compute_empirical_statistics(
         observed_df=observed_df,

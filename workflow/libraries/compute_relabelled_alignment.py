@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 
@@ -79,12 +81,11 @@ def compute_relabelled_common_neighbours_for_all_k(
     return common_neighbours_matrices_by_k
 
 def create_relabelled_alignment_dataframe(common_neighbours_matrix, concepts, model, number_of_neighbours):
+    # alignment_score is not stored: it is exactly common_neighbours / k (see read_relabelled_alignment_scores)
     number_of_relabellings, number_of_concepts = common_neighbours_matrix.shape
     number_of_rows = number_of_relabellings * number_of_concepts
     shuffle_codes = np.repeat(np.arange(number_of_relabellings, dtype=np.int32), number_of_concepts)
     concept_codes = np.tile(np.arange(number_of_concepts, dtype=np.int32), number_of_relabellings)
-    common_neighbours = common_neighbours_matrix.reshape(-1)
-    alignment_scores = common_neighbours.astype(np.float64) / number_of_neighbours
 
     result_df = pd.DataFrame(
         {
@@ -105,10 +106,16 @@ def create_relabelled_alignment_dataframe(common_neighbours_matrix, concepts, mo
             # Needed to tell k's apart in the combined all-k file: Snakemake outputs can't depend on
             # wildcards, so separate per-k files from one job aren't possible.
             "number_of_neighbours": np.full(number_of_rows, number_of_neighbours, dtype=np.int32),
-            "common_neighbours": common_neighbours,
-            "alignment_score": alignment_scores,
-            "alignment_score_percentage": alignment_scores * 100,
+            "common_neighbours": common_neighbours_matrix.reshape(-1),
         }
     )
 
     return result_df
+
+def write_relabelled_common_neighbours(results_by_k, numbers_of_neighbours, output_path):
+    # one all-k file; no index: the row position carries no information
+    combined_df = pd.concat([results_by_k[k] for k in numbers_of_neighbours], ignore_index=True)
+
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    combined_df.to_parquet(output_path, engine="pyarrow", compression="snappy", index=False)

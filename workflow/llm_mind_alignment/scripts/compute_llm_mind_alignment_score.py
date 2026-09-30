@@ -58,7 +58,7 @@ def main():
     )
 
     # save the alignment scores as a parquet file
-    alignment_score_df.to_parquet(alignment_score, engine = "pyarrow", index = True)
+    alignment_score_df.to_parquet(alignment_score, engine = "pyarrow", index = False)
 
 #    # print the alignment score dataframe
 #    with pd.option_context("display.max_rows", None, "display.max_columns", None):

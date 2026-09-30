@@ -1,9 +1,8 @@
 import argparse
-from pathlib import Path
 
 import pandas as pd
 
-from libraries.compute_relabelled_alignment import compute_relabelled_common_neighbours_for_all_k, compute_topk_on_concept_subset, create_relabelled_alignment_dataframe
+from libraries.compute_relabelled_alignment import compute_relabelled_common_neighbours_for_all_k, compute_topk_on_concept_subset, create_relabelled_alignment_dataframe, write_relabelled_common_neighbours
 
 def select_shared_concepts(embedding_df_1, embedding_df_2):
     # the first model's concept order fixes the positions every permutation works on
@@ -67,8 +66,8 @@ def main():
     parser.add_argument("--similarity_type", required=True)
     parser.add_argument("--relabelled_common_neighbours", required=True,
                         help="Single output holding every --number_of_neighbours' rows, distinguished by "
-                             "a number_of_neighbours column; per-k files are sliced from it separately "
-                             "(extract_relabelled_alignment_score_for_k.py)")
+                             "a number_of_neighbours column; consumers read one k with "
+                             "compute_relabelled_alignment.read_relabelled_alignment_scores()")
     parser.add_argument("--number_of_relabellings", type=int, required=True)
     parser.add_argument("--number_of_neighbours", type=int, nargs="+", required=True)
     parser.add_argument("--random_seed", type=int, default=0)
@@ -95,14 +94,7 @@ def main():
         similarity_type=args.similarity_type,
     )
 
-    combined_df = pd.concat(
-        [results_by_k[k] for k in args.number_of_neighbours],
-        ignore_index=True,
-    )
-
-    output_path = Path(args.relabelled_common_neighbours)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    combined_df.to_parquet(output_path, engine="pyarrow", compression="snappy", index=True)
+    write_relabelled_common_neighbours(results_by_k, args.number_of_neighbours, args.relabelled_common_neighbours)
 
 if __name__ == "__main__":
     main()

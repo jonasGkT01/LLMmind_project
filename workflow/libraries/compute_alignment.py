@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 
 def nearest_neighbours_to_dict(nearest_neighbours_df):
@@ -55,3 +56,19 @@ def compute_mean_alignment_score(
     alignment_scores = common_neighbours/number_of_neighbours
 
     return float(alignment_scores.mean())
+
+def read_relabelled_alignment_scores(path, number_of_neighbours):
+    # one k's rows of an all-k relabelled file, with alignment_score = common_neighbours / k
+    relabelled_df = pd.read_parquet(
+        path,
+        engine="pyarrow",
+        columns=["shuffle_id", "concept", "common_neighbours"],
+        filters=[("number_of_neighbours", "==", number_of_neighbours)],
+    )
+
+    if relabelled_df.empty:
+        raise ValueError(f"{path} has no rows for number_of_neighbours={number_of_neighbours}")
+
+    relabelled_df["alignment_score"] = relabelled_df["common_neighbours"].to_numpy(dtype=np.float64)/number_of_neighbours
+
+    return relabelled_df

@@ -30,7 +30,7 @@ from libraries.visualisation_utils import (
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--llm_brain_alignment_scores", nargs="+", required=True, help="Observed LLM-brain alignment score parquet files")
-    parser.add_argument("--relabelled_llm_brain_alignment_scores", nargs="+", required=True, help="Relabelled LLM-brain alignment score parquet files, one per observed file")
+    parser.add_argument("--relabelled_llm_brain_alignment_scores", nargs="+", required=True, help="All-k relabelled LLM-brain common-neighbours parquet files, one per observed file")
     parser.add_argument("--model_level_statistics", required=True, help="TSV file containing model-level statistics")
     parser.add_argument("--model_parameters", nargs="+", required=True, help="Model parameter counts formatted as model=parameters_millions")
     parser.add_argument("--dataset", required=True)
