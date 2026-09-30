@@ -14,7 +14,7 @@ def extract_task_from_filename(path: Path) -> str:
     return match.group(1)
 
 def load_isc_value(npy_path: Path):
-    value = np.load(npy_path, allow_pickle=True)
+    value = np.load(npy_path)
     # convert 0-d arrays / numpy scalars to plain Python scalars when possible
     if isinstance(value, np.ndarray) and value.shape == ():
         value = value.item()

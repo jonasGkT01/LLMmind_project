@@ -676,6 +676,10 @@ or editing scripts.
 - [`docs/reference/fmri_preprocessing.md`](docs/reference/fmri_preprocessing.md)
   — what each dataset's authors did to the BOLD data before this workflow, and
   what the workflow itself does (a source for the methods section)
+- [`docs/reference/model_embeddings.md`](docs/reference/model_embeddings.md)
+  — how each model turns a stimulus into one vector: chunking, pooling
+  (including the BOS token) and the CLS token of vision models (a source for
+  the methods section)
 - [`docs/changelog/developers/`](docs/changelog/developers/) — technical
   changelog entries for contributors
 - [`docs/changelog/users/`](docs/changelog/users/) — plain-language changelog
@@ -686,7 +690,9 @@ coding assistants: Claude Code with Claude Sonnet 5 and, from 2026-09-23,
 Claude Opus 5.5. Each changelog entry ends with a note saying which model
 was used and whether the entry has been reviewed. The latest AI edit, on
 2026-09-30 with Claude Opus 5.5 (`claude-opus-5-5`) via Claude Code,
-linked the new `docs/reference/fmri_preprocessing.md` under "Documentation". An
+linked the new `docs/reference/model_embeddings.md` under "Documentation", after
+a project review. An earlier edit that day linked the new
+`docs/reference/fmri_preprocessing.md` under "Documentation". An
 earlier edit that day renamed `results/all_alignment_scores.tsv` to
 `results/all_model_brain_alignment_scores.tsv`, to match
 `all_model_model_alignment_scores.tsv`. An earlier edit that day described the

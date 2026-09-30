@@ -230,13 +230,13 @@ def main():
         model_level_path,
         sep="\t",
         index=False,
-        float_format="%.6f",
+        float_format = "%.6g",
     )
     concept_level_df.to_csv(
         concept_level_path,
         sep="\t",
         index=False,
-        float_format="%.6f",
+        float_format = "%.6g",
     )
 
 if __name__ == "__main__":

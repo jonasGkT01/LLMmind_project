@@ -59,7 +59,7 @@ def main() -> None:
         summary_df.to_csv(
             sep="\t",
             index=False,
-            float_format="%.6f",
+            float_format = "%.6g",
         ),
         end="",
     )
