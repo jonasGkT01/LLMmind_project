@@ -26,47 +26,47 @@ def model_sort_key(label, model_metadata):
 
     return (0, model_family(metadata["model"]), metadata["number_of_parameters"], metadata["model"], metadata["stimuli_type"],)
 
-def read_llm_llm_records(paths, parameters_by_model):
-    required_columns = {
-        "model_1",
-        "stimuli_type_1",
-        "number_of_parameters_1",
-        "model_2",
-        "stimuli_type_2",
-        "number_of_parameters_2",
-        "empirical_p_value",
-    }
+def read_llm_llm_records(path, dataset, similarity_type, number_of_neighbours, parameters_by_model):
+    p_value_df = pd.read_csv(path, sep="\t")
+    pair_columns = ["model_1", "stimuli_type_1", "model_2", "stimuli_type_2"]
+    required_columns = {"dataset", "similarity_type", "number_of_neighbours", *pair_columns, "statistic", "value"}
+    missing_columns = required_columns - set(p_value_df.columns)
+
+    if missing_columns:
+        raise ValueError(f"{path} is missing required columns: {sorted(missing_columns)}")
+
+    p_value_df["number_of_neighbours"] = pd.to_numeric(p_value_df["number_of_neighbours"], errors="raise",).astype(int)
+
+    selected_df = p_value_df[
+        (p_value_df["dataset"].astype(str) == dataset)
+        & (p_value_df["similarity_type"].astype(str) == similarity_type)
+        & (p_value_df["number_of_neighbours"] == number_of_neighbours)
+        & (p_value_df["statistic"].astype(str) == "model_level_empirical_p_value")
+    ].copy()
+
+    if selected_df.empty:
+        raise ValueError(f"No model-model empirical p-values were found in {path} for dataset={dataset}, similarity_type={similarity_type}, number_of_neighbours={number_of_neighbours}")
+
+    duplicated_rows = selected_df.duplicated(subset=pair_columns, keep=False)
+
+    if duplicated_rows.any():
+        duplicates = selected_df.loc[duplicated_rows, pair_columns].drop_duplicates().to_dict(orient="records")
+        raise ValueError(f"Duplicated model-model empirical p-values were found: {duplicates[:10]}")
 
     records = []
 
-    for path in paths:
-        p_value_df = pd.read_csv(path, sep="\t")
-        missing_columns = required_columns - set(p_value_df.columns)
-
-        if missing_columns:
-            raise ValueError(f"{path} is missing required columns: {sorted(missing_columns)}")
-
-        if len(p_value_df) != 1:
-            raise ValueError(f"{path} must contain exactly one row")
-
-        row = p_value_df.iloc[0]
-        model_1 = str(row["model_1"])
-        model_2 = str(row["model_2"])
-
-        for model, file_parameters in [(model_1, float(row["number_of_parameters_1"])), (model_2, float(row["number_of_parameters_2"])),]:
+    for row in selected_df.itertuples(index=False):
+        for model in [str(row.model_1), str(row.model_2)]:
             if model not in parameters_by_model:
                 raise ValueError(f"No number of parameters was provided for model {model}")
 
-            if not np.isclose(file_parameters, parameters_by_model[model]):
-                raise ValueError(f"{path} reports {file_parameters} million parameters for {model}, but the configuration reports {parameters_by_model[model]}")
-
         records.append(
             {
-                "model_1": model_1,
-                "stimuli_type_1": str(row["stimuli_type_1"]),
-                "model_2": model_2,
-                "stimuli_type_2": str(row["stimuli_type_2"]),
-                "empirical_p_value": validate_p_value(row["empirical_p_value"], path),
+                "model_1": str(row.model_1),
+                "stimuli_type_1": str(row.stimuli_type_1),
+                "model_2": str(row.model_2),
+                "stimuli_type_2": str(row.stimuli_type_2),
+                "empirical_p_value": validate_p_value(row.value, path),
             }
         )
 
@@ -133,7 +133,7 @@ def format_p_value(p_value):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--llm_brain_empirical_p_values", required=True)
-    parser.add_argument("--llm_llm_empirical_p_values", nargs="+", required=True)
+    parser.add_argument("--llm_llm_empirical_p_values", required=True)
     parser.add_argument("--model_parameters", nargs="+", required=True)
     parser.add_argument("--dataset", required=True)
     parser.add_argument("--similarity_type", required=True)
@@ -142,7 +142,13 @@ def main():
     args = parser.parse_args()
 
     parameters_by_model = parse_model_parameters(args.model_parameters)
-    records = read_llm_llm_records(args.llm_llm_empirical_p_values, parameters_by_model)
+    records = read_llm_llm_records(
+        path=args.llm_llm_empirical_p_values,
+        dataset=args.dataset,
+        similarity_type=args.similarity_type,
+        number_of_neighbours=args.number_of_neighbours,
+        parameters_by_model=parameters_by_model,
+    )
 
     records.extend(
         read_llm_brain_records(

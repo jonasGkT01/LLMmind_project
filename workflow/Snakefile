@@ -184,9 +184,15 @@ rule all:
             for pair in HEATMAP_PAIRINGS
         ],
         [
-            f"results/alignment_scores/dataset-{pair['dataset']}_model-{pair['model_1']}-{pair['stimuli_type_1']}_model-{pair['model_2']}-{pair['stimuli_type_2']}_empirical_{pair['similarity_type']}-alignment_score_{pair['number_of_neighbours']}NN.p_value.tsv"
+            f"results/alignment_scores/dataset-{pair['dataset']}_model-{pair['model_1']}-{pair['stimuli_type_1']}_model-{pair['model_2']}-{pair['stimuli_type_2']}_{pair['similarity_type']}-alignment_score_{pair['number_of_neighbours']}NN_relabelled.parquet"
             for pair in LLM_LLM_PAIRINGS
         ],
+        [
+            f"results/alignment_scores/dataset-{pair['dataset']}_model-{pair['model_1']}-{pair['stimuli_type_1']}_model-{pair['model_2']}-{pair['stimuli_type_2']}_{method}_{pair['similarity_type']}-alignment_score_{pair['number_of_neighbours']}NN.p_value.tsv"
+            for pair in LLM_LLM_PAIRINGS
+            for method in ["empirical", "hypergeometric"]
+        ],
+        "results/all_model_model_alignment_scores.tsv",
         [
             f"results/pictures/alignment_p_value_heatmaps/dataset-{pair['dataset']}_{pair['similarity_type']}-alignment_score_{pair['number_of_neighbours']}NN_empirical_p_values.png"
             for pair in HEATMAP_PAIRINGS

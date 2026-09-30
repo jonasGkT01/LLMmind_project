@@ -159,7 +159,11 @@ hypergeometric significance testing.
 ### `llm_llm_alignment/`
 
 Scores model-model alignment — how similar two models' representational
-geometries are to each other — with empirical significance testing.
+geometries are to each other — with the same tests as `llm_mind_alignment/`:
+a per-concept empirical and hypergeometric p-value, and a model-pair-level
+empirical p-value. The second model of each pair is relabelled against the
+first, as the model is relabelled against the brain there. The rules reuse the
+`llm_mind_alignment/` per-k scripts and the shared `libraries/` modules.
 
 Pairs are formed between *(model, stimulus type)* entries, so on a dataset
 with both text and image stimuli a language model is also compared with a
@@ -543,16 +547,25 @@ similarity metric (`cosine`, `pearson` or `spearman`) in their name; the
 combined summary tables have a `similarity_type` column instead.
 
 - `results/alignment_scores/` — per-(dataset, model, similarity, k) alignment
-  scores and significance tests. Brain-model results get a per-concept
-  empirical and hypergeometric p-value plus a model-level empirical p-value;
-  model-model results get a single model-pair-level empirical p-value (no
-  per-concept or hypergeometric test). Both use the same random-shuffling
-  method to build their null distributions.
+  scores and significance tests. Brain-model and model-model results both get
+  a per-concept empirical and hypergeometric p-value plus a model-level
+  (model-pair-level) empirical p-value, built with the same random-shuffling
+  method. The shuffled scores are kept, one all-k file per configuration in
+  `relabelled_common_neighbours/` plus one `_relabelled.parquet` per k.
 - `results/spearman_alignment_scores/` — per-(dataset, model, similarity)
   Spearman alignment with its empirical p-value, one `_model_level` and one
   `_concept_level` TSV per configuration.
 - `results/all_alignment_scores.tsv`, `results/all_spearman_alignment_scores.tsv`
   — combined summary tables across all configurations
+- `results/all_model_model_alignment_scores.tsv` — the model-model
+  counterpart of `all_alignment_scores.tsv`, in the same long format and with
+  the same statistics. The `model`/`stimuli_type` pair is replaced by one
+  column per side: `dataset | similarity_type | number_of_neighbours |
+  model_1 | stimuli_type_1 | model_2 | stimuli_type_2 | statistic | value`.
+  Each pair appears once, with `model_1` earlier than `model_2` in the
+  `models:` order of `config/config.yaml`. The p-values are not corrected
+  for multiple testing, and they are not part of the brain-model
+  Benjamini-Hochberg family.
 - `results/pictures/` — every plot and heatmap, one subfolder per plot type:
   `alignment_heatmaps/`, `alignment_p_value_heatmaps/`,
   `alignment_lineplots/`, `concept_alignment_scatterplots/`,
@@ -667,9 +680,7 @@ Parts of this README and of the changelog entries were drafted with AI
 coding assistants: Claude Code with Claude Sonnet 5 and, from 2026-09-23,
 Claude Opus 5.5. Each changelog entry ends with a note saying which model
 was used and whether the entry has been reviewed. The latest AI edit, on
-2026-09-29 with Claude Opus 5.5 (`claude-opus-5-5`) via Claude Code,
-documented the `max_chunk_length` setting in the `llm_nearest_neighbours/`
-section and added the GPU out-of-memory entry to "Troubleshooting", after
-gemma2_27b crashed with 8192-token chunks. It also noted in "Models" that
-mixture-of-experts models are not supported, after gemma4_26ba4b failed to
-load, and commented that model out.
+2026-09-30 with Claude Opus 5.5 (`claude-opus-5-5`) via Claude Code, added
+`results/all_model_model_alignment_scores.tsv` to "Outputs" and updated the
+`llm_llm_alignment/` section, after the model-model workflow was made to
+mirror the brain-model one.

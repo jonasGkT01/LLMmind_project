@@ -4,15 +4,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from libraries.compute_alignment import compute_common_neighbours
-from libraries.compute_nearest_neighbours import (
-    compute_blockwise_topk_from_embeddings,
-    create_neighbour_mask,
-    relabel_nearest_neighbours,
-    require_stored_number_of_neighbours,
-)
-from libraries.compute_similarity import extract_embedding_matrix, normalize_fn_for_similarity_type
-from libraries.compute_statistics import create_relabelling_rng
+from libraries.compute_nearest_neighbours import require_stored_number_of_neighbours
+from libraries.compute_relabelled_alignment import compute_relabelled_common_neighbours_for_all_k, compute_topk_on_concept_subset, create_relabelled_alignment_dataframe
 
 def make_concept_index(concepts):
     return {concept: i for i, concept in enumerate(concepts)}
@@ -40,53 +33,6 @@ def encode_brain_nearest_neighbours(brain_nearest_neighbours_df, concepts, numbe
 
     return np.asarray(rows, dtype=np.int64)
 
-def select_common_neighbour_dtype(number_of_neighbours):
-    if number_of_neighbours <= np.iinfo(np.uint8).max:
-        return np.uint8
-
-    if number_of_neighbours <= np.iinfo(np.uint16).max:
-        return np.uint16
-
-    if number_of_neighbours <= np.iinfo(np.uint32).max:
-        return np.uint32
-
-    raise ValueError("The requested number of neighbours is too large to store")
-
-def create_relabelled_alignment_dataframe(common_neighbours_matrix, concepts, model, number_of_neighbours):
-    number_of_relabellings, number_of_concepts = common_neighbours_matrix.shape
-    number_of_rows = number_of_relabellings * number_of_concepts
-    shuffle_codes = np.repeat(np.arange(number_of_relabellings, dtype=np.int32), number_of_concepts)
-    concept_codes = np.tile(np.arange(number_of_concepts, dtype=np.int32), number_of_relabellings)
-    common_neighbours = common_neighbours_matrix.reshape(-1)
-    alignment_scores = common_neighbours.astype(np.float64) / number_of_neighbours
-
-    result_df = pd.DataFrame(
-        {
-            "shuffle_id": pd.Categorical.from_codes(
-                shuffle_codes,
-                categories=[f"shuffle_{shuffle_i}" for shuffle_i in range(number_of_relabellings)],
-                ordered=True,
-            ),
-            "model": pd.Categorical.from_codes(
-                np.zeros(number_of_rows, dtype=np.int8),
-                categories=[model],
-            ),
-            "concept": pd.Categorical.from_codes(
-                concept_codes,
-                categories=concepts,
-                ordered=True,
-            ),
-            # Needed to tell k's apart in the combined all-k file (see main()): Snakemake outputs
-            # can't depend on wildcards, so separate per-k files from one job aren't possible.
-            "number_of_neighbours": np.full(number_of_rows, number_of_neighbours, dtype=np.int32),
-            "common_neighbours": common_neighbours,
-            "alignment_score": alignment_scores,
-            "alignment_score_percentage": alignment_scores * 100,
-        }
-    )
-
-    return result_df
-
 def compute_relabelled_alignment_scores_for_all_k(
     embedding_df,
     brain_nearest_neighbours_df,
@@ -109,15 +55,12 @@ def compute_relabelled_alignment_scores_for_all_k(
         )
 
     max_k = max(numbers_of_neighbours)
-    concept_indices = np.arange(len(concepts), dtype=np.int64)
 
-    restricted_embedding_matrix = extract_embedding_matrix(embedding_df.loc[concepts])
-    normalize_fn = normalize_fn_for_similarity_type(similarity_type)
-
-    observed_llm_neighbours, _ = compute_blockwise_topk_from_embeddings(
-        embedding_matrix = restricted_embedding_matrix,
+    observed_llm_neighbours = compute_topk_on_concept_subset(
+        embedding_df = embedding_df,
+        concepts = concepts,
         number_of_neighbours = max_k,
-        normalize_fn = normalize_fn,
+        similarity_type = similarity_type,
     )
 
     brain_neighbours_at_max_k = encode_brain_nearest_neighbours(
@@ -126,38 +69,14 @@ def compute_relabelled_alignment_scores_for_all_k(
         number_of_neighbours = max_k,
     )
 
-    brain_neighbour_masks_by_k = {}
-    common_neighbours_matrices_by_k = {}
-
-    for k in numbers_of_neighbours:
-        mask, _ = create_neighbour_mask(brain_neighbours_at_max_k[:, :k])
-        brain_neighbour_masks_by_k[k] = mask
-        common_neighbours_matrices_by_k[k] = np.empty(
-            (number_of_relabellings, len(concepts)),
-            dtype = select_common_neighbour_dtype(k),
-        )
-
-    inverse_permutation = np.empty(len(concepts), dtype=np.int64)
-
-    for shuffle_i in range(number_of_relabellings):
-        rng = create_relabelling_rng(random_seed, shuffle_i)
-        permutation = rng.permutation(len(concepts))
-        relabelled_llm_neighbours = relabel_nearest_neighbours(
-            observed_neighbours=observed_llm_neighbours,
-            permutation=permutation,
-            inverse_permutation=inverse_permutation,
-            concept_indices=concept_indices,
-        )
-
-        for k in numbers_of_neighbours:
-            common_neighbours_matrices_by_k[k][shuffle_i] = compute_common_neighbours(
-                neighbours = relabelled_llm_neighbours[:, :k],
-                neighbour_mask = brain_neighbour_masks_by_k[k],
-                concept_indices = concept_indices,
-            )
-
-        if shuffle_i == 0 or (shuffle_i + 1) % 100 == 0 or shuffle_i + 1 == number_of_relabellings:
-            print(f"completed relabelling {shuffle_i + 1}/{number_of_relabellings}")
+    # the brain side stays fixed and the LLM side is relabelled
+    common_neighbours_matrices_by_k = compute_relabelled_common_neighbours_for_all_k(
+        fixed_neighbours_at_max_k = brain_neighbours_at_max_k,
+        relabelled_neighbours_at_max_k = observed_llm_neighbours,
+        numbers_of_neighbours = numbers_of_neighbours,
+        number_of_relabellings = number_of_relabellings,
+        random_seed = random_seed,
+    )
 
     return {
         k: create_relabelled_alignment_dataframe(

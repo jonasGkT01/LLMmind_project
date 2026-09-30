@@ -75,13 +75,7 @@ rule plot_alignment_heatmap:
 rule plot_empirical_p_value_heatmap:
     input:
         llm_brain_empirical_p_values="results/all_alignment_scores.tsv",
-        llm_llm_empirical_p_values=lambda wc: [
-            f"results/alignment_scores/dataset-{wc.dataset}_model-{pair['model_1']}-{pair['stimuli_type_1']}_model-{pair['model_2']}-{pair['stimuli_type_2']}_empirical_{wc.similarity_type}-alignment_score_{wc.number_of_neighbours}NN.p_value.tsv"
-            for pair in LLM_LLM_PAIRINGS
-            if pair["dataset"] == wc.dataset
-            and pair["similarity_type"] == wc.similarity_type
-            and str(pair["number_of_neighbours"]) == str(wc.number_of_neighbours)
-        ]
+        llm_llm_empirical_p_values="results/all_model_model_alignment_scores.tsv"
     output:
         heatmap="results/pictures/alignment_p_value_heatmaps/dataset-{dataset}_{similarity_type}-alignment_score_{number_of_neighbours}NN_empirical_p_values.png"
     params:
