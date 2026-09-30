@@ -7,7 +7,7 @@ from libraries.aggregate_alignment_scores import aggregate_all_p_value_outputs
 
 # identifies one LLM-brain result, in the order the p-value files are paired up
 KEY_COLUMNS = ["dataset", "model", "stimuli_type", "similarity_type", "number_of_neighbours"]
-# the same columns in all_alignment_scores.tsv's column (and sort) order
+# the same columns in all_model_brain_alignment_scores.tsv's column (and sort) order
 METADATA_COLUMNS = ["dataset", "stimuli_type", "similarity_type", "number_of_neighbours", "model"]
 
 def parse_p_value_path(path):
@@ -63,7 +63,7 @@ def main():
                         nargs="+",
                         required=True,
                         help="All-k relabelled common-neighbours Parquet files",)
-    parser.add_argument("--all_alignment_scores_tsv",
+    parser.add_argument("--all_model_brain_alignment_scores_tsv",
                         required=True,
                         help="Output long model-level summary TSV",)
     args = parser.parse_args()
@@ -76,7 +76,7 @@ def main():
         parse_relabelled_common_neighbours_path=parse_relabelled_common_neighbours_path,
         key_columns=KEY_COLUMNS,
         metadata_columns=METADATA_COLUMNS,
-        tsv_path=args.all_alignment_scores_tsv,
+        tsv_path=args.all_model_brain_alignment_scores_tsv,
     )
 
 if __name__ == "__main__":

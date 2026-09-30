@@ -29,7 +29,7 @@ def benjamini_hochberg(p_values):
     return q_values
 
 def read_model_level_empirical_p_values(path, dataset, similarity_type, number_of_neighbours):
-    # the per-model 'model_level_empirical_p_value' rows of results/all_alignment_scores.tsv for one
+    # the per-model 'model_level_empirical_p_value' rows of results/all_model_brain_alignment_scores.tsv for one
     # (dataset, similarity type, k), as {model_key(model, stimuli_type): p-value}
     statistics_df = pd.read_csv(path, sep="\t",)
 

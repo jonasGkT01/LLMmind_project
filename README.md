@@ -408,7 +408,7 @@ Useful variations:
 snakemake --use-conda --cores <N> -n
 
 # build a specific target only, e.g. one dataset's alignment scores
-snakemake --use-conda --cores <N> results/all_alignment_scores.tsv
+snakemake --use-conda --cores <N> results/all_model_brain_alignment_scores.tsv
 
 # preview what a config change would rebuild, without editing config.yaml;
 # the rerun triggers leave out conda-env changes, so only the setting's own effect is listed
@@ -557,10 +557,10 @@ combined summary tables have a `similarity_type` column instead.
 - `results/spearman_alignment_scores/` — per-(dataset, model, similarity)
   Spearman alignment with its empirical p-value, one `_model_level` and one
   `_concept_level` TSV per configuration.
-- `results/all_alignment_scores.tsv`, `results/all_spearman_alignment_scores.tsv`
+- `results/all_model_brain_alignment_scores.tsv`, `results/all_spearman_alignment_scores.tsv`
   — combined summary tables across all configurations
 - `results/all_model_model_alignment_scores.tsv` — the model-model
-  counterpart of `all_alignment_scores.tsv`, in the same long format and with
+  counterpart of `all_model_brain_alignment_scores.tsv`, in the same long format and with
   the same statistics. The `model`/`stimuli_type` pair is replaced by one
   column per side: `dataset | similarity_type | number_of_neighbours |
   model_1 | stimuli_type_1 | model_2 | stimuli_type_2 | statistic | value`.
@@ -673,6 +673,9 @@ or editing scripts.
 
 ## Documentation
 
+- [`docs/reference/fmri_preprocessing.md`](docs/reference/fmri_preprocessing.md)
+  — what each dataset's authors did to the BOLD data before this workflow, and
+  what the workflow itself does (a source for the methods section)
 - [`docs/changelog/developers/`](docs/changelog/developers/) — technical
   changelog entries for contributors
 - [`docs/changelog/users/`](docs/changelog/users/) — plain-language changelog
@@ -683,5 +686,9 @@ coding assistants: Claude Code with Claude Sonnet 5 and, from 2026-09-23,
 Claude Opus 5.5. Each changelog entry ends with a note saying which model
 was used and whether the entry has been reviewed. The latest AI edit, on
 2026-09-30 with Claude Opus 5.5 (`claude-opus-5-5`) via Claude Code,
-described the compact relabelled files in "Outputs", after the per-k
-`_relabelled.parquet` copies were dropped to save disk space (TODO entry S23).
+linked the new `docs/reference/fmri_preprocessing.md` under "Documentation". An
+earlier edit that day renamed `results/all_alignment_scores.tsv` to
+`results/all_model_brain_alignment_scores.tsv`, to match
+`all_model_model_alignment_scores.tsv`. An earlier edit that day described the
+compact relabelled files in "Outputs", after the per-k `_relabelled.parquet`
+copies were dropped to save disk space (TODO entry S23).
