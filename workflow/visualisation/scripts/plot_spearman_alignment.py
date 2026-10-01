@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
+# last AI edit: 2026-10-01, see docs/changelog/developers/ for details
 import argparse
 from pathlib import Path
 
@@ -135,8 +137,9 @@ def main():
         key=lambda labels: labels.map(
             {
                 row.label: model_sort_key(
-                    model=row.model,
-                    parameters_by_model=parameters_by_model,
+                    model = row.model,
+                    stimuli_type = row.stimuli_type,
+                    parameters_by_model = parameters_by_model,
                 )
                 for row in model_df.itertuples(index=False)
             }
