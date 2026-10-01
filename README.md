@@ -1,5 +1,7 @@
 # LLMmind
 
+> *Written with AI assistance (Claude Code). See the [AI attribution](#ai-attribution) note at the end.*
+
 A Snakemake pipeline that measures how well the internal representations of
 pretrained language and vision models ("LLMs") align with human brain
 activity, using nearest-neighbour structure in representational space as the
@@ -696,20 +698,13 @@ or editing scripts.
 - [`docs/changelog/users/`](docs/changelog/users/) — plain-language changelog
   entries describing what changed for anyone running the pipeline
 
-Parts of this README and of the changelog entries were drafted with AI
-coding assistants: Claude Code with Claude Sonnet 5 and, from 2026-09-23,
-Claude Opus 5.5. Each changelog entry ends with a note saying which model
-was used and whether the entry has been reviewed. The latest AI edit, on
-2026-10-01 with Claude Opus 5.5 (`claude-opus-5-5`) via Claude Code, added
-the "exit status 126" entry under "Troubleshooting", after the LLM-LLM
-aggregation rule crashed because its command line was too long (TODO entry
-S33). An earlier edit that day, with the same model, linked the new `docs/reference/2026-10-01_0926_clean_run_duration.md` under
-"Documentation". An edit on 2026-09-30 with the same model linked the new
-`docs/reference/model_embeddings.md` under "Documentation", after
-a project review. An earlier edit that day linked the new
-`docs/reference/fmri_preprocessing.md` under "Documentation". An
-earlier edit that day renamed `results/all_alignment_scores.tsv` to
-`results/all_model_brain_alignment_scores.tsv`, to match
-`all_model_model_alignment_scores.tsv`. An earlier edit that day described the
-compact relabelled files in "Outputs", after the per-k `_relabelled.parquet`
-copies were dropped to save disk space (TODO entry S23).
+---
+
+## AI attribution
+
+*This document was written, in whole or in part, with AI coding assistants via Claude Code (Anthropic).*
+
+- *Models: Claude Sonnet 5 (`claude-sonnet-5`, until 2026-09-22); Claude Opus 5.5 (`claude-opus-5-5`, from 2026-09-23).*
+- *Latest AI edit: 2026-10-01, Claude Opus 5.5: added the attribution note under the title and replaced the attribution paragraph at the end, which had grown into an edit log, with this block, after the developer could not find the attribution.*
+- *Edit history: see [`docs/changelog/`](docs/changelog/).*
+- *Review status: not yet reviewed by the developer.*
