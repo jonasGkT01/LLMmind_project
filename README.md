@@ -28,9 +28,9 @@ the pipeline:
 ## Repository layout
 
 ```
-config/                   Snakemake configuration (config.yaml)
+config/                     Snakemake configuration (config.yaml)
 workflow/
-  Snakefile                Top-level Snakefile: wires up all modules and the `all` rule
+  Snakefile                 Top-level Snakefile: wires up all modules and the `all` rule
   libraries/                Shared Python helper modules (similarity, alignment,
                              nearest-neighbours, statistics, plotting utilities)
   dataset_processing/       Per-dataset rules: turn raw fMRI + stimuli into
