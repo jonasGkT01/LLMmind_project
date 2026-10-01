@@ -110,7 +110,7 @@ def main():
 
     fig, ax = plt.subplots(figsize=(model_figure_width(len(labels)), 7,))
 
-    style_model_x_axis(ax, labels)
+    style_model_x_axis(ax, models)
     ax.scatter(x_values, values, s=10, c=colours, alpha=alpha, edgecolors="none", zorder=2,)
     ax.boxplot(boxplot_values,
                positions=range(len(labels)),
@@ -127,7 +127,7 @@ def main():
     annotate_significance(ax, range(len(labels)), p_values, q_values)
 
     # boxplot() resets the ticks, so restore the model labels
-    style_model_x_axis(ax, labels)
+    style_model_x_axis(ax, models)
     colour_tick_labels_by_stimuli_type(ax, stimuli_types)
     set_enrichment_y_scale(ax)
     ax.set_ylim(*enrichment_ylim(concept_df, model_df))

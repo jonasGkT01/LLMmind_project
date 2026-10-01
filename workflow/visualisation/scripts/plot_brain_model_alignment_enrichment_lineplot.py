@@ -89,7 +89,7 @@ def main():
 
     fig, ax = plt.subplots(figsize=(model_figure_width(len(labels)), 7))
 
-    x = style_model_x_axis(ax, labels)
+    x = style_model_x_axis(ax, models)
     values = model_df["enrichment"].to_numpy(dtype=float)
     errors = model_df["null_standard_deviation"].to_numpy(dtype=float)
 

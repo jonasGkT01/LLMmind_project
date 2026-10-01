@@ -166,7 +166,7 @@ def main():
     add_model_family_annotations(ax, models)
 
     ax.set_xticks(x)
-    ax.set_xticklabels(labels, rotation=55, ha="right")
+    ax.set_xticklabels(models, rotation = 55, ha = "right")
     colour_tick_labels_by_stimuli_type(ax, stimuli_types)
     ax.set_xlabel(MODEL_AXIS_LABEL)
     ax.set_ylabel(y_axis_label(MEAN_ALIGNMENT_SCORE_LABEL, STANDARD_ERROR))

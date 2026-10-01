@@ -175,7 +175,7 @@ def main():
     add_model_family_annotations(ax, models)
 
     ax.set_xticks(x)
-    ax.set_xticklabels(labels, rotation=55, ha="right",)
+    ax.set_xticklabels(models, rotation = 55, ha = "right",)
     colour_tick_labels_by_stimuli_type(ax, stimuli_types)
 
     ax.set_xlabel(MODEL_AXIS_LABEL)
@@ -234,7 +234,7 @@ def main():
     annotate_significance(ax, x, model_df["empirical_upper_tail_p_value"], model_df["q_value"])
 
     ax.set_xticks(range(len(labels)))
-    ax.set_xticklabels(labels, rotation=55, ha="right",)
+    ax.set_xticklabels(models, rotation = 55, ha = "right",)
     colour_tick_labels_by_stimuli_type(ax, stimuli_types)
 
     ax.set_xlim(-0.6, len(labels) - 0.4)

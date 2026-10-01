@@ -222,8 +222,13 @@ def main():
     ax.set_xticks(np.arange(len(labels)))
     ax.set_yticks(np.arange(len(labels)))
 
-    ax.set_xticklabels(labels, rotation=90)
-    ax.set_yticklabels(labels)
+    # model names only: the stimulus type is shown by the label colour
+    tick_names = [
+        label if label == "brain" else model_metadata[label]["model"]
+        for label in labels
+    ]
+    ax.set_xticklabels(tick_names, rotation = 90)
+    ax.set_yticklabels(tick_names)
 
     stimuli_types = [None if label == "brain" else model_metadata[label]["stimuli_type"] for label in labels]
     colour_tick_labels_by_stimuli_type(ax, stimuli_types, axes="xy")

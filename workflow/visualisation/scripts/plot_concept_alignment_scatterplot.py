@@ -203,7 +203,7 @@ def main():
     annotate_significance(ax, range(len(labels)), p_values, q_values)
 
     ax.set_xticks(range(len(labels)))
-    ax.set_xticklabels(labels, rotation=55, ha="right",)
+    ax.set_xticklabels(models, rotation = 55, ha = "right",)
     colour_tick_labels_by_stimuli_type(ax, stimuli_types)
 
     ax.set_xlim(-0.6, len(labels) - 0.4,)
