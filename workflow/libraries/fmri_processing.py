@@ -1,6 +1,8 @@
+# edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
+# last AI edit: 2026-10-01, see docs/changelog/developers/ for details
+
 import numpy as np
 from scipy import sparse
-from scipy.stats import pearsonr
 
 import nibabel as nib
 from nilearn.image import resample_to_img
@@ -76,22 +78,13 @@ def is_constant_signal(x, axis=0):
 
     return signal_range <= CONSTANT_SIGNAL_RTOL*magnitude
 
-def safe_pearsonr(x, y):
-    if is_constant_signal(x) or is_constant_signal(y):
-        return 0.0
-
-    r, _ = pearsonr(x, y)
-
-    return float(np.nan_to_num(r, nan=0.0, posinf=0.0, neginf=0.0,))
-
 def compute_leave_one_out_isc(data):
     """
         Leave-one-out ISC, vectorized across parcels.
 
-        Equivalent to calling safe_pearsonr(data[subject, :, parcel], others_mean[:, parcel]) for every
-        (subject, parcel) pair, but as a single vectorized Pearson correlation per subject instead of one
-        scipy.stats.pearsonr call per parcel: at nsd_data's scale (called once per stimulus, ~66k times)
-        the per-parcel Python/SciPy call overhead otherwise dominates runtime.
+        For every parcel, the mean over subjects of the Pearson r between each subject's
+        time course and the mean time course of the other subjects. A constant signal
+        gives r = 0.
     """
     n_subjects = data.shape[0]
     n_parcels = data.shape[2]
