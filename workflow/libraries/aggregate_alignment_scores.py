@@ -1,3 +1,6 @@
+# edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
+# last AI edit: 2026-10-01, see docs/changelog/developers/ for details
+from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
 import numpy as np
@@ -63,18 +66,6 @@ def read_hypergeometric_p_values(path):
         raise ValueError(f"Hypergeometric p-value file {path} contains duplicated concepts: {duplicated_concepts[:10]}")
 
     return hypergeometric_df
-
-def read_unique_relabelled_alignment_scores(path, number_of_neighbours):
-    relabelled_df = read_relabelled_alignment_scores(path, number_of_neighbours)
-
-    duplicated_relabelled_scores = relabelled_df[
-        relabelled_df.duplicated(subset=["shuffle_id", "concept"], keep=False)
-    ][["shuffle_id", "concept"]].head(10).to_dict(orient="records")
-
-    if duplicated_relabelled_scores:
-        raise ValueError(f"Relabelled file {path} contains duplicated shuffle/concept scores for k={number_of_neighbours}: {duplicated_relabelled_scores}")
-
-    return relabelled_df
 
 def validate_matching_p_values(
     empirical_df,
@@ -250,6 +241,17 @@ def aggregate_model_results(
         "min_hypergeom_p_value_across_concepts": hypergeometric_df["hypergeometric_upper_tail_p_value"].min(),
     }
 
+def aggregate_result(metadata, empirical_path, hypergeometric_path, relabelled_path):
+    return aggregate_model_results(
+        metadata = metadata,
+        empirical_df = read_empirical_p_values(empirical_path),
+        hypergeometric_df = read_hypergeometric_p_values(hypergeometric_path),
+        relabelled_df = read_relabelled_alignment_scores(
+            relabelled_path,
+            metadata["number_of_neighbours"],
+        ),
+    )
+
 def reshape_summary(summary_df, metadata_columns):
     # metadata_columns sets both the output column order and the sort order
     statistic_columns = [
@@ -328,6 +330,7 @@ def aggregate_all_p_value_outputs(
     key_columns,
     metadata_columns,
     tsv_path,
+    threads,
 ):
     # key_columns identify one result; metadata_columns are the same names in output order. One
     # all-k relabelled file serves every k of a result, so it is keyed without number_of_neighbours.
@@ -347,18 +350,25 @@ def aggregate_all_p_value_outputs(
         "relabelled common-neighbours",
     )
 
-    summary_rows = []
+    sorted_keys = sorted(empirical_keys)
+    metadata_list = [dict(zip(key_columns, key)) for key in sorted_keys]
+    relabelled_paths = [
+        relabelled_paths_by_key[
+            tuple(metadata[column] for column in relabelled_key_columns)
+        ]
+        for metadata in metadata_list
+    ]
 
-    for key in sorted(empirical_keys):
-        metadata = dict(zip(key_columns, key))
-        relabelled_path = relabelled_paths_by_key[tuple(metadata[column] for column in relabelled_key_columns)]
-
-        summary_rows.append(
-            aggregate_model_results(
-                metadata=metadata,
-                empirical_df=read_empirical_p_values(empirical_paths_by_key[key]),
-                hypergeometric_df=read_hypergeometric_p_values(hypergeometric_paths_by_key[key]),
-                relabelled_df=read_unique_relabelled_alignment_scores(relabelled_path, metadata["number_of_neighbours"]),
+    # aggregate the results in parallel; map() keeps the sorted key order
+    with ProcessPoolExecutor(max_workers = threads) as executor:
+        summary_rows = list(
+            executor.map(
+                aggregate_result,
+                metadata_list,
+                [empirical_paths_by_key[key] for key in sorted_keys],
+                [hypergeometric_paths_by_key[key] for key in sorted_keys],
+                relabelled_paths,
+                chunksize = 16,
             )
         )
 

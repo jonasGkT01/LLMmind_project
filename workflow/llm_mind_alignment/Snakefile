@@ -115,6 +115,7 @@ rule aggregate_all_p_value_outputs:
         ))
     output:
         all_model_brain_alignment_scores_tsv="results/all_model_brain_alignment_scores.tsv"
+    threads: 4
     conda:
         "envs/llm_mind_alignment_environment.yaml"
     shell:
@@ -123,5 +124,6 @@ rule aggregate_all_p_value_outputs:
                 --empirical_p_values {input.empirical_p_values:q} \
                 --hypergeometric_p_values {input.hypergeometric_p_values:q} \
                 --relabelled_common_neighbours {input.relabelled_common_neighbours:q} \
-                --all_model_brain_alignment_scores_tsv {output.all_model_brain_alignment_scores_tsv:q}
+                --all_model_brain_alignment_scores_tsv {output.all_model_brain_alignment_scores_tsv:q} \
+                --threads {threads}
         """

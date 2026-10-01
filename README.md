@@ -448,6 +448,9 @@ internally across whatever `--cores <N>` is given — notably NSD's
 functional-to-MNI registration step (`assemble_nsd_bold`), which maps
 stimulus presentations to MNI space and extracts their parcel time series
 using up to `<N>` worker processes at once. For that step, a higher `--cores` value directly speeds it up.
+The two summary-table steps (`aggregate_all_p_value_outputs` and
+`aggregate_all_llm_llm_p_value_outputs`) each use 4 worker processes (`threads: 4`), so they
+need `--cores 4` or more to run at full speed.
 
 ### Troubleshooting
 
@@ -705,6 +708,6 @@ or editing scripts.
 *This document was written, in whole or in part, with AI coding assistants via Claude Code (Anthropic).*
 
 - *Models: Claude Sonnet 5 (`claude-sonnet-5`, until 2026-09-22); Claude Opus 5.5 (`claude-opus-5-5`, from 2026-09-23).*
-- *Latest AI edit: 2026-10-01, Claude Opus 5.5: added the attribution note under the title and replaced the attribution paragraph at the end, which had grown into an edit log, with this block, after the developer could not find the attribution.*
+- *Latest AI edit: 2026-10-01, Claude Opus 5.5: noted that the two summary-table steps use 4 worker processes, after the developer approved TODO entry S34 (faster p-value aggregation).*
 - *Edit history: see [`docs/changelog/`](docs/changelog/).*
 - *Review status: not yet reviewed by the developer.*

@@ -1,5 +1,7 @@
 # Clean run duration: how long a full run takes, rule by rule
 
+> *Written with AI assistance (Claude Code). See the [AI attribution](#ai-attribution) note at the end.*
+
 This page estimates how long a **clean run** of the whole workflow takes (every output rebuilt,
 e.g. `snakemake --forceall`). It assumes the usual command on **node5** (1× RTX A5000 24 GB,
 251 GB RAM):
@@ -88,7 +90,7 @@ narratives rules, which do the same steps.
 | `relabel_llm_similarity_and_compute_relabelled_llm_alignment_score` | 300 | 16 s | 24 s | 53 min | 2026-09-29 |
 | `compute_empirical_p_value` | 768 | 4 s | 7 s | 41 min | 2026-09-30 |
 | `compute_hypergeometric_p_value` | 768 | 1 s | 11 s | 20 min | 2026-09-29 |
-| `aggregate_all_p_value_outputs` | 1 | 16 min | | 16 min | 2026-09-30 |
+| `aggregate_all_p_value_outputs` | 1 | ~5 min (estimate) | | ~5 min | 16 min on 2026-09-30, before S34 |
 | `compute_spearman_alignmentwith_empirical_p_value` | 300 | 1.8 min | 2.2 min | 5.2 h | 2026-09-29 |
 | `aggregate_all_spearman_alignment_scores` | 1 | 2 s | | 2 s | 2026-09-29 |
 
@@ -100,17 +102,7 @@ narratives rules, which do the same steps.
 | `relabel_llm_similarity_and_compute_relabelled_llm_llm_alignment_score` | 4,038 | 13 s | 17 s | 9.8 h | 2026-09-30 |
 | `compute_llm_llm_empirical_p_value` | 11,184 | 3 s | 7 s | 9.6 h | 2026-09-30 |
 | `compute_llm_llm_hypergeometric_p_value` | 11,184 | 1 s | 4 s | 4.7 h | 2026-09-30 |
-| `aggregate_all_llm_llm_p_value_outputs` | 1 | not measured | | ~15 min (guess) | never finished |
-
-`aggregate_all_llm_llm_p_value_outputs` has never finished. In the 2026-09-30 run, one
-`compute_llm_llm_hypergeometric_p_value` job wrote its output at 19:22 but its process never
-exited, so the run was stuck for about 14 h and then failed on 2026-10-01 at 09:19. The guess
-assumes the rule costs about as much as `aggregate_all_p_value_outputs`. A hung job like that one
-is not included in the estimate.
-
-The restart at 09:20 then failed in `aggregate_all_llm_llm_p_value_outputs` itself, with exit
-status 126: its 26,000 input paths made a 4 MB command line, above Linux's 2 MB limit. Since
-2026-10-01 the rule passes them through an argument file, so it can now run.
+| `aggregate_all_llm_llm_p_value_outputs` | 1 | ~1 h (estimate, 1–2 h) | | ~1 h | 4 h 10 min on 2026-10-01, before S34 |
 
 ### 2e. Plots
 
@@ -126,7 +118,7 @@ status 126: its 26,000 input paths made a 4 MB command line, above Linux's 2 MB 
 
 ## 3. From job-hours to elapsed time
 
-The whole run is about **56 job-hours** of work (about 62 with downloads). It does not simply
+The whole run is about **57 job-hours** of work (about 63 with downloads). It does not simply
 take 56/4 h, for three reasons:
 
 1. **`assemble_nsd_bold` takes all 4 cores** (`threads: workflow.cores`) for 11.4 h. Nothing else
@@ -144,9 +136,9 @@ take 56/4 h, for three reasons:
 | Rest of the brain data processing (caption_scene ~3 h, narratives and nature_stories ~1–2 h, mostly in parallel) | ~3 h |
 | Embeddings (GPU); mostly overlap with the stage above | ~0–1 h extra |
 | Alignment, statistics and plots (~36 job-h at 3.7 in parallel) | ~10 h |
-| Final aggregation steps (one job at a time at the end) | ~0.5 h |
-| **Total, models already downloaded** | **~25 h (24–30 h)** |
-| **Total, models downloaded too** | **~27 h** |
+| Final aggregation steps (one job at a time at the end) | ~1.5 h |
+| **Total, models already downloaded** | **~26 h (25–31 h)** |
+| **Total, models downloaded too** | **~28 h** |
 
 As a check against real runs: the 2026-09-24 run (mostly brain data processing, including
 `assemble_nsd_bold`) took 15.3 h. The 2026-09-29 run (embeddings and all downstream steps,
@@ -160,11 +152,49 @@ it prints a `[timestamp]` line followed by `rule <name>:` and `jobid: <n>`, and 
 `[timestamp]` line followed by `Finished jobid: <n> (Rule: <name>)`. Pairing the two timestamps
 by job id gives each job's duration. `snakemake -n --forceall` prints the job count per rule.
 
+## 5. Changes
+
+Changes to the estimate, oldest first. Each entry gives when the change happened, what changed
+and why. The tables above always show the current estimate.
+
+### 2026-10-01 09:19 — `aggregate_all_llm_llm_p_value_outputs` had never finished
+
+In the 2026-09-30 run, one `compute_llm_llm_hypergeometric_p_value` job wrote its output at 19:22
+but its process never exited, so the run was stuck for about 14 h and then failed on 2026-10-01
+at 09:19. The rule's duration was therefore only a guess (~15 min, assuming it costs about as
+much as `aggregate_all_p_value_outputs`). A hung job like that one is not included in the
+estimate.
+
+### 2026-10-01 09:37 — `aggregate_all_llm_llm_p_value_outputs` can run
+
+The restart at 09:20 failed in `aggregate_all_llm_llm_p_value_outputs` itself, with exit status
+126: its 26,000 input paths made a 4 MB command line, above Linux's 2 MB limit. The rule now
+passes them through an argument file (TODO entry S33), so it can run. No duration changed.
+
+### 2026-10-01 13:55 — `aggregate_all_llm_llm_p_value_outputs` measured: 4 h 10 min
+
+The first complete run of the rule, on node5 (09:45:33–13:55:48, log
+`.snakemake/log/2026-10-01T094228.002030.snakemake.log`), took 4 h 10 min, not the ~15 min
+guessed above. It handled the 11,184 results one at a time on one core, about 1.4 s each, most of
+it reading the 40-million-row relabelled files of Caption Scene and NSD.
+
+### 2026-10-01 16:40 — both aggregation rules made faster (TODO entry S34)
+
+Both `aggregate_all_p_value_outputs` and `aggregate_all_llm_llm_p_value_outputs` now skip a
+redundant duplicate check and process the results with 4 worker processes (`threads: 4`). On the
+frontend, under heavy load from other users, the LLM-brain summary went from 23 min to 6 min,
+and a 180-result LLM-LLM sample from 4.5 min to 2.4 min, with identical output. The new node5
+durations are estimates until the next run measures them: ~5 min (was 16 min) and ~1 h, 1–2 h
+(was 4 h 10 min). With the measured 4 h 10 min replacing the ~15 min guess and then S34, the
+whole run is ~26 h instead of ~25 h; the final aggregation stage is ~1.5 h instead of ~0.5 h.
+
 ---
 
-*Written on 2026-10-01 with an AI chatbot: Claude Opus 5.5 (`claude-opus-5-5`) via Claude Code,
-in answer to "produce a file inside docs/reference/ that summarises how long a clean run would
-take to end, specify each rule how long would it take". The figures were computed from the
-Snakemake logs in `.snakemake/log/` and from a dry run of the workflow on that date. Not yet
-reviewed by a human. Updated the same day, with the same model and tool, to record the exit-126 crash
-of `aggregate_all_llm_llm_p_value_outputs` and its fix (TODO entry S33).*
+## AI attribution
+
+*This document was written, in whole or in part, with AI coding assistants via Claude Code (Anthropic).*
+
+- *Models: Claude Opus 5.5 (`claude-opus-5-5`).*
+- *Latest AI edit: 2026-10-01, Claude Opus 5.5: recorded the measured LLM-LLM aggregation time and the S34 speed-up (tables and "Changes"), after moving the dated updates into a "Changes" section at the end, as the developer asked for one duration file with changes recorded at the bottom.*
+- *Edit history: see [`docs/changelog/`](../changelog/).*
+- *Review status: not yet reviewed by the developer.*
