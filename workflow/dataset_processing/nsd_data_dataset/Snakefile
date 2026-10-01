@@ -1,3 +1,6 @@
+# edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
+# last AI edit: 2026-10-01, see docs/changelog/developers/ for details
+
 import pandas as pd
 
 from pathlib import Path
@@ -62,16 +65,15 @@ def write_nsd_isc_manifest(parcel_manifest_path, output_manifest_path):
     output_manifest_path.parent.mkdir(parents=True, exist_ok=True)
 
     with output_manifest_path.open("w") as output_manifest_file:
-        output_manifest_file.write("stimulus_id\tsubject\trepetition\tparcel_time_series\tisc_numpy_file\tisc_nifti_file\n")
+        output_manifest_file.write("stimulus_id\tsubject\trepetition\tparcel_time_series\tisc_numpy_file\n")
 
         for stimulus_identifier, stimulus_manifest in parcel_manifest.groupby("stimulus_id", sort=True):
             isc_numpy_file = f"{NSD_ISC_DIRECTORY}/task-{stimulus_identifier}_isc_mean.npy"
-            isc_nifti_file = f"{NSD_ISC_DIRECTORY}/task-{stimulus_identifier}_isc_mean.nii.gz"
             stimulus_manifest = stimulus_manifest.sort_values(["subject", "repetition"])
 
             for sample in stimulus_manifest.itertuples(index=False):
                 output_manifest_file.write(
-                    f"{stimulus_identifier}\t{int(sample.subject)}\t{int(sample.repetition)}\t{sample.parcel_time_series}\t{isc_numpy_file}\t{isc_nifti_file}\n"
+                    f"{stimulus_identifier}\t{int(sample.subject)}\t{int(sample.repetition)}\t{sample.parcel_time_series}\t{isc_numpy_file}\n"
                 )
 
 rule all_nsd_data_dataset:
@@ -166,18 +168,14 @@ rule compute_nsd_isc:
         isc_dir=directory(NSD_ISC_DIRECTORY),
         done=touch(NSD_ISC_DONE)
     params:
-        number_of_regions=config["atlas"]["n_rois"],
-        number_of_yeo_networks=config["atlas"]["yeo_networks"],
-        atlas_dir=config["atlas"]["atlas_dir"]
+        number_of_regions = config["atlas"]["n_rois"]
     conda:
         "envs/nsd_data_dataset_processing_environment.yaml"
     shell:
         r"""
             python3 workflow/dataset_processing/nsd_data_dataset/scripts/compute_nsd_isc.py \
                 --manifest {input.manifest:q} \
-                --number_of_regions {params.number_of_regions} \
-                --number_of_yeo_networks {params.number_of_yeo_networks} \
-                --atlas_dir {params.atlas_dir:q}
+                --number_of_regions {params.number_of_regions}
         """
 
 rule export_nsd_stimuli:
