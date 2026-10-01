@@ -1,3 +1,5 @@
+# edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
+# last AI edit: 2026-10-01, see docs/changelog/developers/ for details
 rule all_llm_llm_alignment:
     input:
         [
@@ -115,6 +117,7 @@ rule aggregate_all_llm_llm_p_value_outputs:
         all_model_model_alignment_scores_tsv="results/all_model_model_alignment_scores.tsv"
     params:
         model_order=MODEL_KEYS
+    threads: 4
     conda:
         "envs/llm_llm_alignment_environment.yaml"
     shell:
@@ -130,6 +133,7 @@ rule aggregate_all_llm_llm_p_value_outputs:
                 --all_model_model_alignment_scores_tsv {output.all_model_model_alignment_scores_tsv:q} \
                 > "$args_file"
             python3 workflow/llm_llm_alignment/scripts/aggregate_all_llm_llm_p_value_outputs.py \
-                @"$args_file"
+                @"$args_file" \
+                --threads {threads}
             rm "$args_file"
         """

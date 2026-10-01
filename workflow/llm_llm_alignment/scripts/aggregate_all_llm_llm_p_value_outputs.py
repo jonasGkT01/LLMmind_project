@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
+# last AI edit: 2026-10-01, see docs/changelog/developers/ for details
 import argparse
 from pathlib import Path
 import re
@@ -104,6 +106,10 @@ def main():
     parser.add_argument("--all_model_model_alignment_scores_tsv",
                         required=True,
                         help="Output long model-pair-level summary TSV",)
+    parser.add_argument("--threads", 
+                        type = int, 
+                        required = True, 
+                        help = "Number of relabelled files processed in parallel")
     args = parser.parse_args()
 
     validate_canonical_pair_order(args.empirical_p_values, args.model_order)
@@ -117,6 +123,7 @@ def main():
         key_columns=KEY_COLUMNS,
         metadata_columns=METADATA_COLUMNS,
         tsv_path=args.all_model_model_alignment_scores_tsv,
+        threads = args.threads,
     )
 
 if __name__ == "__main__":
