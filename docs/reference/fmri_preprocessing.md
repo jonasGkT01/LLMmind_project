@@ -1,5 +1,7 @@
 # fMRI preprocessing: what the dataset authors did, and what this workflow does
 
+> *Written with AI assistance (Claude Code). See the [AI attribution](#ai-attribution) note at the end.*
+
 This page describes, for each of the four fMRI datasets, how the BOLD data were processed
 **before** this workflow receives them, and the few steps the workflow **itself** applies before
 computing the brain representations (the per-stimulus, 200-parcel ISC vectors). Use it as the
@@ -68,12 +70,31 @@ steps are listed below.
 nearest neighbour onto the BOLD grid, or the fsaverage atlas for Nature Stories. Each parcel's time
 series is the **unweighted mean of its voxels** (or vertices).
 
-**5. Equal lengths.** Narratives truncates all subjects of a story to the shortest run. The other
-datasets require equal lengths and stop with an error otherwise.
+**5. Equal lengths.** Narratives truncates all subjects of a story to the shortest run and lists the
+truncated files, with their original lengths, in the job log. This is safe because every subject of
+a story has the same `events.tsv`: the stimulus starts at the same time in every run, and the
+shortest run ends at the stimulus end (merlin: 33.5 s + 886 s = 919.5 s = 613 TRs × 1.5 s). The
+longer runs only add scanning after the story. Five stories are affected: merlin (613–657 TRs),
+sherlock (724–746), shapesphysical (309–321), shapessocial (309–316) and slumlordreach
+(1205–1223); checked on 2026-09-30. The other datasets require equal lengths and stop with an
+error otherwise.
 
 **6. ISC.** For each stimulus and parcel: the Pearson correlation between each subject (NSD: each
 presentation) and the mean of all others, averaged over subjects. It is set to 0 when either time
 series is constant. The 200 values form the stimulus's brain representation.
+
+The average over subjects is the arithmetic mean of r, without a Fisher z-transform. This is on
+purpose:
+
+- NSD and Caption Scene correlate windows of only 3 and 6 volumes, so many r values lie near ±1.
+  There `arctanh` explodes (≈ 7.25 at r = 0.999999), a single subject would dominate the mean, and
+  the standard error of z, `1/sqrt(n - 3)`, is undefined for n = 3.
+- For Narratives and Nature Stories the ISC values are small, `tanh(z) ≈ z`, and the two means
+  barely differ.
+- Downstream, the ISC vectors enter only through top-k neighbours under cosine, Pearson or
+  Spearman similarity, which a small shrinkage toward zero hardly affects.
+
+The methods section should state the same.
 
 ### Why z-scoring would change (almost) nothing, and what it means for cosine similarity
 
@@ -115,11 +136,12 @@ series is constant. The 200 values form the stimulus's brain representation.
 
 ---
 
-*This page was written by an AI coding assistant.*
+## AI attribution
 
-- *Tool: Claude Code (Anthropic), VS Code extension, on the lab server.*
-- *Model: Claude Opus 5.5 (`claude-opus-5-5`).*
-- *Date: 2026-09-30.*
+*This document was written, in whole or in part, with AI coding assistants via Claude Code (Anthropic).*
+
+- *Models: Claude Opus 5.5 (`claude-opus-5-5`).*
+- *Latest AI edit: 2026-10-01, Claude Opus 5.5: step 6 explains why the ISC is a plain mean of r, without Fisher z (TODO S11, after the developer asked to implement the remaining solutions while waiting for S34).*
 - *Basis: the developer (Jonas Salvalaggio) asked for a short document separating the dataset
   authors' preprocessing from the workflow's own processing (TODO P9), with the missing facts
   checked online. The dataset rows come from the sources listed above. The Caption Scene space and
@@ -130,4 +152,5 @@ series is constant. The 200 values form the stimulus's brain representation.
 - *Not verified: the Narratives confound list (6 motion + 5 aCompCor + cosine 128 s) is taken
   from the paper as summarised by a search engine, since the full text could not be fetched. The
   `-polort 2` detrending and the 6 mm smoothing were read directly from the authors' scripts.*
-- *Review status: not yet reviewed by the developer at the time of writing.*
+- *Edit history: see [`docs/changelog/`](../changelog/).*
+- *Review status: not yet reviewed by the developer.*

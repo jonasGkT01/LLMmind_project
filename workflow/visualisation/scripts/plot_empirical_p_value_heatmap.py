@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
+# last AI edit: 2026-10-01, see docs/changelog/developers/ for details
 import argparse
 from pathlib import Path
 
@@ -7,7 +9,7 @@ import numpy as np
 import pandas as pd
 
 from libraries.compute_statistics import benjamini_hochberg
-from libraries.manage_model_metadata import model_family, model_key, parse_model_parameters
+from libraries.manage_model_metadata import model_key, model_sort_key, parse_model_parameters
 from libraries.visualisation_utils import colour_tick_labels_by_stimuli_type, contrasting_text_color, EMPIRICAL_P_VALUE_LABEL, PAIRWISE_AXIS_LABEL, PAIRWISE_EMPIRICAL_P_VALUE, PAIRWISE_LEVEL, plot_title, SEQUENTIAL_COLOURMAP, significance_label, stimuli_type_legend_handles
 
 def validate_p_value(value, source):
@@ -17,14 +19,6 @@ def validate_p_value(value, source):
         raise ValueError(f"{source} contains an invalid empirical p-value: {p_value}")
     
     return p_value
-
-def model_sort_key(label, model_metadata):
-    if label == "brain":
-        return (1, "", "", float("inf"), "")
-    
-    metadata = model_metadata[label]
-
-    return (0, model_family(metadata["model"]), metadata["number_of_parameters"], metadata["model"], metadata["stimuli_type"],)
 
 def read_llm_llm_records(path, dataset, similarity_type, number_of_neighbours, parameters_by_model):
     p_value_df = pd.read_csv(path, sep="\t")
@@ -175,7 +169,6 @@ def main():
             model_metadata[label] = {
                 "model": model,
                 "stimuli_type": stimuli_type,
-                "number_of_parameters": parameters_by_model[model],
             }
 
         if (label_1, label_2) in pair_values or (label_2, label_1) in pair_values:
@@ -191,7 +184,11 @@ def main():
 
     labels = sorted(
         set(model_metadata) | {"brain"},
-        key=lambda label: model_sort_key(label, model_metadata),
+        key = lambda label: (1,) if label == "brain" else (0, *model_sort_key(
+            model_metadata[label]["model"],
+            model_metadata[label]["stimuli_type"],
+            parameters_by_model,
+        )),
     )
 
     p_value_matrix = np.full((len(labels), len(labels)), np.nan)
@@ -225,8 +222,13 @@ def main():
     ax.set_xticks(np.arange(len(labels)))
     ax.set_yticks(np.arange(len(labels)))
 
-    ax.set_xticklabels(labels, rotation=90)
-    ax.set_yticklabels(labels)
+    # model names only: the stimulus type is shown by the label colour
+    tick_names = [
+        label if label == "brain" else model_metadata[label]["model"]
+        for label in labels
+    ]
+    ax.set_xticklabels(tick_names, rotation = 90)
+    ax.set_yticklabels(tick_names)
 
     stimuli_types = [None if label == "brain" else model_metadata[label]["stimuli_type"] for label in labels]
     colour_tick_labels_by_stimuli_type(ax, stimuli_types, axes="xy")

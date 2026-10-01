@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
+# last AI edit: 2026-10-01, see docs/changelog/developers/ for details
 import argparse
 from pathlib import Path
 
@@ -61,7 +63,11 @@ def main():
     stimuli_type_by_label = dict(zip(model_df["label"], model_df["stimuli_type"]))
     labels = sorted(
         model_df["label"],
-        key=lambda label: model_sort_key(model=model_by_label[label], parameters_by_model=parameters_by_model,),
+        key = lambda label: model_sort_key(
+            model = model_by_label[label],
+            stimuli_type = stimuli_type_by_label[label],
+            parameters_by_model = parameters_by_model,
+        ),
     )
     models = [model_by_label[label] for label in labels]
     stimuli_types = [stimuli_type_by_label[label] for label in labels]
@@ -104,7 +110,7 @@ def main():
 
     fig, ax = plt.subplots(figsize=(model_figure_width(len(labels)), 7,))
 
-    style_model_x_axis(ax, labels)
+    style_model_x_axis(ax, models)
     ax.scatter(x_values, values, s=10, c=colours, alpha=alpha, edgecolors="none", zorder=2,)
     ax.boxplot(boxplot_values,
                positions=range(len(labels)),
@@ -121,7 +127,7 @@ def main():
     annotate_significance(ax, range(len(labels)), p_values, q_values)
 
     # boxplot() resets the ticks, so restore the model labels
-    style_model_x_axis(ax, labels)
+    style_model_x_axis(ax, models)
     colour_tick_labels_by_stimuli_type(ax, stimuli_types)
     set_enrichment_y_scale(ax)
     ax.set_ylim(*enrichment_ylim(concept_df, model_df))

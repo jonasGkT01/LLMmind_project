@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
+# last AI edit: 2026-10-01, see docs/changelog/developers/ for details
 import argparse
 from pathlib import Path
 
@@ -123,9 +125,10 @@ def main():
 
     labels = sorted(
         model_metadata,
-        key=lambda label: model_sort_key(
-            model=model_metadata[label]["model"],
-            parameters_by_model=parameters_by_model,
+        key = lambda label: model_sort_key(
+            model = model_metadata[label]["model"],
+            stimuli_type = model_metadata[label]["stimuli_type"],
+            parameters_by_model = parameters_by_model,
         ),
     )
     models = [model_metadata[label]["model"] for label in labels]
@@ -163,7 +166,7 @@ def main():
     add_model_family_annotations(ax, models)
 
     ax.set_xticks(x)
-    ax.set_xticklabels(labels, rotation=55, ha="right")
+    ax.set_xticklabels(models, rotation = 55, ha = "right")
     colour_tick_labels_by_stimuli_type(ax, stimuli_types)
     ax.set_xlabel(MODEL_AXIS_LABEL)
     ax.set_ylabel(y_axis_label(MEAN_ALIGNMENT_SCORE_LABEL, STANDARD_ERROR))

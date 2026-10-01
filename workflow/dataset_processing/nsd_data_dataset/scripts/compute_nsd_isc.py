@@ -1,3 +1,6 @@
+# edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
+# last AI edit: 2026-10-01, see docs/changelog/developers/ for details
+
 import argparse
 from pathlib import Path
 
@@ -7,7 +10,7 @@ import pandas as pd
 import nibabel as nib
 from nilearn import datasets, image
 
-from libraries.fmri_processing import compute_leave_one_out_isc
+from libraries.fmri_processing import compute_isc_from_files, single_value
 
 def main():
     parser = argparse.ArgumentParser()
@@ -47,60 +50,14 @@ def main():
     for stimulus_identifier, stimulus_manifest in isc_manifest.groupby("stimulus_id", sort=False):
         # Each presentation is an independent observation: a subject may appear more
         # than once, and every presentation enters the ISC average.
-        parcel_time_series_files = [
-            Path(path)
-            for path in stimulus_manifest["parcel_time_series"].tolist()
-        ]
+        mean_isc_values = compute_isc_from_files(
+            stimulus_manifest["parcel_time_series"].tolist(),
+            n_rois = arguments.number_of_regions,
+        )
 
-        if len(parcel_time_series_files) < 2:
-            raise ValueError(f"ISC requires at least two usable fMRI observations for stimulus {stimulus_identifier}, got {len(parcel_time_series_files)}")
-
-        parcel_time_series_arrays = []
-
-        for parcel_time_series_file in parcel_time_series_files:
-            if not parcel_time_series_file.exists():
-                raise FileNotFoundError(f"Missing parcel time-series file: {parcel_time_series_file}")
-
-            parcel_time_series = np.load(parcel_time_series_file)
-
-            if parcel_time_series.ndim != 2:
-                raise ValueError(f"Expected a 2D parcel time series, got shape {parcel_time_series.shape}: {parcel_time_series_file}")
-
-            if parcel_time_series.shape[1] != arguments.number_of_regions:
-                raise ValueError(f"Expected {arguments.number_of_regions} regions, got {parcel_time_series.shape[1]}: {parcel_time_series_file}")
-
-            parcel_time_series_arrays.append(parcel_time_series)
-
-        time_series_lengths = [
-            parcel_time_series.shape[0]
-            for parcel_time_series in parcel_time_series_arrays
-        ]
-
-        if len(set(time_series_lengths)) != 1:
-            length_details = ", ".join(
-                f"{parcel_time_series_file}: {parcel_time_series.shape[0]} timepoints"
-                for parcel_time_series_file, parcel_time_series in zip(
-                    parcel_time_series_files,
-                    parcel_time_series_arrays,
-                )
-            )
-
-            raise ValueError(f"Mismatched NSD parcel time-series lengths for stimulus {stimulus_identifier}: {length_details}")
-
-        stacked_parcel_time_series = np.stack(parcel_time_series_arrays, axis=0).astype(np.float32)
-        mean_isc_values = compute_leave_one_out_isc(stacked_parcel_time_series)
-
-        isc_numpy_files = stimulus_manifest["isc_numpy_file"].astype(str).unique()
-        isc_nifti_files = stimulus_manifest["isc_nifti_file"].astype(str).unique()
-
-        if len(isc_numpy_files) != 1:
-            raise ValueError(f"Stimulus {stimulus_identifier} has multiple ISC NumPy output files: {isc_numpy_files}")
-
-        if len(isc_nifti_files) != 1:
-            raise ValueError(f"Stimulus {stimulus_identifier} has multiple ISC NIfTI output files: {isc_nifti_files}")
-
-        isc_numpy_file = Path(isc_numpy_files[0])
-        isc_nifti_file = Path(isc_nifti_files[0])
+        group = f"Stimulus {stimulus_identifier}"
+        isc_numpy_file = Path(single_value(stimulus_manifest, "isc_numpy_file", group))
+        isc_nifti_file = Path(single_value(stimulus_manifest, "isc_nifti_file", group))
 
         isc_numpy_file.parent.mkdir(parents=True, exist_ok=True)
         isc_nifti_file.parent.mkdir(parents=True, exist_ok=True)
@@ -122,7 +79,10 @@ def main():
         isc_nifti_image.header.set_data_dtype(np.float32)
         nib.save(isc_nifti_image, isc_nifti_file)
 
-        print(f"Computed ISC for {stimulus_identifier} from {len(parcel_time_series_arrays)} observations and {time_series_lengths[0]} timepoints")
+        print(
+            f"Computed ISC for {stimulus_identifier} "
+            f"from {len(stimulus_manifest)} observations"
+        )
 
 if __name__ == "__main__":
     main()

@@ -1,3 +1,6 @@
+# edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
+# last AI edit: 2026-10-01, see docs/changelog/developers/ for details
+
 # configuration for relabelled similarity computation
 number_of_relabellings: 10000
 random_seed: 37
@@ -10,6 +13,8 @@ minimum_subjects_per_stimulus: 2
 # (max_position_embeddings, e.g. 8192 for Gemma 1/2), or 2048 when that is missing or above 100,000 tokens (e.g. Gemma 3/4)
 max_chunk_length: 2048
 
+# a model key is <family>_<size>: the family may contain "_", the size must not (e.g. clip_i21k_ft_b);
+# model_family() takes everything before the last "_", and figures group and order models by it
 models:
   bloom_560m:
     name: "BLOOMZ-560M"
@@ -288,7 +293,6 @@ narratives:
   number_of_neighbours: 5
   bold_pattern: "resources/datasets/narratives_dataset/derivatives/afni-smooth/sub-{subject}/func/sub-{subject}_task-{task}{run_tag}_space-{space}_res-{resolution}_desc-{descriptor}_bold.nii.gz"
   scans_to_be_excluded: "resources/datasets/narratives_dataset/scan_exclude.json"
-  excluded_scans_for_task: "resources/datasets/narratives_dataset/excluded_scans_for_task.json"
   processing_output_dir: "results/mind/narratives"
   stimuli_dir: 
     language: "resources/datasets/narratives_dataset/stimuli/transcripts_renamed"

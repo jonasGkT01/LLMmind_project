@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
+# last AI edit: 2026-10-01, see docs/changelog/developers/ for details
 import argparse
 from pathlib import Path
 
@@ -55,7 +57,11 @@ def main():
         raise ValueError(f"No number of parameters was provided for models: {sorted(missing_parameters)}")
 
     model_df["sort_key"] = [
-        model_sort_key(model=row.model, parameters_by_model=parameters_by_model,)
+        model_sort_key(
+            model = row.model,
+            stimuli_type = row.stimuli_type,
+            parameters_by_model = parameters_by_model,
+        )
         for row in model_df.itertuples(index=False)
     ]
     model_df = model_df.sort_values("sort_key").drop(columns="sort_key").reset_index(drop=True)
@@ -83,7 +89,7 @@ def main():
 
     fig, ax = plt.subplots(figsize=(model_figure_width(len(labels)), 7))
 
-    x = style_model_x_axis(ax, labels)
+    x = style_model_x_axis(ax, models)
     values = model_df["enrichment"].to_numpy(dtype=float)
     errors = model_df["null_standard_deviation"].to_numpy(dtype=float)
 

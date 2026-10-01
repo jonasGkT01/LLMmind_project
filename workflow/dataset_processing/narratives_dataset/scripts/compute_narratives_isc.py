@@ -1,3 +1,6 @@
+# edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
+# last AI edit: 2026-10-01, see docs/changelog/developers/ for details
+
 import argparse
 from pathlib import Path
 
@@ -7,31 +10,7 @@ import pandas as pd
 import nibabel as nib
 from nilearn import datasets, image
 
-from libraries.fmri_processing import compute_leave_one_out_isc
-
-def compute_isc(parcel_ts_files):
-    data_list = [np.load(f) for f in parcel_ts_files]
-
-    time_lengths = [x.shape[0] for x in data_list]
-
-    if len(set(time_lengths)) != 1:
-        minimum_time = min(time_lengths)
-        data_list = [
-            x[:minimum_time, :]
-            for x in data_list
-        ]
-
-    n_subjects = len(data_list)
-
-    if n_subjects < 2:
-        raise ValueError("ISC requires at least two parcel time-series files")
-
-    data = np.stack(
-        data_list,
-        axis=0,
-    )
-
-    return compute_leave_one_out_isc(data)
+from libraries.fmri_processing import compute_isc_from_files, single_value
 
 def save_isc_outputs(isc_mean, isc_npy, isc_nii, atlas_data, atlas_img):
     isc_npy = Path(isc_npy)
@@ -82,26 +61,18 @@ def main():
     atlas_data = atlas_img.get_fdata().astype(int)
 
     for task, task_df in manifest.groupby("task", sort=False):
-        parcel_ts_files = task_df["parcel_ts"].tolist()
-        isc_npy_values = task_df["isc_npy"].unique()
-        isc_nii_values = task_df["isc_nii"].unique()
-
-        if len(isc_npy_values) != 1:
-            raise ValueError(f"Task {task} has multiple isc_npy outputs: {isc_npy_values}")
-
-        if len(isc_nii_values) != 1:
-            raise ValueError(f"Task {task} has multiple isc_nii outputs: {isc_nii_values}")
-
-#        print(f"Computing ISC for task {task} from {len(parcel_ts_files)} files")
-
-        isc_mean = compute_isc(parcel_ts_files)
+        isc_mean = compute_isc_from_files(
+            task_df["parcel_ts"].tolist(),
+            n_rois = args.n_rois,
+            truncate_to_shortest = True,
+        )
 
         save_isc_outputs(
-            isc_mean=isc_mean,
-            isc_npy=isc_npy_values[0],
-            isc_nii=isc_nii_values[0],
-            atlas_data=atlas_data,
-            atlas_img=atlas_img,
+            isc_mean = isc_mean,
+            isc_npy = single_value(task_df, "isc_npy", f"Task {task}"),
+            isc_nii = single_value(task_df, "isc_nii", f"Task {task}"),
+            atlas_data = atlas_data,
+            atlas_img = atlas_img,
         )
 
 if __name__ == "__main__":

@@ -1,3 +1,6 @@
+# edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
+# last AI edit: 2026-10-01, see docs/changelog/developers/ for details
+
 import sys
 
 from huggingface_hub import snapshot_download
@@ -6,7 +9,6 @@ def download_model_repo(model_name: str, save_dir: str) -> None:
     snapshot_download(
         repo_id=model_name,
         local_dir=save_dir,
-        local_dir_use_symlinks=False,
     )
 
 if __name__ == "__main__":

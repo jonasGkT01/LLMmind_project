@@ -2,4 +2,4 @@
 resources/
 results/
 workflow/envs/LLMmind_project/
-workflow/libraries/__pycache__/
+__pycache__/

@@ -342,9 +342,10 @@ model families; CLIP, DINOv2, and ImageNet-21K ViT vision model families.
 Models are downloaded on demand by the `llm_nearest_neighbours` module.
 
 A model runs on the stimulus type of a dataset that matches its modality:
-`language` models on text, `vision` models on images. Every output and plot
+`language` models on text, `vision` models on images. Every output file
 names a model together with its stimulus type, as `<model>-<stimuli_type>`
-(for example `clip_b-vision`).
+(for example `clip_b-vision`). Plots show only the model name, coloured by
+stimulus type (see "Conventions shared by all plots" under "Outputs").
 
 Multimodal models are not supported. Gemma 3n and Gemma 4 can read images,
 but their processor requires a text prompt with an image placeholder token,
@@ -615,7 +616,8 @@ combined summary tables have a `similarity_type` column instead.
     significance with two rows of asterisks just below the x-axis, above
     the model name: black for the empirical p-value, blue below it for the
     Benjamini-Hochberg q-value (`*` < 0.05, `**` < 0.01, `***` < 0.001).
-  - Model names read `<model>-<stimuli_type>` and are coloured by stimulus
+  - Model names show the model only (for example `clip_b`, not
+    `clip_b-vision`) and are coloured by stimulus
     type: dark orange (`#A84800`) for language, dark green (`#007A5A`) for
     vision. The brain stays black. This applies to both axes of the heatmaps.
     In the model-level line plots, the points also take the colour, as
@@ -708,6 +710,6 @@ or editing scripts.
 *This document was written, in whole or in part, with AI coding assistants via Claude Code (Anthropic).*
 
 - *Models: Claude Sonnet 5 (`claude-sonnet-5`, until 2026-09-22); Claude Opus 5.5 (`claude-opus-5-5`, from 2026-09-23).*
-- *Latest AI edit: 2026-10-01, Claude Opus 5.5: noted that the two summary-table steps use 4 worker processes, after the developer approved TODO entry S34 (faster p-value aggregation).*
+- *Latest AI edit: 2026-10-01, Claude Opus 5.5: plots now show model names without the stimulus type (TODO S36, raised and approved by the developer).*
 - *Edit history: see [`docs/changelog/`](docs/changelog/).*
 - *Review status: not yet reviewed by the developer.*

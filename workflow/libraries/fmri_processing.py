@@ -1,6 +1,8 @@
+# edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
+# last AI edit: 2026-10-01, see docs/changelog/developers/ for details
+
 import numpy as np
 from scipy import sparse
-from scipy.stats import pearsonr
 
 import nibabel as nib
 from nilearn.image import resample_to_img
@@ -76,22 +78,13 @@ def is_constant_signal(x, axis=0):
 
     return signal_range <= CONSTANT_SIGNAL_RTOL*magnitude
 
-def safe_pearsonr(x, y):
-    if is_constant_signal(x) or is_constant_signal(y):
-        return 0.0
-
-    r, _ = pearsonr(x, y)
-
-    return float(np.nan_to_num(r, nan=0.0, posinf=0.0, neginf=0.0,))
-
 def compute_leave_one_out_isc(data):
     """
         Leave-one-out ISC, vectorized across parcels.
 
-        Equivalent to calling safe_pearsonr(data[subject, :, parcel], others_mean[:, parcel]) for every
-        (subject, parcel) pair, but as a single vectorized Pearson correlation per subject instead of one
-        scipy.stats.pearsonr call per parcel: at nsd_data's scale (called once per stimulus, ~66k times)
-        the per-parcel Python/SciPy call overhead otherwise dominates runtime.
+        For every parcel, the mean over subjects of the Pearson r between each subject's
+        time course and the mean time course of the other subjects. A constant signal
+        gives r = 0.
     """
     n_subjects = data.shape[0]
     n_parcels = data.shape[2]
@@ -120,3 +113,49 @@ def compute_leave_one_out_isc(data):
         isc[subject_idx] = np.nan_to_num(r, nan=0.0, posinf=0.0, neginf=0.0,)
 
     return isc.mean(axis=0).astype(np.float32)
+
+def compute_isc_from_files(paths, n_rois, truncate_to_shortest = False):
+    # load the (time x parcel) arrays and check their shapes
+    if len(paths) < 2:
+        raise ValueError(
+            f"ISC requires at least two parcel time-series files, got {len(paths)}"
+        )
+
+    arrays = [np.load(path) for path in paths]
+
+    for path, array in zip(paths, arrays):
+        if array.ndim != 2 or array.shape[1] != n_rois:
+            raise ValueError(
+                f"Expected a (time x {n_rois}) parcel time series, "
+                f"got shape {array.shape}: {path}"
+            )
+
+    # make all time lengths equal, or stop
+    lengths = [array.shape[0] for array in arrays]
+    shortest = min(lengths)
+
+    if shortest != max(lengths):
+        if not truncate_to_shortest:
+            details = ", ".join(
+                f"{path}: {length}"
+                for path, length in zip(paths, lengths)
+            )
+            raise ValueError(f"Mismatched time lengths across parcel files: {details}")
+
+        truncated = [
+            f"{path}: {length}"
+            for path, length in zip(paths, lengths)
+            if length != shortest
+        ]
+        print(f"Truncating to {shortest} time points: {', '.join(truncated)}")
+        arrays = [array[:shortest] for array in arrays]
+
+    return compute_leave_one_out_isc(np.stack(arrays, axis = 0).astype(np.float32))
+
+def single_value(df, column, group):
+    values = df[column].unique()
+
+    if len(values) != 1:
+        raise ValueError(f"{group} has {len(values)} values of {column}: {values}")
+
+    return values[0]

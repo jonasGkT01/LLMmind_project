@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
+# last AI edit: 2026-10-01, see docs/changelog/developers/ for details
 import argparse
 from pathlib import Path
 import re
@@ -50,14 +52,6 @@ def read_alignment_score(path, number_of_neighbours):
     expected_alignment_score = number_of_neighbours/population_size
 
     return mean_alignment_score, expected_alignment_score
-
-def heatmap_label_sort_key(label, model_metadata, parameters_by_model):
-    if label == "brain":
-        return (1,)
-
-    metadata = model_metadata[label]
-
-    return (0, model_sort_key(model=metadata["model"], parameters_by_model=parameters_by_model,),)
 
 def main():
     parser = argparse.ArgumentParser()
@@ -133,11 +127,11 @@ def main():
 
     labels = sorted(
         labels,
-        key=lambda label: heatmap_label_sort_key(
-            label,
-            model_metadata,
+        key = lambda label: (1,) if label == "brain" else (0, *model_sort_key(
+            model_metadata[label]["model"],
+            model_metadata[label]["stimuli_type"],
             parameters_by_model,
-        ),
+        )),
     )
 
     matrix = np.full((len(labels), len(labels)), np.nan)
@@ -177,8 +171,13 @@ def main():
     ax.set_xticks(np.arange(len(labels)))
     ax.set_yticks(np.arange(len(labels)))
 
-    ax.set_xticklabels(labels, rotation=90)
-    ax.set_yticklabels(labels)
+    # model names only: the stimulus type is shown by the label colour
+    tick_names = [
+        label if label == "brain" else model_metadata[label]["model"]
+        for label in labels
+    ]
+    ax.set_xticklabels(tick_names, rotation = 90)
+    ax.set_yticklabels(tick_names)
 
     stimuli_types = [None if label == "brain" else model_metadata[label]["stimuli_type"] for label in labels]
     colour_tick_labels_by_stimuli_type(ax, stimuli_types, axes="xy")
