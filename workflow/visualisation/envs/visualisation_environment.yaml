@@ -1,9 +1,11 @@
+# edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
+# last AI edit: 2026-10-01, see docs/changelog/developers/ for details
 channels:
   - conda-forge
   - nodefaults
 dependencies:
-  - matplotlib
-  - numpy
-  - pandas
-  - pyarrow
-  - python
+  - matplotlib=3.11.2
+  - numpy=2.5.3
+  - pandas=3.0.6
+  - pyarrow=25.0.0
+  - python=3.14.7
