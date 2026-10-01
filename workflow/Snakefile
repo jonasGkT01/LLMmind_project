@@ -1,3 +1,5 @@
+# edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
+# last AI edit: 2026-10-01, see docs/changelog/developers/ for details
 configfile: "config/config.yaml"
 
 shell.prefix(
@@ -165,11 +167,6 @@ rule all:
             for pair in PAIRINGS
             for method in ["empirical", "hypergeometric"]
         ],
-        #[
-        #    f"results/alignment_scores/dataset-{pair['dataset']}_model-{pair['model']}-{pair['stimuli_type']}_brain_{pair['similarity_type']}-alignment_score_{pair['number_of_neighbours']}NN.observed.tsv"
-        #    for pair in PAIRINGS
-        #],
-        #"results/tsv_summary.tsv",
         "results/all_model_brain_alignment_scores.tsv",
         [
             f"results/alignment_scores/dataset-{pair['dataset']}_model-{pair['model_1']}-{pair['stimuli_type_1']}_model-{pair['model_2']}-{pair['stimuli_type_2']}_{pair['similarity_type']}-alignment_score_{pair['number_of_neighbours']}NN.parquet"
