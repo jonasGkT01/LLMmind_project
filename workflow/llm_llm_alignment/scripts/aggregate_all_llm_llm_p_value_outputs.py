@@ -77,7 +77,14 @@ def validate_canonical_pair_order(paths, model_order):
         seen_pairs.add(configuration + (side_1, side_2))
 
 def main():
-    parser = argparse.ArgumentParser(description="Aggregate all concept-level LLM-LLM empirical and hypergeometric p-value TSV files into one long model-pair-level summary TSV")
+    # "@file" reads one argument per line: the path lists exceed the 2 MB command-line limit
+    parser = argparse.ArgumentParser(
+        description = (
+            "Aggregate all concept-level LLM-LLM empirical and hypergeometric p-value TSV "
+            "files into one long model-pair-level summary TSV"
+        ),
+        fromfile_prefix_chars = "@",
+    )
     parser.add_argument("--empirical_p_values",
                         nargs="+",
                         required=True,

@@ -108,6 +108,10 @@ exited, so the run was stuck for about 14 h and then failed on 2026-10-01 at 09:
 assumes the rule costs about as much as `aggregate_all_p_value_outputs`. A hung job like that one
 is not included in the estimate.
 
+The restart at 09:20 then failed in `aggregate_all_llm_llm_p_value_outputs` itself, with exit
+status 126: its 26,000 input paths made a 4 MB command line, above Linux's 2 MB limit. Since
+2026-10-01 the rule passes them through an argument file, so it can now run.
+
 ### 2e. Plots
 
 | Rule | Jobs | Median | Max | Total | Measured in |
@@ -162,4 +166,5 @@ by job id gives each job's duration. `snakemake -n --forceall` prints the job co
 in answer to "produce a file inside docs/reference/ that summarises how long a clean run would
 take to end, specify each rule how long would it take". The figures were computed from the
 Snakemake logs in `.snakemake/log/` and from a dry run of the workflow on that date. Not yet
-reviewed by a human.*
+reviewed by a human. Updated the same day, with the same model and tool, to record the exit-126 crash
+of `aggregate_all_llm_llm_p_value_outputs` and its fix (TODO entry S33).*

@@ -119,10 +119,17 @@ rule aggregate_all_llm_llm_p_value_outputs:
         "envs/llm_llm_alignment_environment.yaml"
     shell:
         r"""
-            python3 workflow/llm_llm_alignment/scripts/aggregate_all_llm_llm_p_value_outputs.py \
+            # the arguments exceed the 2 MB command-line limit: pass them through a file,
+            # written by the printf builtin, which that limit does not apply to
+            args_file=$(mktemp)
+            printf '%s\n' \
                 --empirical_p_values {input.empirical_p_values:q} \
                 --hypergeometric_p_values {input.hypergeometric_p_values:q} \
                 --relabelled_common_neighbours {input.relabelled_common_neighbours:q} \
                 --model_order {params.model_order:q} \
-                --all_model_model_alignment_scores_tsv {output.all_model_model_alignment_scores_tsv:q}
+                --all_model_model_alignment_scores_tsv {output.all_model_model_alignment_scores_tsv:q} \
+                > "$args_file"
+            python3 workflow/llm_llm_alignment/scripts/aggregate_all_llm_llm_p_value_outputs.py \
+                @"$args_file"
+            rm "$args_file"
         """

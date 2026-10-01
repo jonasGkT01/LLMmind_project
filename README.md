@@ -460,6 +460,14 @@ using up to `<N>` worker processes at once. For that step, a higher `--cores` va
   `snakemake --cleanup-metadata <path>` for the affected outputs if you're
   confident the already-downloaded weights don't actually need
   re-fetching.
+- **A rule fails with `exit status 126` and `message: None`**: usually
+  the command line was longer than Linux allows (`getconf ARG_MAX`, 2 MB
+  on frontend and node5), so the program never started ("Argument list
+  too long"). This happens when a rule passes thousands of input paths.
+  Pass them through an argument file instead, as
+  `aggregate_all_llm_llm_p_value_outputs` does: write them one per line
+  with the `printf '%s\n'` builtin, call the script with `@file`, and give
+  its `argparse.ArgumentParser` `fromfile_prefix_chars = "@"`.
 - **`get_embeddings` crashes on a large language model (GPU out of
   memory)**: the attention memory grows with the square of the chunk
   length. With 8192-token chunks, gemma2_27b (4-bit) needs more than the
@@ -692,8 +700,10 @@ Parts of this README and of the changelog entries were drafted with AI
 coding assistants: Claude Code with Claude Sonnet 5 and, from 2026-09-23,
 Claude Opus 5.5. Each changelog entry ends with a note saying which model
 was used and whether the entry has been reviewed. The latest AI edit, on
-2026-10-01 with Claude Opus 5.5 (`claude-opus-5-5`) via Claude Code,
-linked the new `docs/reference/2026-10-01_0926_clean_run_duration.md` under
+2026-10-01 with Claude Opus 5.5 (`claude-opus-5-5`) via Claude Code, added
+the "exit status 126" entry under "Troubleshooting", after the LLM-LLM
+aggregation rule crashed because its command line was too long (TODO entry
+S33). An earlier edit that day, with the same model, linked the new `docs/reference/2026-10-01_0926_clean_run_duration.md` under
 "Documentation". An edit on 2026-09-30 with the same model linked the new
 `docs/reference/model_embeddings.md` under "Documentation", after
 a project review. An earlier edit that day linked the new
