@@ -610,6 +610,12 @@ combined summary tables have a `similarity_type` column instead.
     of every plot's y-range is left empty so the legend never hides data.
     The heatmaps are the exception: their only legend (the stimulus-type
     colours) sits in the figure's bottom-left corner.
+  - Models appear in the same order in every plot: model family
+    (alphabetical), then number of parameters (each model's `parameters_millions` in
+    `config/config.yaml`), then model name, then stimulus type. The order of
+    the `models:` block in the config does not matter. In the heatmaps the
+    brain comes after all models. The rule is `model_sort_key()` in
+    `libraries/manage_model_metadata.py`.
   - Every non-heatmap plot draws dashed vertical lines between model
     families.
   - Brain-model plots (not heatmaps) mark each model's model-level
@@ -710,6 +716,6 @@ or editing scripts.
 *This document was written, in whole or in part, with AI coding assistants via Claude Code (Anthropic).*
 
 - *Models: Claude Sonnet 5 (`claude-sonnet-5`, until 2026-09-22); Claude Opus 5.5 (`claude-opus-5-5`, from 2026-09-23).*
-- *Latest AI edit: 2026-10-01, Claude Opus 5.5: plots now show model names without the stimulus type (TODO S36, raised and approved by the developer).*
+- *Latest AI edit: 2026-10-01, Claude Opus 5.5: documented the model order shared by all plots (TODO S1), found missing when the developer asked whether the documentation was up to date.*
 - *Edit history: see [`docs/changelog/`](docs/changelog/).*
 - *Review status: not yet reviewed by the developer.*
