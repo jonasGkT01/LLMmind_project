@@ -1,53 +1,15 @@
+# edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
+# last AI edit: 2026-10-01, see docs/changelog/developers/ for details
+
 import argparse
 from pathlib import Path
 
 import numpy as np
-import pandas as pd
 
 import nibabel as nib
 from nilearn import datasets, image
 
-from libraries.fmri_processing import compute_leave_one_out_isc
-
-def parcel_output_path(row, parcel_root):
-    return (
-        Path(parcel_root)
-        / f"task-{row.stimulus_id}"
-        / (
-            f"sub-{row.subject}_ses-{row.session}_run-{row.run}_"
-            f"task-{row.stimulus_id}_event-{row.event_index}_parcel_ts.npy"
-        )
-    )
-
-def compute_isc(parcel_ts_files, n_rois):
-    if len(parcel_ts_files) < 2:
-        raise ValueError(f"ISC requires at least two parcel time-series files, got {len(parcel_ts_files)}")
-
-    data_list = [np.load(f) for f in parcel_ts_files]
-
-    for path, arr in zip(parcel_ts_files, data_list):
-        if arr.ndim != 2:
-            raise ValueError(f"Expected 2D parcel time series, got shape {arr.shape}: {path}")
-
-        if arr.shape[1] != n_rois:
-            raise ValueError(f"Expected {n_rois} parcels, got {arr.shape[1]} parcels: {path}")
-
-    time_lengths = [x.shape[0] for x in data_list]
-
-    if len(set(time_lengths)) != 1:
-        details = ", ".join(
-            f"{path}: {arr.shape[0]} timepoints"
-            for path, arr in zip(parcel_ts_files, data_list)
-        )
-
-        raise ValueError(f"Mismatched time lengths across parcel time-series files. Details: {details}")
-
-    data = np.stack(
-        data_list,
-        axis=0,
-    ).astype(np.float32)
-    
-    return compute_leave_one_out_isc(data)
+from libraries.fmri_processing import compute_isc_from_files
 
 def save_isc(isc_mean, isc_npy, isc_nii, atlas_data, atlas_img):
     isc_npy = Path(isc_npy)
@@ -95,7 +57,7 @@ def main():
 
     print(f"Computing ISC {args.isc_npy} from {len(args.parcel_ts)} parcel files")
 
-    isc_mean = compute_isc(args.parcel_ts, args.n_rois)
+    isc_mean = compute_isc_from_files(args.parcel_ts, n_rois = args.n_rois)
 
     save_isc(
         isc_mean=isc_mean,
