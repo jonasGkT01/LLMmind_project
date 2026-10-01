@@ -13,6 +13,8 @@ minimum_subjects_per_stimulus: 2
 # (max_position_embeddings, e.g. 8192 for Gemma 1/2), or 2048 when that is missing or above 100,000 tokens (e.g. Gemma 3/4)
 max_chunk_length: 2048
 
+# a model key is <family>_<size>: the family may contain "_", the size must not (e.g. clip_i21k_ft_b);
+# model_family() takes everything before the last "_", and figures group and order models by it
 models:
   bloom_560m:
     name: "BLOOMZ-560M"

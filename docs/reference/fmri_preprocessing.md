@@ -83,6 +83,19 @@ error otherwise.
 presentation) and the mean of all others, averaged over subjects. It is set to 0 when either time
 series is constant. The 200 values form the stimulus's brain representation.
 
+The average over subjects is the arithmetic mean of r, without a Fisher z-transform. This is on
+purpose:
+
+- NSD and Caption Scene correlate windows of only 3 and 6 volumes, so many r values lie near ±1.
+  There `arctanh` explodes (≈ 7.25 at r = 0.999999), a single subject would dominate the mean, and
+  the standard error of z, `1/sqrt(n - 3)`, is undefined for n = 3.
+- For Narratives and Nature Stories the ISC values are small, `tanh(z) ≈ z`, and the two means
+  barely differ.
+- Downstream, the ISC vectors enter only through top-k neighbours under cosine, Pearson or
+  Spearman similarity, which a small shrinkage toward zero hardly affects.
+
+The methods section should state the same.
+
 ### Why z-scoring would change (almost) nothing, and what it means for cosine similarity
 
 - **ISC is Pearson-based.** Pearson's r between two time series is unchanged if either series is
@@ -128,7 +141,7 @@ series is constant. The 200 values form the stimulus's brain representation.
 *This document was written, in whole or in part, with AI coding assistants via Claude Code (Anthropic).*
 
 - *Models: Claude Opus 5.5 (`claude-opus-5-5`).*
-- *Latest AI edit: 2026-10-01, Claude Opus 5.5: step 5 says the Narratives truncation is reported in the job log and why it is safe (TODO S6 and S28, after the developer asked to solve S6, S7, S28 and S32).*
+- *Latest AI edit: 2026-10-01, Claude Opus 5.5: step 6 explains why the ISC is a plain mean of r, without Fisher z (TODO S11, after the developer asked to implement the remaining solutions while waiting for S34).*
 - *Basis: the developer (Jonas Salvalaggio) asked for a short document separating the dataset
   authors' preprocessing from the workflow's own processing (TODO P9), with the missing facts
   checked online. The dataset rows come from the sources listed above. The Caption Scene space and
