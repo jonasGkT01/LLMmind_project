@@ -71,8 +71,13 @@ nearest neighbour onto the BOLD grid, or the fsaverage atlas for Nature Stories.
 series is the **unweighted mean of its voxels** (or vertices).
 
 **5. Equal lengths.** Narratives truncates all subjects of a story to the shortest run and lists the
-truncated files, with their original lengths, in the job log. The other datasets require equal
-lengths and stop with an error otherwise.
+truncated files, with their original lengths, in the job log. This is safe because every subject of
+a story has the same `events.tsv`: the stimulus starts at the same time in every run, and the
+shortest run ends at the stimulus end (merlin: 33.5 s + 886 s = 919.5 s = 613 TRs × 1.5 s). The
+longer runs only add scanning after the story. Five stories are affected: merlin (613–657 TRs),
+sherlock (724–746), shapesphysical (309–321), shapessocial (309–316) and slumlordreach
+(1205–1223); checked on 2026-09-30. The other datasets require equal lengths and stop with an
+error otherwise.
 
 **6. ISC.** For each stimulus and parcel: the Pearson correlation between each subject (NSD: each
 presentation) and the mean of all others, averaged over subjects. It is set to 0 when either time
@@ -123,7 +128,7 @@ series is constant. The 200 values form the stimulus's brain representation.
 *This document was written, in whole or in part, with AI coding assistants via Claude Code (Anthropic).*
 
 - *Models: Claude Opus 5.5 (`claude-opus-5-5`).*
-- *Latest AI edit: 2026-10-01, Claude Opus 5.5: step 5 says the Narratives truncation is reported in the job log (TODO S6, after the developer asked to solve S6, S7, S28 and S32).*
+- *Latest AI edit: 2026-10-01, Claude Opus 5.5: step 5 says the Narratives truncation is reported in the job log and why it is safe (TODO S6 and S28, after the developer asked to solve S6, S7, S28 and S32).*
 - *Basis: the developer (Jonas Salvalaggio) asked for a short document separating the dataset
   authors' preprocessing from the workflow's own processing (TODO P9), with the missing facts
   checked online. The dataset rows come from the sources listed above. The Caption Scene space and

@@ -1,5 +1,7 @@
+# edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
+# last AI edit: 2026-10-01, see docs/changelog/developers/ for details
+
 import json
-import numpy as np
 
 from pathlib import Path
 from itertools import product
@@ -42,69 +44,6 @@ def narratives_excluded(subject, task, run_tag):
 
 def narratives_parcel_output(c):
     return f"{NARRATIVES_PROCESSING_OUTPUT_DIR}/parcels/{c['task']}/sub-{c['subject']}_task-{c['task']}_{c['run_label']}_space-{c['space']}_res-{c['resolution']}_desc-{c['descriptor']}_parcel_ts.npy"
-
-def narratives_write_length_check_json(task, parcel_files, output_json):
-    parcel_files = [Path(p) for p in parcel_files]
-    output_json = Path(output_json)
-    output_json.parent.mkdir(parents=True, exist_ok=True)
-
-    lengths = {}
-    unreadable_files = {}
-    malformed_files = {}
-
-    for f in parcel_files:
-        scan_id = f.stem
-
-        try:
-            arr = np.load(f, mmap_mode="r")
-        except Exception as e:
-            unreadable_files[scan_id] = str(e)
-            continue
-
-        if arr.ndim < 1:
-            malformed_files[scan_id] = f"Expected at least one dimension, got shape {arr.shape}"
-            continue
-
-        lengths[scan_id] = int(arr.shape[0])
-
-    unique_lengths = sorted(set(lengths.values()))
-
-    if len(parcel_files) == 0:
-        valid = False
-        reason = "No parcel files were provided."
-    elif unreadable_files:
-        valid = False
-        reason = "One or more parcel files could not be read."
-    elif malformed_files:
-        valid = False
-        reason = "One or more parcel files had an invalid shape."
-    elif len(lengths) == 0:
-        valid = False
-        reason = "No valid parcel files were available after loading."
-    elif len(unique_lengths) != 1:
-        valid = False
-        reason = "Mismatched parcel time lengths across scans."
-    else:
-        valid = True
-        reason = "All parcel timeseries have identical length."
-
-    payload = {
-        "task": task,
-        "valid": valid,
-        "reason": reason,
-        "n_input_files": len(parcel_files),
-        "n_valid_files": len(lengths),
-        "common_length": unique_lengths[0] if valid else None,
-        "unique_lengths": unique_lengths,
-        "time_lengths": lengths,
-        "unreadable_files": unreadable_files,
-        "malformed_files": malformed_files,
-    }
-
-    with open(output_json, "w") as f:
-        json.dump(payload, f, indent=2, sort_keys=True)
-
-    return valid
 
 NARRATIVES_BOLD_FILES = []
 for subject, task, run_tag, space, resolution, descriptor in product(
@@ -190,36 +129,6 @@ def write_narratives_isc_manifest(output_tsv):
 
             for parcel_ts in parcel_outputs_for_task(task):
                 f.write(f"{task}\t{parcel_ts}\t{isc_npy}\t{isc_nii}\n")
-
-excluded_scans_for_task = []
-for task in config["narratives"]["tasks"]:
-    if task not in VALID_NARRATIVES_TASKS:
-#        print(f"Skipping length check for excluded task {task}. See {config['narratives']['excluded_scans_for_task']} for details.")
-        if task in config["narratives"]["schema_subtasks"]:
-            reason = "Excluded because it is a schema subtask."
-        elif task in config["narratives"]["notthefall_variants"]:
-            reason = "Excluded because it is a notthefall variant."
-        else:
-            reason = "Excluded for unspecified reason."
-
-        for c in NARRATIVES_BOLD_FILES:
-            if c["task"] == task:
-                excluded_scans_for_task.append({
-                    "task": task,
-                    "reason": reason,
-                    "bold_file": c["bold_file"],
-                })
-        continue
-
-    narratives_write_length_check_json(task, parcel_outputs_for_task(task), f"{NARRATIVES_PROCESSING_OUTPUT_DIR}/qc/task-{task}_length_check.json")
-#    if not narratives_write_length_check_json(task, parcel_outputs_for_task(task), f"{NARRATIVES_PROCESSING_OUTPUT_DIR}/qc/task-{task}_length_check.json"):
-#        print(f"Warning: Length check failed for task {task}. See {NARRATIVES_PROCESSING_OUTPUT_DIR}/qc/task-{task}_length_check.json for details.")
-
-excluded_scans_for_task_path = Path(config["narratives"]["excluded_scans_for_task"])
-excluded_scans_for_task_path.parent.mkdir(parents=True, exist_ok=True)
-
-with open(config["narratives"]["excluded_scans_for_task"], "w") as f:
-    json.dump(excluded_scans_for_task, f, indent=2, sort_keys=True)
 
 NARRATIVES_ISC_NPY_OUTPUTS = [
     f"{NARRATIVES_PROCESSING_OUTPUT_DIR}/isc/task-{task}_isc_mean.npy"
