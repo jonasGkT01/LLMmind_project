@@ -90,7 +90,7 @@ narratives rules, which do the same steps.
 | `relabel_llm_similarity_and_compute_relabelled_llm_alignment_score` | 300 | 16 s | 24 s | 53 min | 2026-09-29 |
 | `compute_empirical_p_value` | 768 | 4 s | 7 s | 41 min | 2026-09-30 |
 | `compute_hypergeometric_p_value` | 768 | 1 s | 11 s | 20 min | 2026-09-29 |
-| `aggregate_all_p_value_outputs` | 1 | ~5 min (estimate) | | ~5 min | 16 min on 2026-09-30, before S34 |
+| `aggregate_all_p_value_outputs` | 1 | 3.3 min | | 3.3 min | 2026-10-01 (16 min before S34) |
 | `compute_spearman_alignmentwith_empirical_p_value` | 300 | 1.8 min | 2.2 min | 5.2 h | 2026-09-29 |
 | `aggregate_all_spearman_alignment_scores` | 1 | 2 s | | 2 s | 2026-09-29 |
 
@@ -102,7 +102,7 @@ narratives rules, which do the same steps.
 | `relabel_llm_similarity_and_compute_relabelled_llm_llm_alignment_score` | 4,038 | 13 s | 17 s | 9.8 h | 2026-09-30 |
 | `compute_llm_llm_empirical_p_value` | 11,184 | 3 s | 7 s | 9.6 h | 2026-09-30 |
 | `compute_llm_llm_hypergeometric_p_value` | 11,184 | 1 s | 4 s | 4.7 h | 2026-09-30 |
-| `aggregate_all_llm_llm_p_value_outputs` | 1 | ~1 h (estimate, 1–2 h) | | ~1 h | 4 h 10 min on 2026-10-01, before S34 |
+| `aggregate_all_llm_llm_p_value_outputs` | 1 | 51 min | | 51 min | 2026-10-01 (4 h 10 min before S34) |
 
 ### 2e. Plots
 
@@ -136,7 +136,7 @@ take 56/4 h, for three reasons:
 | Rest of the brain data processing (caption_scene ~3 h, narratives and nature_stories ~1–2 h, mostly in parallel) | ~3 h |
 | Embeddings (GPU); mostly overlap with the stage above | ~0–1 h extra |
 | Alignment, statistics and plots (~36 job-h at 3.7 in parallel) | ~10 h |
-| Final aggregation steps (one job at a time at the end) | ~1.5 h |
+| Final aggregation steps (one job at a time at the end) | ~1 h |
 | **Total, models already downloaded** | **~26 h (25–31 h)** |
 | **Total, models downloaded too** | **~28 h** |
 
@@ -188,6 +188,15 @@ durations are estimates until the next run measures them: ~5 min (was 16 min) an
 (was 4 h 10 min). With the measured 4 h 10 min replacing the ~15 min guess and then S34, the
 whole run is ~26 h instead of ~25 h; the final aggregation stage is ~1.5 h instead of ~0.5 h.
 
+### 2026-10-01 20:53 — S34 aggregation durations measured on node5
+
+The first run with the S34 code (log `.snakemake/log/2026-10-01T195630.133465.snakemake.log`)
+replaced the estimates of the entry above with measurements: `aggregate_all_llm_llm_p_value_outputs`
+took 50 min 35 s (19:59:22–20:49:57; was 4 h 10 min) and `aggregate_all_p_value_outputs` 3 min 16 s
+(20:49:57–20:53:13; was 16 min). The final aggregation stage is ~1 h instead of the estimated
+~1.5 h; the total stays at ~26 h.
+
+
 ---
 
 ## AI attribution
@@ -195,6 +204,6 @@ whole run is ~26 h instead of ~25 h; the final aggregation stage is ~1.5 h inste
 *This document was written, in whole or in part, with AI coding assistants via Claude Code (Anthropic).*
 
 - *Models: Claude Opus 5.5 (`claude-opus-5-5`).*
-- *Latest AI edit: 2026-10-01, Claude Opus 5.5: recorded the measured LLM-LLM aggregation time and the S34 speed-up (tables and "Changes"), after moving the dated updates into a "Changes" section at the end, as the developer asked for one duration file with changes recorded at the bottom.*
+- *Latest AI edit: 2026-10-01, Claude Opus 5.5: replaced the S34 duration estimates with the node5 measurements of the 19:56 run, after the developer reported that the run had completed.*
 - *Edit history: see [`docs/changelog/`](../changelog/).*
 - *Review status: not yet reviewed by the developer.*
