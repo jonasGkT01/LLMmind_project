@@ -1,9 +1,14 @@
+# edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
+# last AI edit: 2026-10-01, see docs/changelog/developers/ for details
+
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
+
+from libraries.compute_similarity import normalize_fn_for_similarity_type
 
 DEFAULT_COLUMN_BLOCK_SIZE = 4096
 NEAREST_NEIGHBOURS_COUNT_METADATA_KEY = b"llmmind.number_of_neighbours"
@@ -18,8 +23,7 @@ def compute_blockwise_topk_from_embeddings(
         Compute top-k nearest-neighbour indices and scores for every row of `embedding_matrix` against
         every other row, without ever materializing the full N x N similarity matrix: normalize once
         (cheap, O(N x D)), then for each row-block multiply the block against the full normalized matrix
-        (block_size x N, the same per-block memory footprint already used by the *_from_parquet readers
-        above) and immediately reduce that block to its top-k, discarding it. This is what lets the
+        (block_size x N) and immediately reduce that block to its top-k, discarding it. This is what lets the
         similarity-computing scripts skip writing the dense matrix to disk at all.
     """
     number_of_concepts = embedding_matrix.shape[0]
@@ -93,6 +97,28 @@ def write_nearest_neighbours_parquet(
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     pq.write_table(table, output_path)
+
+def write_all_nearest_neighbours(
+    embedding_matrix,
+    concepts,
+    number_of_neighbours,
+    output_path_by_similarity_type,
+):
+    # compute and write the top-k neighbours for each similarity type, one at a time
+    for similarity_type, output_path in output_path_by_similarity_type.items():
+        neighbour_indices, neighbour_scores = compute_blockwise_topk_from_embeddings(
+            embedding_matrix = embedding_matrix,
+            number_of_neighbours = number_of_neighbours,
+            normalize_fn = normalize_fn_for_similarity_type(similarity_type),
+        )
+        write_nearest_neighbours_parquet(
+            concepts = concepts,
+            neighbour_indices = neighbour_indices,
+            neighbour_scores = neighbour_scores,
+            number_of_neighbours = number_of_neighbours,
+            output_path = output_path,
+        )
+        del neighbour_indices, neighbour_scores
 
 def read_stored_number_of_neighbours(path):
     """Read the neighbour count written by `write_nearest_neighbours_parquet`, raising if it's absent."""

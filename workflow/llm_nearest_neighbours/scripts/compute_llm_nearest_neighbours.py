@@ -1,9 +1,12 @@
+# edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
+# last AI edit: 2026-10-01, see docs/changelog/developers/ for details
+
 import argparse
 
 import pandas as pd
 
-from libraries.compute_nearest_neighbours import compute_blockwise_topk_from_embeddings, write_nearest_neighbours_parquet
-from libraries.compute_similarity import extract_embedding_matrix, normalize_l2, pearson_normalize, spearman_normalize
+from libraries.compute_nearest_neighbours import write_all_nearest_neighbours
+from libraries.compute_similarity import extract_embedding_matrix
 
 def main():
     parser = argparse.ArgumentParser()
@@ -32,48 +35,15 @@ def main():
     embedding_matrix = extract_embedding_matrix(embedding_df)
     concepts = embedding_df.index
 
-    ##### COSINE SIMILARITY #####
-    cosine_indices, cosine_scores = compute_blockwise_topk_from_embeddings(
+    write_all_nearest_neighbours(
         embedding_matrix = embedding_matrix,
-        number_of_neighbours = args.number_of_neighbours,
-        normalize_fn = normalize_l2,
-    )
-    write_nearest_neighbours_parquet(
         concepts = concepts,
-        neighbour_indices = cosine_indices,
-        neighbour_scores = cosine_scores,
         number_of_neighbours = args.number_of_neighbours,
-        output_path = args.cosine_nearest_neighbours,
-    )
-    del cosine_indices, cosine_scores
-
-    ##### PEARSON SIMILARITY #####
-    pearson_indices, pearson_scores = compute_blockwise_topk_from_embeddings(
-        embedding_matrix = embedding_matrix,
-        number_of_neighbours = args.number_of_neighbours,
-        normalize_fn = pearson_normalize,
-    )
-    write_nearest_neighbours_parquet(
-        concepts = concepts,
-        neighbour_indices = pearson_indices,
-        neighbour_scores = pearson_scores,
-        number_of_neighbours = args.number_of_neighbours,
-        output_path = args.pearson_nearest_neighbours,
-    )
-    del pearson_indices, pearson_scores
-
-    ##### SPEARMAN SIMILARITY #####
-    spearman_indices, spearman_scores = compute_blockwise_topk_from_embeddings(
-        embedding_matrix = embedding_matrix,
-        number_of_neighbours = args.number_of_neighbours,
-        normalize_fn = spearman_normalize,
-    )
-    write_nearest_neighbours_parquet(
-        concepts = concepts,
-        neighbour_indices = spearman_indices,
-        neighbour_scores = spearman_scores,
-        number_of_neighbours = args.number_of_neighbours,
-        output_path = args.spearman_nearest_neighbours,
+        output_path_by_similarity_type = {
+            "cosine": args.cosine_nearest_neighbours,
+            "pearson": args.pearson_nearest_neighbours,
+            "spearman": args.spearman_nearest_neighbours,
+        },
     )
 
 if __name__ == "__main__":
