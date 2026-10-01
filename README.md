@@ -680,6 +680,9 @@ or editing scripts.
   — how each model turns a stimulus into one vector: chunking, pooling
   (including the BOS token) and the CLS token of vision models (a source for
   the methods section)
+- [`docs/reference/2026-10-01_0926_clean_run_duration.md`](docs/reference/2026-10-01_0926_clean_run_duration.md)
+  — how long a clean run takes on node5 (about 25 h), with the per-job and
+  total time of every rule
 - [`docs/changelog/developers/`](docs/changelog/developers/) — technical
   changelog entries for contributors
 - [`docs/changelog/users/`](docs/changelog/users/) — plain-language changelog
@@ -689,8 +692,10 @@ Parts of this README and of the changelog entries were drafted with AI
 coding assistants: Claude Code with Claude Sonnet 5 and, from 2026-09-23,
 Claude Opus 5.5. Each changelog entry ends with a note saying which model
 was used and whether the entry has been reviewed. The latest AI edit, on
-2026-09-30 with Claude Opus 5.5 (`claude-opus-5-5`) via Claude Code,
-linked the new `docs/reference/model_embeddings.md` under "Documentation", after
+2026-10-01 with Claude Opus 5.5 (`claude-opus-5-5`) via Claude Code,
+linked the new `docs/reference/2026-10-01_0926_clean_run_duration.md` under
+"Documentation". An edit on 2026-09-30 with the same model linked the new
+`docs/reference/model_embeddings.md` under "Documentation", after
 a project review. An earlier edit that day linked the new
 `docs/reference/fmri_preprocessing.md` under "Documentation". An
 earlier edit that day renamed `results/all_alignment_scores.tsv` to
