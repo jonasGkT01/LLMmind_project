@@ -1,5 +1,5 @@
 # edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
-# last AI edit: 2026-10-01, see docs/changelog/developers/ for details
+# last AI edit: 2026-10-02, see docs/changelog/developers/ for details
 
 def parse_model_parameters(model_parameters):
     parameters_by_model = {}
@@ -32,3 +32,26 @@ def model_sort_key(model, stimuli_type, parameters_by_model):
         raise ValueError(f"No number of parameters was provided for model {model}")
 
     return (model_family(model), parameters_by_model[model], model, stimuli_type,)
+
+def sort_models(df, parameters_by_model):
+    # the rows of a dataframe with model and stimuli_type columns, in model_sort_key order
+    sort_keys = [
+        model_sort_key(row.model, row.stimuli_type, parameters_by_model)
+        for row in df.itertuples(index = False)
+    ]
+    order = sorted(range(len(df)), key = sort_keys.__getitem__)
+
+    return df.iloc[order].reset_index(drop = True)
+
+def sorted_pairwise_labels(model_metadata, parameters_by_model):
+    # the model labels of a pairwise heatmap in model_sort_key order, followed by the brain
+    model_labels = sorted(
+        model_metadata, 
+        key = lambda label: model_sort_key(
+            model_metadata[label]["model"], 
+            model_metadata[label]["stimuli_type"], 
+            parameters_by_model,
+        ),
+    )
+
+    return model_labels + ["brain"]

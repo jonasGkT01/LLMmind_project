@@ -1,18 +1,11 @@
+# edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
+# last AI edit: 2026-10-02, see docs/changelog/developers/ for details
 import argparse
 from pathlib import Path
 
 import pandas as pd
 
-def infer_task_from_isc_path(path):
-    name = Path(path).name
-
-    if not name.startswith("task-"):
-        raise ValueError(f"ISC file does not start with task-: {path}")
-
-    if not name.endswith("_isc_mean.npy"):
-        raise ValueError(f"Could not infer task from ISC filename: {path}")
-
-    return name.removeprefix("task-").removesuffix("_isc_mean.npy")
+from libraries.path_metadata import parse_isc_task_path
 
 # Must match the extensions get_embeddings.load_stimuli() reads, so both sides agree on the stimulus set.
 STIMULUS_EXTENSIONS = {".txt", ".bmp", ".jpeg", ".jpg", ".png", ".tif", ".tiff", ".webp"}
@@ -58,7 +51,7 @@ def main():
     # Built from the eligible stimuli, not by globbing isc_dir: each one must have an ISC file,
     # and leftover files from runs with a different stimulus filter are ignored.
     isc_files_by_task = {
-        infer_task_from_isc_path(path): path
+        parse_isc_task_path(path): path
         for path in sorted(isc_dir.glob("task-*_isc_mean.npy"))
     }
 

@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
 # edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
-# last AI edit: 2026-10-01, see docs/changelog/developers/ for details
+# last AI edit: 2026-10-02, see docs/changelog/developers/ for details
 import argparse
-from pathlib import Path
-import re
 
 from libraries.aggregate_alignment_scores import aggregate_all_p_value_outputs
 
@@ -11,45 +9,6 @@ from libraries.aggregate_alignment_scores import aggregate_all_p_value_outputs
 KEY_COLUMNS = ["dataset", "model", "stimuli_type", "similarity_type", "number_of_neighbours"]
 # the same columns in all_model_brain_alignment_scores.tsv's column (and sort) order
 METADATA_COLUMNS = ["dataset", "stimuli_type", "similarity_type", "number_of_neighbours", "model"]
-
-def parse_p_value_path(path):
-    filename = Path(path).name
-
-    pattern = (
-        r"dataset-(?P<dataset>.+?)"
-        r"_model-(?P<model>.+?)-(?P<stimuli_type>[^_]+)"
-        r"_brain_(?P<method>empirical|hypergeometric)"
-        r"_(?P<similarity_type>.+?)"
-        r"-alignment_score_(?P<number_of_neighbours>\d+)NN"
-        r"\.p_value\.tsv"
-    )
-
-    match = re.fullmatch(pattern, filename)
-
-    if match is None:
-        raise ValueError(f"Could not parse p-value filename: {path}")
-
-    metadata = match.groupdict()
-    metadata["number_of_neighbours"] = int(metadata["number_of_neighbours"])
-
-    return metadata
-
-def parse_relabelled_common_neighbours_path(path):
-    filename = Path(path).name
-
-    pattern = (
-        r"dataset-(?P<dataset>.+?)"
-        r"_model-(?P<model>.+?)-(?P<stimuli_type>[^_]+)"
-        r"_brain_(?P<similarity_type>.+?)"
-        r"-relabelled_common_neighbours\.parquet"
-    )
-
-    match = re.fullmatch(pattern, filename)
-
-    if match is None:
-        raise ValueError(f"Could not parse relabelled common-neighbours filename: {path}")
-
-    return match.groupdict()
 
 def main():
     parser = argparse.ArgumentParser(description="Aggregate all concept-level empirical and hypergeometric p-value TSV files into one long model-level summary TSV")
@@ -78,8 +37,6 @@ def main():
         empirical_p_values=args.empirical_p_values,
         hypergeometric_p_values=args.hypergeometric_p_values,
         relabelled_common_neighbours=args.relabelled_common_neighbours,
-        parse_p_value_path=parse_p_value_path,
-        parse_relabelled_common_neighbours_path=parse_relabelled_common_neighbours_path,
         key_columns=KEY_COLUMNS,
         metadata_columns=METADATA_COLUMNS,
         tsv_path=args.all_model_brain_alignment_scores_tsv,

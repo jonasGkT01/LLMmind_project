@@ -1,57 +1,28 @@
 #!/usr/bin/env python3
 # edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
-# last AI edit: 2026-10-01, see docs/changelog/developers/ for details
+# last AI edit: 2026-10-02, see docs/changelog/developers/ for details
 import argparse
-from pathlib import Path
-import re
 
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
 
-from libraries.manage_model_metadata import model_key, model_sort_key, parse_model_parameters
-from libraries.path_metadata import parse_llm_brain_alignment_score_path
-from libraries.visualisation_utils import colour_tick_labels_by_stimuli_type, contrasting_text_color, MEAN_ALIGNMENT_SCORE_LABEL, PAIRWISE_ALIGNMENT_SCORE, PAIRWISE_AXIS_LABEL, PAIRWISE_LEVEL, plot_title, SEQUENTIAL_COLOURMAP, stimuli_type_legend_handles
-
-def parse_llm_llm_path(path):
-    filename = Path(path).name
-
-    pattern = (
-        r"dataset-(?P<dataset>.+?)"
-        r"_model-(?P<model_1>.+?)-(?P<stimuli_type_1>[^_]+)"
-        r"_model-(?P<model_2>.+?)-(?P<stimuli_type_2>[^_]+)"
-        r"_(?P<similarity_type>.+?)"
-        r"-alignment_score_(?P<number_of_neighbours>\d+)NN"
-        r"\.parquet$"
-    )
-
-    match = re.fullmatch(pattern, filename)
-
-    if match is None:
-        raise ValueError(f"Could not parse LLM-LLM filename: {filename}")
-
-    return match.groupdict()
-
-def read_alignment_score(path, number_of_neighbours):
-    df = pd.read_parquet(path, engine="pyarrow")
-
-    if "alignment_score" not in df.columns:
-        raise ValueError(f"{path} does not contain an 'alignment_score' column")
-
-    number_of_concepts = len(df)
-    population_size = number_of_concepts - 1
-
-    if number_of_neighbours > population_size:
-        raise ValueError(f"{path}: number_of_neighbours={number_of_neighbours} exceeds the available population size {population_size}")
-
-    mean_alignment_score = float(df["alignment_score"].mean())
-
-    # Under the hypergeometric null:
-    # E[common_neighbours] = k^2 / (n_concepts - 1)
-    # and alignment_score = common_neighbours / k.
-    expected_alignment_score = number_of_neighbours/population_size
-
-    return mean_alignment_score, expected_alignment_score
+from libraries.compute_alignment import (
+    common_hypergeometric_expectation, 
+    read_alignment_scores,
+)
+from libraries.manage_model_metadata import (
+    model_key, 
+    parse_model_parameters, 
+    sorted_pairwise_labels,
+)
+from libraries.visualisation_utils import (
+    MEAN_ALIGNMENT_SCORE_LABEL,
+    PAIRWISE_ALIGNMENT_SCORE,
+    PAIRWISE_LEVEL,
+    plot_pairwise_heatmap,
+    plot_title,
+    save_figure,
+)
 
 def main():
     parser = argparse.ArgumentParser()
@@ -64,138 +35,81 @@ def main():
     parser.add_argument("--heatmap", type=str, required=True)
     args = parser.parse_args()
 
-    parameters_by_model = parse_model_parameters(args.model_parameters)
-
+    # read the mean alignment score of every model-brain and model-model pair
     values = {}
-    labels = set()
     model_metadata = {}
-    expected_alignment_scores = []
+    expectations = []
 
-    for path in args.llm_brain_alignment_scores:
-        metadata = parse_llm_brain_alignment_score_path(path)
+    for path in args.llm_brain_alignment_scores + args.llm_llm_alignment_scores:
+        scores_df, metadata, expectation = read_alignment_scores(
+            path, 
+            args.dataset, 
+            args.similarity_type, 
+            args.number_of_neighbours,
+        )
+        expectations.append(expectation)
 
-        label = model_key(metadata["model"], metadata["stimuli_type"])
+        if "model" in metadata:
+            sides = [(metadata["model"], metadata["stimuli_type"]), ("brain", None)]
+        else:
+            sides = [
+                (metadata["model_1"], metadata["stimuli_type_1"]), 
+                (metadata["model_2"], metadata["stimuli_type_2"]),
+            ]
 
-        score, expected_score = read_alignment_score(path, args.number_of_neighbours,)
-        expected_alignment_scores.append(expected_score)
+        pair_labels = []
 
-        labels.add(label)
-        labels.add("brain")
+        for model, stimuli_type in sides:
+            label = "brain" if model == "brain" else model_key(model, stimuli_type)
 
-        model_metadata[label] = {
-            "model": metadata["model"],
-            "stimuli_type": metadata["stimuli_type"],
-        }
+            if label != "brain":
+                model_metadata[label] = {"model": model, "stimuli_type": stimuli_type}
 
-        values[(label, "brain")] = score
-        values[("brain", label)] = score
+            pair_labels.append(label)
 
-    for path in args.llm_llm_alignment_scores:
-        metadata = parse_llm_llm_path(path)
+        values[tuple(pair_labels)] = values[tuple(pair_labels[::-1])] = float(
+            scores_df["alignment_score"].mean()
+        )
 
-        label_1 = model_key(metadata["model_1"], metadata["stimuli_type_1"])
-        label_2 = model_key(metadata["model_2"], metadata["stimuli_type_2"])
-
-        score, expected_score = read_alignment_score(path, args.number_of_neighbours,)
-        expected_alignment_scores.append(expected_score)
-
-        labels.add(label_1)
-        labels.add(label_2)
-
-        model_metadata[label_1] = {
-            "model": metadata["model_1"],
-            "stimuli_type": metadata["stimuli_type_1"],
-        }
-        model_metadata[label_2] = {
-            "model": metadata["model_2"],
-            "stimuli_type": metadata["stimuli_type_2"],
-        }
-
-        values[(label_1, label_2)] = score
-        values[(label_2, label_1)] = score
-
-    if not expected_alignment_scores:
-        raise ValueError("No theoretical alignment scores could be computed")
-
-    expected_alignment_score = expected_alignment_scores[0]
-
-    if not np.allclose(expected_alignment_scores, expected_alignment_score,):
-        raise ValueError("Alignment-score files contain different numbers of concepts, so they do not have a common hypergeometric expectation")
-
-    if not labels:
-        raise ValueError("No alignment score files were provided")
-
-    labels = sorted(
-        labels,
-        key = lambda label: (1,) if label == "brain" else (0, *model_sort_key(
-            model_metadata[label]["model"],
-            model_metadata[label]["stimuli_type"],
-            parameters_by_model,
-        )),
+    expected_alignment_score = common_hypergeometric_expectation(expectations)
+    labels = sorted_pairwise_labels(
+        model_metadata, 
+        parse_model_parameters(args.model_parameters),
     )
 
+    # self-cells stay NaN, so they are drawn blank: they are 1 by definition, not computed
     matrix = np.full((len(labels), len(labels)), np.nan)
 
     for i, row_label in enumerate(labels):
-        for j, col_label in enumerate(labels):
+        for j, column_label in enumerate(labels):
+            if row_label != column_label and (row_label, column_label) in values:
+                matrix[i, j] = values[(row_label, column_label)]
 
-            if row_label == col_label:
-                matrix[i, j] = 1.0
+    # plot the heatmap with the score written in each cell
+    figure_size = (max(8, 0.55*len(labels)), max(7, 0.55*len(labels)))
+    fig, ax = plt.subplots(figsize = figure_size)
 
-            elif (row_label, col_label) in values:
-                matrix[i, j] = values[(row_label, col_label)]
+    plot_pairwise_heatmap(
+        ax, 
+        matrix, 
+        [[f"{value:.4f}" for value in row] for row in matrix], 
+        labels, 
+        model_metadata, 
+        (0, 1), 
+        MEAN_ALIGNMENT_SCORE_LABEL,
+    )
+    ax.set_title(
+        plot_title(
+            PAIRWISE_LEVEL, 
+            PAIRWISE_ALIGNMENT_SCORE, 
+            args.dataset, 
+            args.similarity_type, 
+            args.number_of_neighbours,
+        )
+        + f"\nexpected alignment score (hypergeometric): {expected_alignment_score:.4f}"
+    )
 
-    output_path = Path(args.heatmap)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-
-    fig_width = max(8, 0.55*len(labels))
-    fig_height = max(7, 0.55*len(labels))
-
-    fig, ax = plt.subplots(figsize=(fig_width, fig_height))
-
-    image = ax.imshow(matrix, vmin=0, vmax=1, cmap=SEQUENTIAL_COLOURMAP)
-
-    # Write the alignment score inside each heatmap cell
-    for i in range(matrix.shape[0]):
-        for j in range(matrix.shape[1]):
-            value = matrix[i, j]
-    
-            if np.isnan(value):
-                continue
-    
-            # Use contrasting text colour for readability
-            text_color = contrasting_text_color(image, value)
-
-            ax.text(j, i, f"{value:.4f}", ha="center", va="center", color=text_color, fontsize=7,)
-
-    ax.set_xticks(np.arange(len(labels)))
-    ax.set_yticks(np.arange(len(labels)))
-
-    # model names only: the stimulus type is shown by the label colour
-    tick_names = [
-        label if label == "brain" else model_metadata[label]["model"]
-        for label in labels
-    ]
-    ax.set_xticklabels(tick_names, rotation = 90)
-    ax.set_yticklabels(tick_names)
-
-    stimuli_types = [None if label == "brain" else model_metadata[label]["stimuli_type"] for label in labels]
-    colour_tick_labels_by_stimuli_type(ax, stimuli_types, axes="xy")
-
-    ax.set_title(plot_title(PAIRWISE_LEVEL, PAIRWISE_ALIGNMENT_SCORE, args.dataset, args.similarity_type, args.number_of_neighbours)
-                 + f"\nexpected alignment score (hypergeometric): {expected_alignment_score:.4f}")
-    ax.set_xlabel(PAIRWISE_AXIS_LABEL)
-    ax.set_ylabel(PAIRWISE_AXIS_LABEL)
-
-    # fraction/pad size the bar to the square heatmap, so it no longer rises into the title
-    colorbar = fig.colorbar(image, ax=ax, fraction=0.046, pad=0.04)
-    colorbar.set_label(MEAN_ALIGNMENT_SCORE_LABEL)
-
-    fig.tight_layout()
-    # the bottom-left corner, under the row names, is the only area free of labels
-    fig.legend(handles=stimuli_type_legend_handles([stimuli_type for stimuli_type in stimuli_types if stimuli_type is not None]), loc="lower left", fontsize=8, frameon=False,)
-    fig.savefig(output_path, dpi=300)
-    plt.close(fig)
+    save_figure(fig, args.heatmap, model_figure = False)
 
 if __name__ == "__main__":
     main()

@@ -429,7 +429,8 @@ snakemake --use-conda --cores <N> --config 'similarity_types=["cosine","pearson"
 snakemake --use-conda --cores <N> --rerun-triggers mtime \
     --forcerun plot_brain_model_alignment_lineplot plot_concept_alignment_scatterplot \
                plot_brain_model_alignment_enrichment_lineplot \
-               plot_concept_alignment_enrichment_scatterplot plot_spearman_alignment
+               plot_concept_alignment_enrichment_scatterplot plot_spearman_alignment \
+               plot_alignment_heatmap plot_empirical_p_value_heatmap
 ```
 
 The similarity metrics are listed under `similarity_types` in
@@ -539,7 +540,8 @@ need `--cores 4` or more to run at full speed.
   2026-09-23).
 - **`plot_spearman_alignment` stops with a missing
   `empirical_null_standard_deviation_spearman_coefficient` column**: the
-  Spearman TSVs predate the error bars added on 2026-09-24. Rebuild them
+  model-level Spearman TSVs predate the null SD column added on 2026-09-24
+  (drawn as the grey null interval). Rebuild them
   once with
   `snakemake --use-conda --cores <N> --forcerun compute_spearman_alignmentwith_empirical_p_value`.
 - **Nothing under `results/spearman_alignment/`**: since 2026-09-25 the
@@ -580,8 +582,12 @@ combined summary tables have a `similarity_type` column instead.
   model_1 | stimuli_type_1 | model_2 | stimuli_type_2 | statistic | value`.
   Each pair appears once, with `model_1` earlier than `model_2` in the
   `models:` order of `config/config.yaml`. The p-values are not corrected
-  for multiple testing, and they are not part of the brain-model
-  Benjamini-Hochberg family.
+  for multiple testing in the TSV. The p-value heatmap corrects them as their
+  own Benjamini-Hochberg family, separate from the brain-model family (see
+  the [statistics reference](docs/reference/2026-10-02_0925_statistics.md)).
+  The six `*_p_value_across_concepts` statistics in both summary TSVs are
+  descriptive summaries of the per-concept p-values, not tests; the
+  model-level test is `model_level_empirical_p_value`.
 - `results/pictures/` — every plot and heatmap, one subfolder per plot type:
   `alignment_heatmaps/`, `alignment_p_value_heatmaps/`,
   `alignment_lineplots/`, `concept_alignment_scatterplots/`,
@@ -622,6 +628,15 @@ combined summary tables have a `similarity_type` column instead.
     significance with two rows of asterisks just below the x-axis, above
     the model name: black for the empirical p-value, blue below it for the
     Benjamini-Hochberg q-value (`*` < 0.05, `**` < 0.01, `***` < 0.001).
+    The p-value heatmap writes the q-value asterisks in each cell; its
+    brain cells use the same family as the brain-model plots, so the
+    asterisks agree, and its model-model cells form a family of their own.
+  - The heatmaps leave the diagonal (each model or the brain with itself)
+    blank: those cells are 1 by definition, not computed scores.
+  - Error bars only show the uncertainty of the plotted value (the standard
+    error in the model-level alignment line plot). The spread of a null
+    distribution is drawn as a grey "Null ± 1 SD" interval on the reference
+    line, where the null is centred, not around the observed point.
   - Model names show the model only (for example `clip_b`, not
     `clip_b-vision`) and are coloured by stimulus
     type: dark orange (`#A84800`) for language, dark green (`#007A5A`) for
@@ -641,22 +656,25 @@ combined summary tables have a `similarity_type` column instead.
 
   The enrichment plots divide the observed alignment score by the expected
   one, taken as the mean relabelled score of that model (over every
-  relabelling and concept). The model-level plot's error bars are the SD of
-  the relabelling null in the same units; the concept-level plot shows no
-  per-concept error bars, to stay readable. A dashed line marks
-  enrichment = 1. The
+  relabelling and concept). A dashed line marks enrichment = 1. The
+  model-level plot draws, at each model, a grey interval of 1 ± the SD of
+  that model's relabelling null in the same units; the observed points have
+  no error bars. The concept-level plot shows no null interval, to stay
+  readable. The
   concept-level plot uses the same expected score as the model-level one,
   so the model-level enrichment is the mean of the concept-level ones.
   Both plots for a given dataset/similarity/k share one y-axis range,
   computed from both (`enrichment_ylim()` in
-  `libraries/compute_alignment_enrichment.py`), which fits every concept and
-  every model-level value + SD. The y-axis is linear from 0 to 1 and log10
+  `libraries/compute_alignment_enrichment.py`), which fits every concept,
+  every model-level value and every null interval. The y-axis is linear from 0 to 1 and log10
   above 1 (matplotlib `symlog`, set by `set_enrichment_y_scale()`), and
   [0, 1] is as tall as one decade. This way a few very high concepts don't
-  squash the rest, and every point is still drawn. The model-level Spearman plot's error bars are likewise
-  the SD of its permutation null
-  (`empirical_null_standard_deviation_spearman_coefficient`); the
-  concept-level Spearman plot has no per-concept error bars.
+  squash the rest, and every point is still drawn. The model-level Spearman
+  plot likewise draws a grey interval of 0 ± the SD of each model's
+  permutation null (`empirical_null_standard_deviation_spearman_coefficient`);
+  the concept-level Spearman plot has none. The statistics behind all plots
+  (null distributions, p-values, Benjamini-Hochberg families) are described
+  in the [statistics reference](docs/reference/2026-10-02_0925_statistics.md).
 
 ## Code conventions
 
@@ -697,6 +715,11 @@ or editing scripts.
 - [`docs/reference/fmri_preprocessing.md`](docs/reference/fmri_preprocessing.md)
   — what each dataset's authors did to the BOLD data before this workflow, and
   what the workflow itself does (a source for the methods section)
+- [`docs/reference/2026-10-02_0925_statistics.md`](docs/reference/2026-10-02_0925_statistics.md)
+  — alignment scores, the relabelling and Spearman nulls, the empirical and
+  hypergeometric tests, enrichment, the Benjamini-Hochberg families and what
+  every figure's points, error bars and grey intervals show (a source for
+  the methods section)
 - [`docs/reference/model_embeddings.md`](docs/reference/model_embeddings.md)
   — how each model turns a stimulus into one vector: chunking, pooling
   (including the BOS token) and the CLS token of vision models (a source for
@@ -716,6 +739,6 @@ or editing scripts.
 *This document was written, in whole or in part, with AI coding assistants via Claude Code (Anthropic).*
 
 - *Models: Claude Sonnet 5 (`claude-sonnet-5`, until 2026-09-22); Claude Opus 5.5 (`claude-opus-5-5`, from 2026-09-23).*
-- *Latest AI edit: 2026-10-01, Claude Opus 5.5: documented the model order shared by all plots (TODO S1), found missing when the developer asked whether the documentation was up to date.*
+- *Latest AI edit: 2026-10-02, Claude Opus 5.5: documented the null intervals, the blank heatmap diagonal, the separate Benjamini-Hochberg families and the new statistics reference (TODO S2, S3, S4, S13, S15, S16, S20), after the developer asked to do the TODO tasks that need no rerun.*
 - *Edit history: see [`docs/changelog/`](docs/changelog/).*
 - *Review status: not yet reviewed by the developer.*

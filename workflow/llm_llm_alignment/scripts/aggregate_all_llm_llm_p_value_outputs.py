@@ -1,57 +1,15 @@
 #!/usr/bin/env python3
 # edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
-# last AI edit: 2026-10-01, see docs/changelog/developers/ for details
+# last AI edit: 2026-10-02, see docs/changelog/developers/ for details
 import argparse
-from pathlib import Path
-import re
 
 from libraries.aggregate_alignment_scores import aggregate_all_p_value_outputs
+from libraries.path_metadata import parse_alignment_path
 
 # identifies one LLM-LLM result, in the order the p-value files are paired up
 KEY_COLUMNS = ["dataset", "model_1", "stimuli_type_1", "model_2", "stimuli_type_2", "similarity_type", "number_of_neighbours"]
 # the same columns in all_model_model_alignment_scores.tsv's column (and sort) order
 METADATA_COLUMNS = ["dataset", "similarity_type", "number_of_neighbours", "model_1", "stimuli_type_1", "model_2", "stimuli_type_2"]
-
-def parse_p_value_path(path):
-    filename = Path(path).name
-
-    pattern = (
-        r"dataset-(?P<dataset>.+?)"
-        r"_model-(?P<model_1>.+?)-(?P<stimuli_type_1>[^_]+)"
-        r"_model-(?P<model_2>.+?)-(?P<stimuli_type_2>[^_]+)"
-        r"_(?P<method>empirical|hypergeometric)"
-        r"_(?P<similarity_type>.+?)"
-        r"-alignment_score_(?P<number_of_neighbours>\d+)NN"
-        r"\.p_value\.tsv"
-    )
-
-    match = re.fullmatch(pattern, filename)
-
-    if match is None:
-        raise ValueError(f"Could not parse p-value filename: {path}")
-
-    metadata = match.groupdict()
-    metadata["number_of_neighbours"] = int(metadata["number_of_neighbours"])
-
-    return metadata
-
-def parse_relabelled_common_neighbours_path(path):
-    filename = Path(path).name
-
-    pattern = (
-        r"dataset-(?P<dataset>.+?)"
-        r"_model-(?P<model_1>.+?)-(?P<stimuli_type_1>[^_]+)"
-        r"_model-(?P<model_2>.+?)-(?P<stimuli_type_2>[^_]+)"
-        r"_(?P<similarity_type>.+?)"
-        r"-relabelled_common_neighbours\.parquet"
-    )
-
-    match = re.fullmatch(pattern, filename)
-
-    if match is None:
-        raise ValueError(f"Could not parse relabelled common-neighbours filename: {path}")
-
-    return match.groupdict()
 
 def validate_canonical_pair_order(paths, model_order):
     # Pairs are unordered; the workflow writes each one once, with model_1 no later than model_2 in
@@ -60,7 +18,7 @@ def validate_canonical_pair_order(paths, model_order):
     seen_pairs = set()
 
     for path in paths:
-        metadata = parse_p_value_path(path)
+        metadata = parse_alignment_path(path)
         side_1 = (metadata["model_1"], metadata["stimuli_type_1"])
         side_2 = (metadata["model_2"], metadata["stimuli_type_2"])
 
@@ -118,8 +76,6 @@ def main():
         empirical_p_values=args.empirical_p_values,
         hypergeometric_p_values=args.hypergeometric_p_values,
         relabelled_common_neighbours=args.relabelled_common_neighbours,
-        parse_p_value_path=parse_p_value_path,
-        parse_relabelled_common_neighbours_path=parse_relabelled_common_neighbours_path,
         key_columns=KEY_COLUMNS,
         metadata_columns=METADATA_COLUMNS,
         tsv_path=args.all_model_model_alignment_scores_tsv,

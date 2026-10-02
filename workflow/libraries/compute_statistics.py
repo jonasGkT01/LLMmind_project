@@ -1,3 +1,5 @@
+# edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
+# last AI edit: 2026-10-02, see docs/changelog/developers/ for details
 import numpy as np
 import pandas as pd
 
@@ -69,3 +71,29 @@ def read_model_level_empirical_p_values(path, dataset, similarity_type, number_o
         raise ValueError(f"More than one model-level empirical p-value was found for: {duplicated_labels}")
 
     return dict(zip(labels, selected_statistics["value"],))
+
+def model_level_significance(
+    labels, 
+    statistics_path, 
+    dataset, 
+    similarity_type, 
+    number_of_neighbours,
+):
+    # model-level empirical p-values of the given models, in label order, and their
+    # Benjamini-Hochberg q-values; the family is every model of one (dataset, similarity, k)
+    p_value_by_model = read_model_level_empirical_p_values(
+        path = statistics_path, 
+        dataset = dataset, 
+        similarity_type = similarity_type, 
+        number_of_neighbours = number_of_neighbours,
+    )
+
+    if set(labels) != set(p_value_by_model):
+        raise ValueError(
+            "The models do not match those with model-level empirical p-values: "
+            f"{sorted(set(labels) ^ set(p_value_by_model))}"
+        )
+
+    p_values = np.asarray([p_value_by_model[label] for label in labels], dtype = float)
+
+    return p_values, benjamini_hochberg(p_values)

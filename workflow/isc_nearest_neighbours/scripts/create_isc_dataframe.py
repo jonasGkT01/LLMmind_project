@@ -1,17 +1,12 @@
+# edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
+# last AI edit: 2026-10-02, see docs/changelog/developers/ for details
 import argparse
 from pathlib import Path
-import re
 
 import numpy as np
 import pandas as pd
 
-TASK_PATTERN = re.compile(r"task-(.+?)_isc_mean\.npy$")
-
-def extract_task_from_filename(path: Path) -> str:
-    match = TASK_PATTERN.search(path.name)
-    if not match:
-        raise ValueError(f"Could not extract task name from filename: {path.name}. Expected pattern like 'task-<task>_isc_mean.npy'")
-    return match.group(1)
+from libraries.path_metadata import parse_isc_task_path
 
 def load_isc_value(npy_path: Path):
     value = np.load(npy_path)
@@ -25,7 +20,7 @@ def isc_npys_to_dataframe(input_isc_npys: list[str]) -> pd.DataFrame:
 
     for npy_file in input_isc_npys:
         path = Path(npy_file)
-        task = extract_task_from_filename(path)
+        task = parse_isc_task_path(path)
         isc = load_isc_value(path)
 
         records.append({

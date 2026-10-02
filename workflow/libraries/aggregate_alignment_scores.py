@@ -1,5 +1,5 @@
 # edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
-# last AI edit: 2026-10-01, see docs/changelog/developers/ for details
+# last AI edit: 2026-10-02, see docs/changelog/developers/ for details
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
@@ -8,6 +8,7 @@ import pandas as pd
 
 from libraries.compute_alignment import read_relabelled_alignment_scores
 from libraries.compute_statistics import empirical_upper_tail_p_value
+from libraries.path_metadata import parse_alignment_path
 
 # Shared by the LLM-brain (aggregate_all_p_value_outputs.py) and LLM-LLM
 # (aggregate_all_llm_llm_p_value_outputs.py) aggregations, which differ only in
@@ -296,13 +297,13 @@ def reshape_summary(summary_df, metadata_columns):
 
     return summary_long_df
 
-def collect_paths_by_key(paths, parse_path, key_columns, file_description, method=None):
+def collect_paths_by_key(paths, key_columns, file_description, kind, method = None):
     paths_by_key = {}
 
     for path in paths:
-        metadata = parse_path(path)
+        metadata = parse_alignment_path(path)
 
-        if method is not None and metadata["method"] != method:
+        if metadata["kind"] != kind or metadata.get("method") != method:
             raise ValueError(f"Expected an {file_description} file, but found: {path}")
 
         key = tuple(metadata[column] for column in key_columns)
@@ -325,8 +326,6 @@ def aggregate_all_p_value_outputs(
     empirical_p_values,
     hypergeometric_p_values,
     relabelled_common_neighbours,
-    parse_p_value_path,
-    parse_relabelled_common_neighbours_path,
     key_columns,
     metadata_columns,
     tsv_path,
@@ -336,9 +335,26 @@ def aggregate_all_p_value_outputs(
     # all-k relabelled file serves every k of a result, so it is keyed without number_of_neighbours.
     relabelled_key_columns = [column for column in key_columns if column != "number_of_neighbours"]
 
-    empirical_paths_by_key = collect_paths_by_key(empirical_p_values, parse_p_value_path, key_columns, "empirical p-value", method="empirical")
-    hypergeometric_paths_by_key = collect_paths_by_key(hypergeometric_p_values, parse_p_value_path, key_columns, "hypergeometric p-value", method="hypergeometric")
-    relabelled_paths_by_key = collect_paths_by_key(relabelled_common_neighbours, parse_relabelled_common_neighbours_path, relabelled_key_columns, "relabelled common-neighbours")
+    empirical_paths_by_key = collect_paths_by_key(
+        empirical_p_values, 
+        key_columns, 
+        "empirical p-value", 
+        kind = "p_value", 
+        method = "empirical",
+    )
+    hypergeometric_paths_by_key = collect_paths_by_key(
+        hypergeometric_p_values, 
+        key_columns, 
+        "hypergeometric p-value", 
+        kind = "p_value", 
+        method = "hypergeometric",
+    )
+    relabelled_paths_by_key = collect_paths_by_key(
+        relabelled_common_neighbours, 
+        relabelled_key_columns, 
+        "relabelled common-neighbours", 
+        kind = "relabelled",
+    )
 
     empirical_keys = set(empirical_paths_by_key)
 

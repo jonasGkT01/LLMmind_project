@@ -1,45 +1,18 @@
+# edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
+# last AI edit: 2026-10-02, see docs/changelog/developers/ for details
 from pathlib import Path
 
 from matplotlib.ticker import FixedLocator, FuncFormatter
 import numpy as np
 import pandas as pd
 
-from libraries.compute_alignment import read_relabelled_alignment_scores
+from libraries.compute_alignment import (
+    read_alignment_scores, 
+    read_relabelled_alignment_scores,
+)
 from libraries.manage_model_metadata import model_key
-from libraries.path_metadata import parse_llm_brain_alignment_score_path
+from libraries.path_metadata import relabelled_name_for_observed_path
 from libraries.visualisation_utils import legend_headroom_top
-
-RELABELLED_SUFFIX = "-relabelled_common_neighbours.parquet"
-
-def relabelled_name_for_observed_path(observed_path, number_of_neighbours):
-    # dataset-..._brain_{similarity}-alignment_score_{k}NN.parquet -> dataset-..._brain_{similarity}-relabelled_common_neighbours.parquet
-    observed_name = Path(observed_path).name
-    observed_suffix = f"-alignment_score_{number_of_neighbours}NN.parquet"
-
-    if not observed_name.endswith(observed_suffix):
-        raise ValueError(f"Observed alignment-score filename does not end in {observed_suffix}: {observed_name}")
-
-    return observed_name[:-len(observed_suffix)] + RELABELLED_SUFFIX
-
-def read_validated_alignment_scores(path, required_columns):
-    df = pd.read_parquet(path, engine="pyarrow", columns=sorted(required_columns),)
-
-    missing_columns = set(required_columns) - set(df.columns)
-
-    if missing_columns:
-        raise ValueError(f"Alignment-score file {path} is missing columns: {sorted(missing_columns)}")
-
-    alignment_scores = pd.to_numeric(df["alignment_score"], errors="coerce",)
-
-    if alignment_scores.isna().any():
-        raise ValueError(f"{path} contains non-numeric alignment scores")
-
-    if ((alignment_scores < 0) | (alignment_scores > 1)).any():
-        raise ValueError(f"{path} contains alignment scores outside [0, 1]")
-
-    df["alignment_score"] = alignment_scores.astype(float)
-
-    return df
 
 def relabelled_null_matrix(relabelled_df, concepts, source):
     # (relabellings x concepts) matrix of relabelled scores, columns in the order of `concepts`. Built
@@ -74,33 +47,25 @@ def compute_model_alignment_enrichment(observed_path, relabelled_path, expected_
     value, so the model-level enrichment is exactly the mean of the
     concept-level enrichments.
 
-    - concept level: enrichment = observed score / expected; error = SD across
-      relabellings of that concept's relabelled score / expected
-    - model level: enrichment = mean observed score / expected; error = SD
-      across relabellings of the mean relabelled score / expected
+    - concept level: enrichment = observed score / expected
+    - model level: enrichment = mean observed score / expected; null standard
+      deviation = SD across relabellings of the mean relabelled score / expected
 
-    Both errors are the spread of the null distribution in enrichment units,
-    so a point whose bar clears 1 stands out from chance.
+    The null standard deviation is the spread of the null distribution in
+    enrichment units. It is centred on enrichment = 1, not on the observed
+    value, and is drawn there as an interval; significance is carried by the
+    model-level p-values and q-values.
     """
-    metadata = parse_llm_brain_alignment_score_path(observed_path)
-
-    if metadata["dataset"] != expected_dataset:
-        raise ValueError(f"{observed_path} belongs to dataset {metadata['dataset']}, expected {expected_dataset}")
-
-    if metadata["similarity_type"] != expected_similarity_type:
-        raise ValueError(f"{observed_path} uses similarity type {metadata['similarity_type']}, expected {expected_similarity_type}")
-
-    if metadata["number_of_neighbours"] != expected_number_of_neighbours:
-        raise ValueError(f"{observed_path} uses k={metadata['number_of_neighbours']}, expected k={expected_number_of_neighbours}")
-
-    observed_df = read_validated_alignment_scores(observed_path, {"concept", "alignment_score",})
-    observed_df["concept"] = observed_df["concept"].astype(str)
-    relabelled_df = read_relabelled_alignment_scores(relabelled_path, expected_number_of_neighbours)
-
-    duplicated_concepts = observed_df.loc[observed_df["concept"].duplicated(keep=False), "concept",].tolist()
-
-    if duplicated_concepts:
-        raise ValueError(f"Alignment-score file {observed_path} contains duplicated concepts: {duplicated_concepts[:10]}")
+    observed_df, metadata, _ = read_alignment_scores(
+        observed_path, 
+        expected_dataset, 
+        expected_similarity_type, 
+        expected_number_of_neighbours,
+    )
+    relabelled_df = read_relabelled_alignment_scores(
+        relabelled_path, 
+        expected_number_of_neighbours,
+    )
 
     # rows: relabellings, columns: concepts (in the observed order); every observed concept must appear
     null_values = relabelled_null_matrix(relabelled_df, observed_df["concept"].tolist(), relabelled_path)
@@ -121,7 +86,6 @@ def compute_model_alignment_enrichment(observed_path, relabelled_path, expected_
             "label": model_key(metadata["model"], metadata["stimuli_type"]),
             "concept": observed_df["concept"].to_numpy(),
             "enrichment": observed_scores/expected_alignment_score,
-            "null_standard_deviation": null_values.std(axis=0, ddof=1)/expected_alignment_score,
         }
     )
 
@@ -187,19 +151,26 @@ def set_enrichment_y_scale(ax):
     ax.yaxis.set_major_locator(FixedLocator(ENRICHMENT_Y_TICKS))
     ax.yaxis.set_major_formatter(FuncFormatter(lambda value, _: f"{value:g}"))
 
-def enrichment_ylim(concept_df, model_df, padding=0.15):
-    # Shared by the concept- and model-level enrichment plots of one (dataset, similarity, k), so both
-    # scripts derive the same limits from the same inputs. The top always leaves the enrichment = 1
-    # reference line visible, and the padding leaves some room above the highest point. Concepts are
-    # plotted without their null SD, so only the model-level values extend by it. Padding and legend
-    # headroom are fractions of the axis height, so they are applied to axis positions, not values.
+# fraction of the axis height left free above the highest point
+ENRICHMENT_Y_PADDING = 0.15
+
+def enrichment_ylim(concept_df, model_df):
+    # Shared by the concept- and model-level enrichment plots of one (dataset, similarity, k), so
+    # both scripts derive the same limits from the same inputs. The top always leaves the
+    # enrichment = 1 reference line and the model-level null intervals (1 ± null SD) visible.
+    # Padding and legend headroom are fractions of the axis height, so they are applied to axis
+    # positions, not values.
     upper_values = np.concatenate(
         [
-            concept_df["enrichment"].to_numpy(dtype=float),
-            (model_df["enrichment"] + model_df["null_standard_deviation"]).to_numpy(dtype=float),
+            concept_df["enrichment"].to_numpy(dtype = float), 
+            model_df["enrichment"].to_numpy(dtype = float), 
+            1.0 + model_df["null_standard_deviation"].to_numpy(dtype = float),
         ]
     )
-    top = max(1.0, float(np.nanmax(upper_values)))
-    top_position = legend_headroom_top(0.0, enrichment_axis_position(top)*(1.0 + padding))
+    top = float(np.nanmax(upper_values))
+    top_position = legend_headroom_top(
+        0.0, 
+        enrichment_axis_position(top)*(1.0 + ENRICHMENT_Y_PADDING),
+    )
 
     return 0.0, enrichment_axis_value(top_position)

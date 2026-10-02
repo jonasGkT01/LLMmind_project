@@ -1,97 +1,33 @@
 #!/usr/bin/env python3
 # edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
-# last AI edit: 2026-10-01, see docs/changelog/developers/ for details
+# last AI edit: 2026-10-02, see docs/changelog/developers/ for details
 import argparse
-from pathlib import Path
 
-import matplotlib.pyplot as plt
-import numpy as np
 import pandas as pd
 
-from libraries.compute_statistics import benjamini_hochberg, read_model_level_empirical_p_values
-from libraries.manage_model_metadata import model_key, model_sort_key, parse_model_parameters
-from libraries.path_metadata import parse_llm_brain_alignment_score_path
-from libraries.visualisation_utils import (
-    add_legend,
-    legend_headroom_top,
-    add_model_family_annotations,
-    ALIGNMENT_SCORE_LABEL,
-    annotate_significance,
-    BRAIN_MODEL_ALIGNMENT_SCORE,
-    colour_tick_labels_by_stimuli_type,
-    concept_colours,
-    CONCEPT_LEVEL,
-    concept_point_alpha,
-    deterministic_jitter,
-    mark_degenerate_boxplot_statistics,
-    MODEL_AXIS_LABEL,
-    plot_title,
-    significance_legend_handles,
-    stimuli_type_legend_handles,
+from libraries.compute_alignment import (
+    common_hypergeometric_expectation, 
+    read_alignment_scores,
 )
-
-def read_model_alignment_scores(
-    path,
-    expected_dataset,
-    expected_similarity_type,
-    expected_number_of_neighbours,
-):
-    metadata = parse_llm_brain_alignment_score_path(path)
-
-    if metadata["dataset"] != expected_dataset:
-        raise ValueError(f"Unexpected dataset in {path}: {metadata['dataset']}")
-
-    if metadata["similarity_type"] != expected_similarity_type:
-        raise ValueError(f"Unexpected similarity type in {path}: {metadata['similarity_type']}")
-
-    if metadata["number_of_neighbours"] != expected_number_of_neighbours:
-        raise ValueError(f"Unexpected number of neighbours in {path}: {metadata['number_of_neighbours']}")
-
-    alignment_df = pd.read_parquet(path, engine="pyarrow",)
-
-    required_columns = {
-        "concept",
-        "alignment_score",
-    }
-
-    missing_columns = required_columns - set(alignment_df.columns)
-
-    if missing_columns:
-        raise ValueError(f"Alignment-score file {path} is missing columns: {sorted(missing_columns)}")
-
-    duplicated_concepts = alignment_df.loc[alignment_df["concept"].duplicated(keep=False), "concept",].tolist()
-
-    if duplicated_concepts:
-        raise ValueError(f"Alignment-score file {path} contains duplicated concepts: {duplicated_concepts[:10]}")
-
-    alignment_scores = pd.to_numeric(alignment_df["alignment_score"], errors="coerce",)
-
-    if alignment_scores.isna().any():
-        invalid_concepts = alignment_df.loc[alignment_scores.isna(), "concept",].tolist()
-        raise ValueError(f"Alignment-score file {path} contains invalid alignment scores for concepts: {invalid_concepts[:10]}")
-
-    if ((alignment_scores < 0) | (alignment_scores > 1)).any():
-        invalid_concepts = alignment_df.loc[(alignment_scores < 0) | (alignment_scores > 1), "concept",].tolist()
-        raise ValueError(f"Alignment-score file {path} contains scores outside [0, 1] for concepts: {invalid_concepts[:10]}")
-
-    number_of_concepts = len(alignment_df)
-    population_size = number_of_concepts - 1
-
-    if population_size <= 0:
-        raise ValueError(f"At least two concepts are required in {path}")
-
-    if expected_number_of_neighbours > population_size:
-        raise ValueError(f"{path} uses {expected_number_of_neighbours} neighbours, but only {number_of_concepts} concepts are available")
-
-    expected_alignment_score = expected_number_of_neighbours/population_size
-
-    output_df = alignment_df[["concept",]].copy()
-    output_df["alignment_score"] = alignment_scores
-    output_df["model"] = metadata["model"]
-    output_df["stimuli_type"] = metadata["stimuli_type"]
-    output_df["label"] = model_key(metadata["model"], metadata["stimuli_type"])
-
-    return output_df, metadata, expected_alignment_score
+from libraries.compute_statistics import model_level_significance
+from libraries.manage_model_metadata import (
+    model_key, 
+    parse_model_parameters, 
+    sort_models,
+)
+from libraries.visualisation_utils import (
+    add_null_line,
+    ALIGNMENT_SCORE_LABEL,
+    BRAIN_MODEL_ALIGNMENT_SCORE,
+    CONCEPT_LEVEL,
+    create_model_figure,
+    plot_concept_distributions,
+    plot_title,
+    save_figure,
+    set_alignment_score_y_axis,
+    stimuli_type_legend_handles,
+    style_model_axes,
+)
 
 def main():
     parser = argparse.ArgumentParser()
@@ -104,130 +40,71 @@ def main():
     parser.add_argument("--plot", required=True,)
     args = parser.parse_args()
 
-    parameters_by_model = parse_model_parameters(args.model_parameters)
-
-    model_dataframes = []
-    model_metadata = {}
-    expected_alignment_scores = set()
+    # load every model's concept-level alignment scores
+    concept_dataframes = []
+    expectations = []
 
     for path in args.llm_brain_alignment_scores:
-        scores_df, metadata, expected_alignment_score = read_model_alignment_scores(
-            path=path,
-            expected_dataset=args.dataset,
-            expected_similarity_type=args.similarity_type,
-            expected_number_of_neighbours=args.number_of_neighbours,
+        scores_df, metadata, expectation = read_alignment_scores(
+            path, 
+            args.dataset, 
+            args.similarity_type, 
+            args.number_of_neighbours,
         )
-        label = scores_df["label"].iloc[0]
+        scores_df["model"] = metadata["model"]
+        scores_df["stimuli_type"] = metadata["stimuli_type"]
+        scores_df["label"] = model_key(metadata["model"], metadata["stimuli_type"])
+        concept_dataframes.append(scores_df)
+        expectations.append(expectation)
 
-        if label in model_metadata:
-            raise ValueError(f"More than one alignment-score file was provided for {label}")
-
-        model_metadata[label] = {
-            "model": metadata["model"],
-            "stimuli_type": metadata["stimuli_type"],
-        }
-        model_dataframes.append(scores_df)
-        expected_alignment_scores.add(expected_alignment_score)
-
-    if not model_dataframes:
-        raise ValueError("No LLM-brain alignment-score files were provided")
-
-    if len(expected_alignment_scores) > 1:
-        raise ValueError(f"Inconsistent hypergeometric expected alignment scores across input files: {sorted(expected_alignment_scores)}")
-
-    expected_alignment_score = expected_alignment_scores.pop()
-
-    alignment_df = pd.concat(model_dataframes, ignore_index=True,)
-
-    labels = sorted(
-        model_metadata,
-        key = lambda label: model_sort_key(
-            model = model_metadata[label]["model"],
-            stimuli_type = model_metadata[label]["stimuli_type"],
-            parameters_by_model = parameters_by_model,
-        ),
-    )
-    models = [model_metadata[label]["model"] for label in labels]
-    stimuli_types = [model_metadata[label]["stimuli_type"] for label in labels]
-
-    p_value_by_model = read_model_level_empirical_p_values(
-        path=args.model_level_statistics,
-        dataset=args.dataset,
-        similarity_type=args.similarity_type,
-        number_of_neighbours=args.number_of_neighbours,
+    concept_df = pd.concat(concept_dataframes, ignore_index = True)
+    model_df = sort_models(
+        concept_df[["label", "model", "stimuli_type"]].drop_duplicates(), 
+        parse_model_parameters(args.model_parameters),
     )
 
-    missing_p_values = set(labels) - set(p_value_by_model)
+    if len(model_df) != len(concept_dataframes):
+        raise ValueError(
+            "More than one alignment-score file was provided for the same model"
+        )
 
-    if missing_p_values:
-        raise ValueError(f"Missing model-level empirical p-values for models: {sorted(missing_p_values)}")
-
-    p_values = np.asarray([p_value_by_model[label] for label in labels], dtype=float,)
-    q_values = benjamini_hochberg(p_values)
-
-    x_positions = {
-        label: position
-        for position, label in enumerate(labels)
-    }
-    boxplot_values = [
-        alignment_df.loc[alignment_df["label"] == label, "alignment_score",].to_numpy(dtype=float)
-        for label in labels
-    ]
-    x_values = [
-        x_positions[row.label] + deterministic_jitter(row.label, str(row.concept), width=0.35)
-        for row in alignment_df.itertuples(index=False)
-    ]
-
-    colour_by_concept = concept_colours(alignment_df["concept"].astype(str))
-    colours = alignment_df["concept"].astype(str).map(colour_by_concept).tolist()
-
-    output_path = Path(args.plot)
-    output_path.parent.mkdir(parents=True, exist_ok=True,)
-
-    fig_width = max(10, 0.75*len(labels),)
-    fig, ax = plt.subplots(figsize=(fig_width, 7,))
-
-    ax.scatter(x_values, alignment_df["alignment_score"], s=10, c=colours, alpha=concept_point_alpha(len(colour_by_concept)), edgecolors="none", zorder=1,)
-    ax.boxplot(boxplot_values,
-               positions=range(len(labels)),
-               widths=0.55,
-               showfliers=False,
-               boxprops={"linewidth": 1.5,},
-               whiskerprops={"linewidth": 1.5,},
-               capprops={"linewidth": 1.5,},
-               medianprops={"linewidth": 1.5,},
-               zorder=3,)
-    mark_degenerate_boxplot_statistics(ax, boxplot_values)
-    ax.axhline(expected_alignment_score, linestyle="--", linewidth=1.2, color="grey", label="Null expectation (hypergeometric)",)
-    add_model_family_annotations(ax, models)
-    annotate_significance(ax, range(len(labels)), p_values, q_values)
-
-    ax.set_xticks(range(len(labels)))
-    ax.set_xticklabels(models, rotation = 55, ha = "right",)
-    colour_tick_labels_by_stimuli_type(ax, stimuli_types)
-
-    ax.set_xlim(-0.6, len(labels) - 0.4,)
-    # alignment scores live in [0, 1]; the space above 1 is left free for the legend
-    ax.set_ylim(0, legend_headroom_top(0, 1))
-    ax.set_yticks(np.linspace(0, 1, 6))
-
-    ax.set_title(plot_title(CONCEPT_LEVEL, BRAIN_MODEL_ALIGNMENT_SCORE, args.dataset, args.similarity_type, args.number_of_neighbours), pad=32,)
-    ax.set_xlabel(MODEL_AXIS_LABEL)
-    ax.set_ylabel(ALIGNMENT_SCORE_LABEL)
-    ax.grid(axis="y", alpha=0.25,)
-    add_legend(ax, stimuli_type_legend_handles(stimuli_types) + significance_legend_handles())
-
-    fig.tight_layout()
-    fig.subplots_adjust(
-        bottom=0.24,
-        top=0.82,
+    labels = model_df["label"].tolist()
+    p_values, q_values = model_level_significance(
+        labels, 
+        args.model_level_statistics, 
+        args.dataset, 
+        args.similarity_type, 
+        args.number_of_neighbours,
     )
-    fig.savefig(
-        output_path,
-        dpi=300,
-        bbox_inches="tight",
+
+    # plot the concept scores of each model against the hypergeometric expectation
+    fig, ax = create_model_figure(len(labels))
+
+    plot_concept_distributions(ax, labels, concept_df, "alignment_score")
+    add_null_line(
+        ax, 
+        common_hypergeometric_expectation(expectations), 
+        "Null expectation (hypergeometric)",
     )
-    plt.close(fig)
+    style_model_axes(
+        ax, 
+        model_df["model"].tolist(), 
+        model_df["stimuli_type"].tolist(), 
+        plot_title(
+            CONCEPT_LEVEL, 
+            BRAIN_MODEL_ALIGNMENT_SCORE, 
+            args.dataset, 
+            args.similarity_type, 
+            args.number_of_neighbours,
+        ), 
+        ALIGNMENT_SCORE_LABEL, 
+        p_values, 
+        q_values, 
+        stimuli_type_legend_handles(model_df["stimuli_type"]),
+    )
+    set_alignment_score_y_axis(ax)
+
+    save_figure(fig, args.plot)
 
 if __name__ == "__main__":
     main()

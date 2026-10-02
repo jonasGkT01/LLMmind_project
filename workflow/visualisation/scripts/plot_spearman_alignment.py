@@ -1,48 +1,47 @@
 #!/usr/bin/env python3
 # edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
-# last AI edit: 2026-10-01, see docs/changelog/developers/ for details
+# last AI edit: 2026-10-02, see docs/changelog/developers/ for details
 import argparse
-from pathlib import Path
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
 from libraries.compute_statistics import benjamini_hochberg
-from libraries.manage_model_metadata import model_key, model_sort_key, parse_model_parameters
+from libraries.manage_model_metadata import (
+    model_key, 
+    parse_model_parameters, 
+    sort_models,
+)
 from libraries.validate_data import validate_required_columns
 from libraries.visualisation_utils import (
-    add_legend,
-    legend_headroom_top,
-    add_model_family_annotations,
-    annotate_significance,
+    add_null_interval,
+    add_null_line,
     BRAIN_MODEL_SPEARMAN_ALIGNMENT,
-    colour_tick_labels_by_stimuli_type,
-    concept_colours,
     CONCEPT_LEVEL,
-    concept_point_alpha,
-    deterministic_jitter,
-    mark_degenerate_boxplot_statistics,
-    MODEL_AXIS_LABEL,
+    create_model_figure,
+    legend_headroom_top,
     MODEL_LEVEL,
-    NULL_STANDARD_DEVIATION,
+    plot_concept_distributions,
     plot_model_points,
     plot_title,
-    significance_legend_handles,
+    save_figure,
     SPEARMAN_COEFFICIENT_LABEL,
     stimuli_type_legend_handles,
-    y_axis_label,
+    style_model_axes,
 )
 
 NULL_STANDARD_DEVIATION_COLUMN = "empirical_null_standard_deviation_spearman_coefficient"
+NULL_LINE_LABEL = "Null expectation (no rank correlation)"
 
-def spearman_ylim(values, padding=0.10, minimum_limit=0.10, step=0.05):
-    values = np.asarray(values, dtype=float)
+# symmetric y-limits: the largest |value| plus padding, rounded up to a step, at least the minimum
+SPEARMAN_Y_PADDING = 0.10
+SPEARMAN_Y_MINIMUM_LIMIT = 0.10
+SPEARMAN_Y_STEP = 0.05
 
-    max_abs = np.max(np.abs(values))
-    limit = max(minimum_limit, max_abs * (1.0 + padding))
-    limit = np.ceil(limit / step) * step
-    limit = min(1.0, limit)
+def spearman_ylim(values):
+    max_abs = np.max(np.abs(np.asarray(values, dtype = float)))
+    limit = max(SPEARMAN_Y_MINIMUM_LIMIT, max_abs*(1.0 + SPEARMAN_Y_PADDING))
+    limit = min(1.0, np.ceil(limit/SPEARMAN_Y_STEP)*SPEARMAN_Y_STEP)
 
     # symmetric around 0, plus room above the data for the legend
     return -limit, legend_headroom_top(-limit, limit)
@@ -58,7 +57,7 @@ def main():
     parser.add_argument("--concept_level_plot", required=True)
     args = parser.parse_args()
 
-    parameters_by_model = parse_model_parameters(args.model_parameters)
+    # load and validate the model- and concept-level Spearman coefficients
     model_df = pd.concat(
         [
             pd.read_csv(path, sep="\t")
@@ -81,14 +80,16 @@ def main():
             "stimuli_type",
             "similarity_type",
             "observed_spearman_coefficient",
-            NULL_STANDARD_DEVIATION_COLUMN,
         }
 
         if name == "concept-level":
             required_columns.add("concept")
 
         if name == "model-level":
-            required_columns.add("empirical_upper_tail_p_value")
+            required_columns |= {
+                "empirical_upper_tail_p_value", 
+                NULL_STANDARD_DEVIATION_COLUMN,
+            }
 
         validate_required_columns(df=df, required_columns=required_columns, source=f"{name} Spearman data",)
 
@@ -99,6 +100,17 @@ def main():
                 raise ValueError("Model-level Spearman data contains invalid empirical p-values")
 
             df["empirical_upper_tail_p_value"] = p_values
+            null_standard_deviations = pd.to_numeric(
+                df[NULL_STANDARD_DEVIATION_COLUMN], 
+                errors = "coerce",
+            )
+
+            if (null_standard_deviations.isna() | (null_standard_deviations < 0)).any():
+                raise ValueError(
+                    "Model-level Spearman data contains invalid null standard deviations"
+                )
+
+            df[NULL_STANDARD_DEVIATION_COLUMN] = null_standard_deviations
 
         if set(df["dataset"]) != {args.dataset}:
             raise ValueError(f"{name} Spearman data contains an unexpected dataset")
@@ -112,13 +124,6 @@ def main():
             raise ValueError(f"{name} Spearman data contains invalid coefficients")
 
         df["observed_spearman_coefficient"] = coefficients
-
-        null_standard_deviations = pd.to_numeric(df[NULL_STANDARD_DEVIATION_COLUMN], errors="coerce",)
-
-        if null_standard_deviations.isna().any() or (null_standard_deviations < 0).any():
-            raise ValueError(f"{name} Spearman data contains invalid null standard deviations")
-
-        df[NULL_STANDARD_DEVIATION_COLUMN] = null_standard_deviations
         df["label"] = [model_key(model, stimuli_type) for model, stimuli_type in zip(df["model"].astype(str), df["stimuli_type"].astype(str))]
 
     if model_df["label"].duplicated().any():
@@ -127,136 +132,70 @@ def main():
     if set(model_df["label"]) != set(concept_df["label"]):
         raise ValueError("Model-level and concept-level Spearman files contain different models")
 
-    missing_parameters = set(model_df["model"]) - set(parameters_by_model)
-
-    if missing_parameters:
-        raise ValueError(f"No number of parameters was provided for models: {sorted(missing_parameters)}")
-
-    model_df = model_df.sort_values(
-        "label",
-        key=lambda labels: labels.map(
-            {
-                row.label: model_sort_key(
-                    model = row.model,
-                    stimuli_type = row.stimuli_type,
-                    parameters_by_model = parameters_by_model,
-                )
-                for row in model_df.itertuples(index=False)
-            }
-        ),
-    ).reset_index(drop=True)
-
-    model_df["q_value"] = benjamini_hochberg(model_df["empirical_upper_tail_p_value"].to_numpy(dtype=float))
-
+    # sort the models and correct the Spearman p-values of all models of this configuration
+    model_df = sort_models(model_df, parse_model_parameters(args.model_parameters))
     labels = model_df["label"].tolist()
     models = model_df["model"].tolist()
     stimuli_types = model_df["stimuli_type"].tolist()
-    x_positions = {
-        label: position
-        for position, label in enumerate(labels)
-    }
-    x = np.arange(len(labels))
-
-    model_level_path = Path(args.model_level_plot)
-    model_level_path.parent.mkdir(parents=True, exist_ok=True)
-
-    fig_width = max(10, 0.75*len(labels))
-    fig, ax = plt.subplots(figsize=(fig_width, 7))
-
-    model_coefficients = model_df["observed_spearman_coefficient"].to_numpy(dtype=float)
-    model_errors = model_df[NULL_STANDARD_DEVIATION_COLUMN].to_numpy(dtype=float)
-
-    plot_model_points(ax, x, model_coefficients, model_errors, stimuli_types)
-
-    annotate_significance(ax, x, model_df["empirical_upper_tail_p_value"], model_df["q_value"])
-
-    ax.axhline(0.0, linestyle="--", linewidth=1.2, color="grey", label="Null expectation (no rank correlation)",)
-
-    add_model_family_annotations(ax, models)
-
-    ax.set_xticks(x)
-    ax.set_xticklabels(models, rotation = 55, ha = "right",)
-    colour_tick_labels_by_stimuli_type(ax, stimuli_types)
-
-    ax.set_xlabel(MODEL_AXIS_LABEL)
-    ax.set_ylabel(y_axis_label(SPEARMAN_COEFFICIENT_LABEL, NULL_STANDARD_DEVIATION))
-    ax.set_title(plot_title(MODEL_LEVEL, BRAIN_MODEL_SPEARMAN_ALIGNMENT, args.dataset, args.similarity_type), pad=32,)
-    ax.set_ylim(*spearman_ylim(np.concatenate([model_coefficients - model_errors, model_coefficients + model_errors]),))
-    ax.grid(axis="y", alpha=0.25)
-    add_legend(ax, significance_legend_handles())
-
-    fig.tight_layout()
-    fig.subplots_adjust(bottom=0.24, top=0.82)
-    fig.savefig(
-        model_level_path,
-        dpi=300,
-        bbox_inches="tight",
+    p_values = model_df["empirical_upper_tail_p_value"].to_numpy(dtype = float)
+    q_values = benjamini_hochberg(p_values)
+    model_coefficients = model_df["observed_spearman_coefficient"].to_numpy(
+        dtype = float
     )
-    plt.close(fig)
-
-    concept_df["x_position"] = concept_df["label"].map(x_positions)
-
-    boxplot_values = [
-        concept_df.loc[concept_df["label"] == label, "observed_spearman_coefficient",].to_numpy(dtype=float)
-        for label in labels
-    ]
-
-    jitter = [
-        deterministic_jitter(label=row.label, concept=str(row.concept), width=0.35)
-        for row in concept_df.itertuples(index=False)
-    ]
-
-    concept_level_path = Path(args.concept_level_plot)
-    concept_level_path.parent.mkdir(parents=True, exist_ok=True)
-
-    fig_width = max(10, 0.75*len(labels))
-    fig, ax = plt.subplots(figsize=(fig_width, 7))
-
-    colour_by_concept = concept_colours(concept_df["concept"].astype(str))
-    colours = concept_df["concept"].astype(str).map(colour_by_concept).tolist()
-    alpha = concept_point_alpha(len(colour_by_concept))
-    concept_x_values = concept_df["x_position"].to_numpy(dtype=float) + np.asarray(jitter)
-    concept_coefficients = concept_df["observed_spearman_coefficient"].to_numpy(dtype=float)
-
-    ax.scatter(concept_x_values, concept_coefficients, s=10, c=colours, alpha=alpha, edgecolors="none", zorder=2,)
-    ax.boxplot(boxplot_values, 
-               positions=range(len(labels)), 
-               widths=0.55, 
-               showfliers=False,
-               boxprops={"linewidth": 1.5,},
-               whiskerprops={"linewidth": 1.5,},
-               capprops={"linewidth": 1.5,},
-               medianprops={"linewidth": 1.5,},
-               zorder=3,)
-    mark_degenerate_boxplot_statistics(ax, boxplot_values)
-    ax.axhline(0.0, linestyle="--", linewidth=1.2, color="grey", label="Null expectation (no rank correlation)",)
-    add_model_family_annotations(ax, models)
-    annotate_significance(ax, x, model_df["empirical_upper_tail_p_value"], model_df["q_value"])
-
-    ax.set_xticks(range(len(labels)))
-    ax.set_xticklabels(models, rotation = 55, ha = "right",)
-    colour_tick_labels_by_stimuli_type(ax, stimuli_types)
-
-    ax.set_xlim(-0.6, len(labels) - 0.4)
-    ax.set_ylim(*spearman_ylim(concept_coefficients))
-
-    ax.set_title(plot_title(CONCEPT_LEVEL, BRAIN_MODEL_SPEARMAN_ALIGNMENT, args.dataset, args.similarity_type), pad=32,)
-    ax.set_xlabel(MODEL_AXIS_LABEL)
-    ax.set_ylabel(y_axis_label(SPEARMAN_COEFFICIENT_LABEL))
-    ax.grid(axis="y", alpha=0.25)
-
-    add_legend(ax, stimuli_type_legend_handles(stimuli_types) + significance_legend_handles())
-    fig.tight_layout()
-    fig.subplots_adjust(
-        bottom=0.24,
-        top=0.82,
+    null_standard_deviations = model_df[NULL_STANDARD_DEVIATION_COLUMN].to_numpy(
+        dtype = float
     )
-    fig.savefig(
-        concept_level_path,
-        dpi=300,
-        bbox_inches="tight",
+
+    # plot the model coefficients, with each model's null interval on the rho = 0 line
+    fig, ax = create_model_figure(len(labels))
+
+    plot_model_points(ax, model_coefficients, None, stimuli_types)
+    add_null_line(ax, 0.0, NULL_LINE_LABEL)
+    add_null_interval(ax, 0.0, null_standard_deviations)
+    style_model_axes(
+        ax, 
+        models, 
+        stimuli_types, 
+        plot_title(
+            MODEL_LEVEL, 
+            BRAIN_MODEL_SPEARMAN_ALIGNMENT, 
+            args.dataset, 
+            args.similarity_type,
+        ), 
+        SPEARMAN_COEFFICIENT_LABEL, 
+        p_values, 
+        q_values, 
+        [],
     )
-    plt.close(fig)
+    ax.set_ylim(
+        *spearman_ylim(np.concatenate([model_coefficients, null_standard_deviations]))
+    )
+
+    save_figure(fig, args.model_level_plot)
+
+    # plot the concept coefficients of each model against rho = 0
+    fig, ax = create_model_figure(len(labels))
+
+    plot_concept_distributions(ax, labels, concept_df, "observed_spearman_coefficient")
+    add_null_line(ax, 0.0, NULL_LINE_LABEL)
+    style_model_axes(
+        ax, 
+        models, 
+        stimuli_types, 
+        plot_title(
+            CONCEPT_LEVEL, 
+            BRAIN_MODEL_SPEARMAN_ALIGNMENT, 
+            args.dataset, 
+            args.similarity_type,
+        ), 
+        SPEARMAN_COEFFICIENT_LABEL, 
+        p_values, 
+        q_values, 
+        stimuli_type_legend_handles(stimuli_types),
+    )
+    ax.set_ylim(*spearman_ylim(concept_df["observed_spearman_coefficient"]))
+
+    save_figure(fig, args.concept_level_plot)
 
 if __name__ == "__main__":
     main()
