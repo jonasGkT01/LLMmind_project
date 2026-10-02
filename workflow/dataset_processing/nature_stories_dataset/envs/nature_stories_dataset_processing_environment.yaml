@@ -1,15 +1,17 @@
+# edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
+# last AI edit: 2026-10-01, see docs/changelog/developers/ for details
 channels:
   - conda-forge
   - nodefaults
 dependencies:
-  - h5py
-  - nibabel
-  - nilearn
-  - numpy
-  - pandas
-  - pip
-  - praatio
-  - python
-  - scipy
+  - h5py=3.16.0
+  - nibabel=5.4.2
+  - nilearn=0.14.1
+  - numpy=2.5.3
+  - pandas=3.0.6
+  - pip=26.2.1
+  - praatio=6.2.2
+  - python=3.14.7
+  - scipy=1.18.1
   - pip:
-    - netneurotools
+    - netneurotools==0.3.0

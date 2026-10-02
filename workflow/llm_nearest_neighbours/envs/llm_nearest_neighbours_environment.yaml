@@ -1,23 +1,28 @@
+# edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
+# last AI edit: 2026-10-01, see docs/changelog/developers/ for details
 channels:
   - conda-forge
   - main
   - nodefaults
 dependencies:
-  - accelerate
-  - bitsandbytes
-  - datasets
-  - huggingface_hub
-  - numpy
-  - pandas
-  - pillow
-  - protobuf
-  - pyarrow
-  - python=3.12
-  - pytorch
-  - scikit-learn
-  - sentencepiece
-  - tiktoken
-  - timm
-  - torchvision
-  - tqdm
-  - transformers
+  - accelerate=1.15.0
+  - bitsandbytes=0.50.2
+  # provides cuda.h, which triton needs to compile its CUDA helper the first time pytorch runs a
+  # triton kernel on the GPU (e.g. in the Gemma models); matches the cuda-version 12.9 of pytorch
+  - cuda-cudart-dev=12.9.79
+  - datasets=5.0.1
+  - huggingface_hub=1.32.0
+  - numpy=2.5.3
+  - pandas=3.0.6
+  - pillow=12.3.0
+  - protobuf=7.35.1
+  - pyarrow=25.0.0
+  - python=3.14.7
+  - pytorch=2.13.0
+  - scikit-learn=1.9.1
+  - sentencepiece=0.2.1
+  - tiktoken=0.14.0
+  - timm=1.0.30
+  - torchvision=0.28.0
+  - tqdm=4.70.1
+  - transformers=5.18.0

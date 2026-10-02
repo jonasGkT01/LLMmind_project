@@ -1,10 +1,12 @@
+# edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
+# last AI edit: 2026-10-01, see docs/changelog/developers/ for details
 channels:
   - conda-forge
   - nodefaults
 dependencies:
-  - nibabel
-  - nilearn
-  - numpy
-  - pandas
-  - python
-  - scipy
+  - nibabel=5.4.2
+  - nilearn=0.14.1
+  - numpy=2.5.3
+  - pandas=3.0.6
+  - python=3.14.7
+  - scipy=1.18.1

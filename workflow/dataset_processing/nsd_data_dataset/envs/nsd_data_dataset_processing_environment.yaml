@@ -1,17 +1,19 @@
+# edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
+# last AI edit: 2026-10-01, see docs/changelog/developers/ for details
 channels:
   - conda-forge
   - nodefaults
 dependencies:
-  - git
-  - h5py
-  - nibabel
-  - nilearn
-  - numpy
-  - pandas
-  - pillow
-  - pip
-  - python
-  - scipy
-  - tqdm
+  - git=2.56.0
+  - h5py=3.16.0
+  - nibabel=5.4.2
+  - nilearn=0.14.1
+  - numpy=2.5.3
+  - pandas=3.0.6
+  - pillow=12.3.0
+  - pip=26.2.1
+  - python=3.14.7
+  - scipy=1.18.1
+  - tqdm=4.70.1
   - pip:
-      - git+https://github.com/cvnlab/nsdcode.git
+      - git+https://github.com/cvnlab/nsdcode.git@bfd36a503cc90a3eb3ebfd69b269403f7e186924

@@ -378,8 +378,8 @@ snakemake --use-conda --cores <N> -n --quiet rules
 The project uses conda environments managed per pipeline stage under
 `workflow/*/envs/*.yaml`, plus a base environment for running Snakemake
 itself at `workflow/envs/LLMmind_project`, specified by
-`workflow/envs/LLMmind_project_environment.yaml` (just Python and
-`snakemake-minimal`).
+`workflow/envs/LLMmind_project_environment.yaml` (just Python and the full
+`snakemake` package, which brings in pandas and numpy).
 
 ```bash
 # create the base environment from its spec (first time only)
@@ -395,6 +395,34 @@ automatically when you `cd` into the project.
 Individual rules declare their own `conda:` environment
 (`workflow/*/envs/*.yaml`), which Snakemake creates automatically when run
 with `--use-conda`.
+
+### Pinned versions
+
+Every package listed in an environment file is pinned to an exact version
+(`- numpy=2.5.3`; pip packages as `netneurotools==0.3.0`, and `nsdcode` at a
+fixed git commit), so a rebuilt environment gets the same versions. Packages
+that are not listed (dependencies of dependencies) are not pinned and can
+still move. The versions were chosen on 2026-10-01 as the latest available
+release of each package, with Python 3.14.7 in every environment. The
+base environment pins `snakemake=9.27.0`, which requires `pandas <3`, so it
+has pandas 2.x while the rule environments use pandas 3.
+`llm_nearest_neighbours` also lists `cuda-cudart-dev`: it provides `cuda.h`,
+which triton needs to compile a small CUDA helper the first time PyTorch runs
+a triton kernel on the GPU (the Gemma models do). Without it, a freshly built
+environment crashes there.
+
+To upgrade a package:
+
+1. Find the latest version on the environment's channels, e.g.
+   `mamba search -c conda-forge <package>` (`-c bioconda` for snakemake).
+2. For a new major or minor release, read its release notes and search the
+   code for the APIs it changes.
+3. Edit the pin. If another package caps it (e.g. `pandas <3`), use the
+   highest version the cap allows, and write the cap in a comment next to
+   the pin.
+4. Changing an environment file makes Snakemake rebuild that environment and
+   rerun every job that uses it. Before that, run one representative job in
+   the new environment and compare its outputs with the current results.
 
 ## Running the pipeline
 
@@ -739,6 +767,6 @@ or editing scripts.
 *This document was written, in whole or in part, with AI coding assistants via Claude Code (Anthropic).*
 
 - *Models: Claude Sonnet 5 (`claude-sonnet-5`, until 2026-09-22); Claude Opus 5.5 (`claude-opus-5-5`, from 2026-09-23).*
-- *Latest AI edit: 2026-10-02, Claude Opus 5.5: documented the null intervals, the blank heatmap diagonal, the separate Benjamini-Hochberg families and the new statistics reference (TODO S2, S3, S4, S13, S15, S16, S20), after the developer asked to do the TODO tasks that need no rerun.*
+- *Latest AI edit: 2026-10-02, Claude Opus 5.5: merged the pinned-environment documentation (TODO S22, "Pinned versions" section) with the plotting and statistics documentation (TODO S2, S3, S4, S13, S15, S16, S20), when the developer asked to merge S7, S22, S37 and S17 for the full recomputation.*
 - *Edit history: see [`docs/changelog/`](docs/changelog/).*
 - *Review status: not yet reviewed by the developer.*
