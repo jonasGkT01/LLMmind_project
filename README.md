@@ -613,6 +613,12 @@ combined summary tables have a `similarity_type` column instead.
   `_concept_level` TSV per configuration.
 - `results/all_model_brain_alignment_scores.tsv`, `results/all_spearman_alignment_scores.tsv`
   — combined summary tables across all configurations
+- `results/mind/all_isc_reliability.tsv` — one row per dataset: how reliable the per-stimulus
+  ISC vectors (the brain representations) are, as the median and interquartile range of their
+  split-half reliability (`config.yaml`: `isc_reliability_number_of_splits` random splits of the
+  subjects) and its Spearman-Brown correction, plus the median |ISC| and the share of |ISC| ≥ 0.9.
+  The per-stimulus values are in `results/mind/{dataset}/isc_reliability.tsv`. See
+  [`fmri_preprocessing.md`](docs/reference/fmri_preprocessing.md), step 7.
 - `results/all_model_model_alignment_scores.tsv` — the model-model
   counterpart of `all_model_brain_alignment_scores.tsv`, in the same long format and with
   the same statistics. The `model`/`stimuli_type` pair is replaced by one
@@ -781,6 +787,6 @@ code.
 *This document was written, in whole or in part, with AI coding assistants via Claude Code (Anthropic).*
 
 - *Models: Claude Sonnet 5 (`claude-sonnet-5`, until 2026-09-22); Claude Opus 5.5 (`claude-opus-5-5`, from 2026-09-23).*
-- *Latest AI edit: 2026-10-02, Claude Opus 5.5: Caption Scene registration to MNI (T1w input, MNI template, stale crop files; TODO S31), after the developer asked to implement S10 and S31.*
+- *Latest AI edit: 2026-10-02, Claude Opus 5.5: documented the ISC reliability table (TODO S30), after the developer asked to proceed with S30.*
 - *Edit history: see [`docs/changelog/`](docs/changelog/).*
 - *Review status: not yet reviewed by the developer.*

@@ -8,7 +8,8 @@ rule all_isc_nearest_neighbours:
         isc_nearest_neighbours = [
             f"results/mind/{pair['dataset']}/isc_{pair['similarity_type']}_nearest_neighbours.parquet"
             for pair in MIND_NEIGHBOUR_GENERATION_PAIRINGS
-        ]
+        ], 
+        all_isc_reliability = "results/mind/all_isc_reliability.tsv"
 
 def isc_done_for_dataset(wc):
     return config[wc.dataset]["processing_output_dir"] + "/manifests/.isc_done"
@@ -85,4 +86,63 @@ rule compute_isc_nearest_neighbours:
                 --isc_cosine_nearest_neighbours {output.isc_cosine_nearest_neighbours:q} \
                 --isc_pearson_nearest_neighbours {output.isc_pearson_nearest_neighbours:q} \
                 --isc_spearman_nearest_neighbours {output.isc_spearman_nearest_neighbours:q}
+        """
+
+# column names of each dataset's ISC manifest, and whether its ISC truncates to the shortest run
+ISC_MANIFEST_LAYOUT = {
+    "caption_scene": {"stimulus_column": "stimulus_id", "parcel_column": "parcel_ts", "truncate": False}, 
+    "narratives": {"stimulus_column": "task", "parcel_column": "parcel_ts", "truncate": True}, 
+    "nature_stories": {"stimulus_column": "task", "parcel_column": "parcel_ts", "truncate": False}, 
+    "nsd_data": {"stimulus_column": "stimulus_id", "parcel_column": "parcel_time_series", "truncate": False}, 
+}
+
+rule compute_isc_reliability:
+    # split-half reliability of every stimulus's ISC vector, on exactly the data behind the ISC
+    # (same files, truncation and repeat averaging); TODO S30
+    input:
+        isc_done = isc_done_for_dataset, 
+        isc_manifest = lambda wc: config[wc.dataset]["processing_output_dir"] + "/manifests/isc_manifest.tsv"
+    output:
+        isc_reliability = "results/mind/{dataset}/isc_reliability.tsv"
+    params:
+        stimulus_column = lambda wc: ISC_MANIFEST_LAYOUT[wc.dataset]["stimulus_column"], 
+        parcel_column = lambda wc: ISC_MANIFEST_LAYOUT[wc.dataset]["parcel_column"], 
+        truncate_arg = lambda wc: "--truncate_to_shortest" if ISC_MANIFEST_LAYOUT[wc.dataset]["truncate"] else "", 
+        n_rois = config["atlas"]["n_rois"], 
+        number_of_splits = config["isc_reliability_number_of_splits"], 
+        random_seed = RANDOM_SEED
+    conda:
+        "envs/isc_nearest_neighbours_environment.yaml"
+    shell:
+        r"""
+            python3 workflow/isc_nearest_neighbours/scripts/compute_isc_reliability.py \
+                --manifest {input.isc_manifest:q} \
+                --stimulus_column {params.stimulus_column:q} \
+                --parcel_column {params.parcel_column:q} \
+                {params.truncate_arg} \
+                --n_rois {params.n_rois} \
+                --number_of_splits {params.number_of_splits} \
+                --random_seed {params.random_seed} \
+                --output {output.isc_reliability:q}
+        """
+
+rule aggregate_isc_reliability:
+    # one row per dataset: ISC reliability and the distribution of the ISC values; a final result
+    # (source for the methods text)
+    input:
+        reliability_tsvs = [f"results/mind/{dataset}/isc_reliability.tsv" for dataset in DATASETS], 
+        isc_dataframes = [f"results/mind/{dataset}/isc_dataframe.parquet" for dataset in DATASETS]
+    output:
+        all_isc_reliability = "results/mind/all_isc_reliability.tsv"
+    params:
+        datasets = DATASETS
+    conda:
+        "envs/isc_nearest_neighbours_environment.yaml"
+    shell:
+        r"""
+            python3 workflow/isc_nearest_neighbours/scripts/aggregate_isc_reliability.py \
+                --datasets {params.datasets:q} \
+                --reliability_tsvs {input.reliability_tsvs:q} \
+                --isc_dataframes {input.isc_dataframes:q} \
+                --output {output.all_isc_reliability:q}
         """

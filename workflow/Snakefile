@@ -220,4 +220,5 @@ rule all:
             for dataset in DATASETS
             for similarity_type in SIMILARITY_TYPES
         ], 
-        spearman_summary = "results/all_spearman_alignment_scores.tsv"
+        spearman_summary = "results/all_spearman_alignment_scores.tsv", 
+        isc_reliability_summary = "results/mind/all_isc_reliability.tsv"

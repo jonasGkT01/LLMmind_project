@@ -27,6 +27,7 @@ CAPTION_SCENE_T1W = config["caption_scene"]["t1w_pattern"]
 MNI_TEMPLATE = f"{config['atlas']['atlas_dir']}/tpl-MNI152NLin6Asym_res-01_T1w.nii.gz"
 MNI_TEMPLATE_URL = "https://templateflow.s3.amazonaws.com/tpl-MNI152NLin6Asym/tpl-MNI152NLin6Asym_res-01_T1w.nii.gz"
 CAPTION_SCENE_ISC_DONE = f"{CAPTION_SCENE_PROCESSING_OUTPUT_DIR}/manifests/.isc_done"
+CAPTION_SCENE_ISC_MANIFEST = f"{CAPTION_SCENE_PROCESSING_OUTPUT_DIR}/manifests/isc_manifest.tsv"
 
 CAPTION_SCENE_IMAGE_CAPTION_TSV = "resources/datasets/caption_scene_dataset/V1/stimuli/COCO_CN/Translated_Image_Caption_pairs.tsv"
 CAPTION_SCENE_STIMULI_READY = config["caption_scene"]["stimuli_ready"]
@@ -125,20 +126,12 @@ def caption_scene_run_parcel_flags(wildcards):
         for run_key in sorted(df["run_key"].dropna().astype(str).unique())
     ]
 
+# read as text, so zero-padded identifiers (sub-01, run-001) keep their padding in file names,
+# as in extract_caption_scene_parcels.py
+CAPTION_SCENE_TEXT_COLUMNS = ["subject", "session", "run", "event_index", "stimulus_id"]
+
 def read_manifest(path = CAPTION_SCENE_MANIFEST):
-    df = pd.read_csv(path, sep = "\t")
-
-    for column in [
-        "subject", 
-        "session", 
-        "run", 
-        "event_index", 
-        "stimulus_id", 
-    ]:
-        if column in df.columns:
-            df[column] = df[column].astype(str)
-
-    return df
+    return pd.read_csv(path, sep = "\t", dtype = {column: str for column in CAPTION_SCENE_TEXT_COLUMNS})
 
 def caption_scene_all_isc_outputs(wildcards):
     checkpoint_output = checkpoints.make_caption_scene_manifest.get().output.manifest
@@ -316,26 +309,43 @@ def caption_scene_stimulus_rows(wildcards):
 def caption_scene_parcel_subjects(wildcards):
     return caption_scene_stimulus_rows(wildcards)["subject"].tolist()
 
+def caption_scene_parcel_path(row):
+    return str(
+        Path(CAPTION_SCENE_PROCESSING_OUTPUT_DIR)
+        /"parcels"
+        /f"task-{row.stimulus_id}"
+        /(
+            f"sub-{row.subject}_ses-{row.session}_run-{row.run}_"
+            f"task-{row.stimulus_id}_event-{row.event_index}_parcel_ts.npy"
+        )
+    )
+
 def caption_scene_parcel_paths(wildcards):
     rows = caption_scene_stimulus_rows(wildcards)
-
-    parcel_paths = [
-        str(
-            Path(CAPTION_SCENE_PROCESSING_OUTPUT_DIR)
-            /"parcels"
-            /f"task-{row.stimulus_id}"
-            /(
-                f"sub-{row.subject}_ses-{row.session}_run-{row.run}_"
-                f"task-{row.stimulus_id}_event-{row.event_index}_parcel_ts.npy"
-            )
-        )
-        for row in rows.itertuples(index = False)
-    ]
+    parcel_paths = [caption_scene_parcel_path(row) for row in rows.itertuples(index = False)]
 
     if len(parcel_paths) < 2:
         raise ValueError(f"Stimulus {wildcards.stimulus_id} has only {len(parcel_paths)} parcel time-series files in the manifest")
 
     return parcel_paths
+
+rule write_caption_scene_isc_manifest:
+    # one row per parcel file of every stimulus, as the other datasets' ISC manifests; read by
+    # the ISC reliability rule
+    input:
+        manifest = CAPTION_SCENE_MANIFEST
+    output:
+        isc_manifest = CAPTION_SCENE_ISC_MANIFEST
+    run:
+        events = read_manifest(input.manifest)
+        isc_manifest = pd.DataFrame(
+            {
+                "stimulus_id": events["stimulus_id"], 
+                "subject": events["subject"], 
+                "parcel_ts": [caption_scene_parcel_path(row) for row in events.itertuples(index = False)], 
+            }
+        )
+        isc_manifest.to_csv(output.isc_manifest, sep = "\t", index = False)
 
 rule compute_caption_scene_isc:
     input:

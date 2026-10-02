@@ -120,6 +120,30 @@ purpose:
 
 The methods section should state the same.
 
+**7. Reliability of the ISC vectors** (since 2026-10-02, TODO S30). For every stimulus, the subjects
+are split at random into two halves, the leave-one-out ISC is computed on each half (on exactly the
+data behind the ISC: same files, truncation and repeat averaging), and the Pearson r between the two
+200-parcel vectors is averaged over `isc_reliability_number_of_splits` (= 100) splits, all drawn
+from one `default_rng(random_seed)` stream. The Spearman-Brown correction `2r/(1 + r)` estimates the
+reliability at the full number of subjects. A stimulus needs at least 4 subjects. Results:
+`results/mind/{dataset}/isc_reliability.tsv` per stimulus and `results/mind/all_isc_reliability.tsv`
+per dataset.
+
+On the data available on 2026-10-02 (100 splits; NSD with the MNI mapping and the repeat averaging,
+Caption Scene still with the misregistered parcels of before S31, so its values will change):
+
+| | Narratives | Nature Stories | NSD | Caption Scene |
+|---|---|---|---|---|
+| time points per stimulus (median) | 395 | 358 | 3 | 6 |
+| split-half r (median) | 0.934 | 0.761 | 0.012 | 0.006 |
+| Spearman-Brown r (median, IQR) | 0.966 (0.962–0.978) | 0.864 (0.845–0.893) | 0.025 (−0.067–0.110) | 0.011 (−0.069–0.074) |
+| median \|ISC\| | 0.124 | 0.241 | 0.169 | 0.129 |
+| share of \|ISC\| ≥ 0.9 | 0 | 0 | 0.004 | 0 |
+
+The story datasets give highly reliable ISC vectors. The 3- and 6-volume ISC vectors of NSD and
+Caption Scene are not reliable: two halves of the subjects agree on a stimulus's parcel pattern
+barely above zero. Few ISC values are near ±1, because the ISC averages r over 8 subjects.
+
 ### Why z-scoring would change (almost) nothing, and what it means for cosine similarity
 
 - **ISC is Pearson-based.** Pearson's r between two time series is unchanged if either series is
@@ -165,7 +189,7 @@ The methods section should state the same.
 *This document was written, in whole or in part, with AI coding assistants via Claude Code (Anthropic).*
 
 - *Models: Claude Opus 5.5 (`claude-opus-5-5`).*
-- *Latest AI edit: 2026-10-02, Claude Opus 5.5: Caption Scene registration to MNI (TODO S31), repeat averaging in the ISC (TODO S10) and for the Narratives pieman runs, after the developer asked to implement S10 and S31 and to add pieman to the batch.*
+- *Latest AI edit: 2026-10-02, Claude Opus 5.5: step 7, reliability of the ISC vectors with the first measurements (TODO S30), after the developer asked to proceed with S30.*
 - *Basis: the developer (Jonas Salvalaggio) asked for a short document separating the dataset
   authors' preprocessing from the workflow's own processing (TODO P9), with the missing facts
   checked online. The dataset rows come from the sources listed above. The Caption Scene space and

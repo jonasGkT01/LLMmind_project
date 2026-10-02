@@ -43,7 +43,7 @@ def main():
     manifest = pd.read_csv(
         args.run_manifest, 
         sep = "\t", 
-        dtype = {"subject": str, "session": str, "run": str}
+        dtype = {"subject": str, "session": str, "run": str, "event_index": str}
     )
 
     if manifest.empty:

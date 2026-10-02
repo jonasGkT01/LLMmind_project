@@ -8,6 +8,9 @@ random_seed: 37
 # a stimulus is retained only if it was presented to at least this many different subjects
 minimum_subjects_per_stimulus: 2
 
+# random splits of the subjects into halves when measuring the reliability of each ISC vector
+isc_reliability_number_of_splits: 100
+
 # maximum number of tokens per chunk when language models embed long textual stimuli, the same for every language model.
 # Set to null (or "none") to pass no --chunk_max_length to get_embeddings.py: each model then uses its own context length
 # (max_position_embeddings, e.g. 8192 for Gemma 1/2), or 2048 when that is missing or above 100,000 tokens (e.g. Gemma 3/4)
