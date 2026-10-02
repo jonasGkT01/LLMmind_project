@@ -48,21 +48,6 @@ def compute_alignment_scores(
 def compute_common_neighbours(neighbours, neighbour_mask, concept_indices,):
     return neighbour_mask[concept_indices[:, None], neighbours,].sum(axis=1)
 
-def compute_mean_alignment_score(
-    neighbour_mask,
-    neighbours,
-    concept_indices,
-    number_of_neighbours,
-):
-    if neighbour_mask.shape[0] != neighbours.shape[0]:
-        raise ValueError("The two nearest-neighbour representations have different numbers of concepts")
-
-    common_neighbours = compute_common_neighbours(neighbours = neighbours, neighbour_mask = neighbour_mask, concept_indices = concept_indices,)
-
-    alignment_scores = common_neighbours/number_of_neighbours
-
-    return float(alignment_scores.mean())
-
 def read_relabelled_alignment_scores(path, number_of_neighbours):
     # one k's rows of an all-k relabelled file, with alignment_score = common_neighbours / k
     relabelled_df = pd.read_parquet(

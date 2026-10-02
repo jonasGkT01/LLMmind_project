@@ -95,7 +95,6 @@ def compute_model_alignment_enrichment(observed_path, relabelled_path, expected_
         "label": model_key(metadata["model"], metadata["stimuli_type"]),
         "enrichment": float(observed_scores.mean()/expected_alignment_score),
         "null_standard_deviation": float(null_values.mean(axis=1).std(ddof=1)/expected_alignment_score),
-        "expected_alignment_score": expected_alignment_score,
     }
 
     return concept_df, model_summary
