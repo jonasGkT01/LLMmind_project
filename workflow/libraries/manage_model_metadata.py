@@ -6,12 +6,16 @@ def parse_model_parameters(model_parameters):
 
     for model_parameter in model_parameters:
         if "=" not in model_parameter:
-            raise ValueError(f"Invalid model-parameter specification: {model_parameter}")
+            raise ValueError(
+                f"Invalid model-parameter specification: {model_parameter}"
+            )
 
         model, number_of_parameters = (model_parameter.split("=", 1))
 
         if model in parameters_by_model:
-            raise ValueError(f"Parameters were provided more than once for model {model}")
+            raise ValueError(
+                f"Parameters were provided more than once for model {model}"
+            )
 
         parameters_by_model[model] = float(number_of_parameters)
 
@@ -50,8 +54,8 @@ def sorted_pairwise_labels(model_metadata, parameters_by_model):
         key = lambda label: model_sort_key(
             model_metadata[label]["model"], 
             model_metadata[label]["stimuli_type"], 
-            parameters_by_model,
-        ),
+            parameters_by_model, 
+        ), 
     )
 
     return model_labels + ["brain"]

@@ -25,31 +25,31 @@ def significance_label(q_value):
 
     return ""
 
-# Stimulus-type colour code: darkened Okabe-Ito vermillion and bluish green. The usual orange/green
+# stimulus-type colour code: darkened Okabe-Ito vermillion and bluish green. The usual orange/green
 # pair collapses under protanopia; this one stays apart for protan, deutan and tritan readers, and
 # both reach >= 5:1 contrast on white, so they also work as text colours for the model names.
 # Markers differ in shape too, and every label names the stimulus type, so colour is never the
-# only cue.
+# only cue
 STIMULI_TYPE_COLOURS = {
-    "language": "#A84800",
-    "vision": "#007A5A",
+    "language": "#A84800", 
+    "vision": "#007A5A", 
 }
 STIMULI_TYPE_MARKERS = {
-    "language": "o",
-    "vision": "s",
+    "language": "o", 
+    "vision": "s", 
 }
 # neutral ink for everything that is not a stimulus type: connecting lines, separators
 NEUTRAL_COLOUR = "#595959"
 # viridis is perceptually uniform and readable under every common colour-vision deficiency
 SEQUENTIAL_COLOURMAP = "viridis"
 
-# Asterisks for the uncorrected empirical p-value and for the Benjamini-Hochberg q-value. Blue, not
-# red: red and black look alike under protanopia. The two rows also differ in position.
+# asterisks for the uncorrected empirical p-value and for the Benjamini-Hochberg q-value. Blue, not
+# red: red and black look alike under protanopia. The two rows also differ in position
 P_VALUE_SIGNIFICANCE_COLOUR = "black"
 Q_VALUE_SIGNIFICANCE_COLOUR = "#0072B2"
 SIGNIFICANCE_ROW_OFFSET_POINTS = 10
 
-# Extra distance between the x-axis and the model names, leaving room for the two asterisk rows.
+# extra distance between the x-axis and the model names, leaving room for the two asterisk rows
 SIGNIFICANCE_TICK_LABEL_PAD_POINTS = 29
 
 def annotate_significance(ax, x_positions, p_values, q_values):
@@ -61,24 +61,58 @@ def annotate_significance(ax, x_positions, p_values, q_values):
     empty. Keeping them out of the axes leaves the plot area free for the
     legend.
     """
-    ax.tick_params(axis="x", pad=SIGNIFICANCE_TICK_LABEL_PAD_POINTS)
+    ax.tick_params(axis = "x", pad = SIGNIFICANCE_TICK_LABEL_PAD_POINTS)
 
     for x_position, p_value, q_value in zip(x_positions, p_values, q_values):
-        for row, (value, colour) in enumerate([(p_value, P_VALUE_SIGNIFICANCE_COLOUR), (q_value, Q_VALUE_SIGNIFICANCE_COLOUR),]):
+        for row, (value, colour) in enumerate(
+            [
+                (p_value, P_VALUE_SIGNIFICANCE_COLOUR), 
+                (q_value, Q_VALUE_SIGNIFICANCE_COLOUR)
+            ]
+        ):
             significance = significance_label(value)
 
             if significance:
-                ax.annotate(significance, xy=(x_position, 0.0,), xycoords=ax.get_xaxis_transform(), xytext=(0, -5 - row*SIGNIFICANCE_ROW_OFFSET_POINTS), textcoords="offset points", ha="center", va="top", color=colour, annotation_clip=False,)
+                ax.annotate(
+                    significance, 
+                    xy = (x_position, 0.0,), 
+                    xycoords = ax.get_xaxis_transform(), 
+                    xytext = (0, -5 - row*SIGNIFICANCE_ROW_OFFSET_POINTS), 
+                    textcoords = "offset points", 
+                    ha = "center", 
+                    va = "top", 
+                    color = colour, 
+                    annotation_clip = False
+                )
 
 def significance_legend_handles():
     return [
-        Line2D([], [], linestyle="none", marker="$*$", markersize=8, color=P_VALUE_SIGNIFICANCE_COLOUR, label="Model-level empirical p-value (* <0.05, ** <0.01, *** <0.001)"),
-        Line2D([], [], linestyle="none", marker="$*$", markersize=8, color=Q_VALUE_SIGNIFICANCE_COLOUR, label="Model-level Benjamini-Hochberg q-value (* <0.05, ** <0.01, *** <0.001)"),
+        Line2D(
+            [], 
+            [], 
+            linestyle = "none", 
+            marker = "$*$", 
+            markersize = 8, 
+            color = P_VALUE_SIGNIFICANCE_COLOUR, 
+            label = "Model-level empirical p-value (* <0.05, ** <0.01, *** <0.001)"
+        ), 
+        Line2D(
+            [], 
+            [], 
+            linestyle = "none", 
+            marker = "$*$", 
+            markersize = 8, 
+            color = Q_VALUE_SIGNIFICANCE_COLOUR, 
+            label = (
+                "Model-level Benjamini-Hochberg q-value "
+                "(* <0.05, ** <0.01, *** <0.001)"
+            )
+        ), 
     ]
 
-# Titles and axis labels: every plot is titled "<level> <quantity>" with the
+# titles and axis labels: every plot is titled "<level> <quantity>" with the
 # analysis parameters on a second line, and every y-axis label is
-# "<quantity>" or "<quantity> ± <error>".
+# "<quantity>" or "<quantity> ± <error>"
 MODEL_LEVEL = "Model-level"
 CONCEPT_LEVEL = "Concept-level"
 PAIRWISE_LEVEL = "Pairwise"
@@ -100,7 +134,7 @@ EMPIRICAL_P_VALUE_LABEL = "-log10(empirical p-value)"
 
 STANDARD_ERROR = "SE"
 
-def plot_title(level, quantity, dataset, similarity_type, number_of_neighbours=None):
+def plot_title(level, quantity, dataset, similarity_type, number_of_neighbours = None):
     parameters = [f"dataset: {dataset}", f"similarity: {similarity_type}",]
 
     if number_of_neighbours is not None:
@@ -108,7 +142,7 @@ def plot_title(level, quantity, dataset, similarity_type, number_of_neighbours=N
 
     return f"{level} {quantity}\n" + ", ".join(parameters)
 
-def y_axis_label(quantity, error=None):
+def y_axis_label(quantity, error = None):
     if error is None:
         return quantity
 
@@ -146,32 +180,38 @@ def concept_colours(concepts):
 def concept_point_alpha(number_of_concepts):
     return 0.85 if number_of_concepts <= DENSE_CONCEPT_THRESHOLD else 0.30
 
-# Fraction of the axes height kept empty above the data for the in-plot legend.
+# fraction of the axes height kept empty above the data for the in-plot legend
 LEGEND_HEADROOM_FRACTION = 0.25
 
 def legend_headroom_top(bottom, data_top):
     """
     Upper y-limit that keeps the data in the lower part of the axes, leaving the top
-    LEGEND_HEADROOM_FRACTION free for the legend, so dense concept points are never hidden
-    behind it.
+    LEGEND_HEADROOM_FRACTION free for the legend, so dense concept points are never
+    hidden behind it.
     """
+
     return bottom + (data_top - bottom)/(1.0 - LEGEND_HEADROOM_FRACTION)
 
-def add_legend(ax, handles=None,):
+def add_legend(ax, handles = None,):
     # the plot's own labelled artists come first; extra handles (e.g. significance) go after them.
     # The legend sits inside the axes, in the empty band that legend_headroom_top() leaves above the
-    # data; concepts are only colour-coded, never listed.
+    # data; concepts are only colour-coded, never listed
     own_handles, _ = ax.get_legend_handles_labels()
     handles = own_handles + list(handles or [])
 
     if handles:
-        ax.legend(handles=handles, loc="upper left", fontsize=8, framealpha=0.9,)
+        ax.legend(
+            handles = handles, 
+            loc = "upper left", 
+            fontsize = 8, 
+            framealpha = 0.9
+        )
 
 def contrasting_text_color(image, value):
     rgba = image.cmap(image.norm(value))
     r, g, b = rgba[:3]
 
-    # Relative perceived luminance of the cell background.
+    # relative perceived luminance of the cell background
     luminance = 0.2126*r + 0.7152*g + 0.0722*b
 
     return "black" if luminance > 0.5 else "white"
@@ -184,7 +224,7 @@ BOXPLOT_LINE_STYLE = {"linewidth": 1.5}
 
 def deterministic_jitter(label, concept):
     digest = hashlib.sha256(f"{label}\0{concept}".encode("utf-8")).digest()
-    unit_interval_value = int.from_bytes(digest[:8], byteorder="big")/(2**64 - 1)
+    unit_interval_value = int.from_bytes(digest[:8], byteorder = "big")/(2**64 - 1)
 
     return (unit_interval_value - 0.5)*JITTER_WIDTH
 
@@ -194,15 +234,18 @@ def stimuli_type_colour(stimuli_type):
 def stimuli_type_legend_handles(stimuli_types):
     # colour swatches for plots whose model names, not marks, carry the stimulus-type colour
     return [
-        Patch(color=stimuli_type_colour(stimuli_type), label=f"{stimuli_type.capitalize()} stimuli (model name colour)")
+        Patch(
+            color = stimuli_type_colour(stimuli_type), 
+            label = f"{stimuli_type.capitalize()} stimuli (model name colour)"
+        )
         for stimuli_type in sorted(set(stimuli_types))
     ]
 
-def colour_tick_labels_by_stimuli_type(ax, stimuli_types, axes="x",):
+def colour_tick_labels_by_stimuli_type(ax, stimuli_types, axes = "x",):
     """
-    Colour each model name on the given axes ("x", "y" or "xy") by its stimulus type; the brain
-    and anything else without a stimulus type stays black. Call after the tick labels are final,
-    since set_xticks()/boxplot() rebuild them.
+    Colour each model name on the given axes ("x", "y" or "xy") by its stimulus type;
+    the brain and anything else without a stimulus type stays black. Call after the tick
+    labels are final, since set_xticks()/boxplot() rebuild them.
     """
     for axis_name in axes:
         axis = ax.xaxis if axis_name == "x" else ax.yaxis
@@ -232,7 +275,7 @@ def plot_model_points(ax, values, errors, stimuli_types,):
             markersize = 7, 
             capsize = 3, 
             zorder = 2, 
-            label = f"{stimuli_type.capitalize()} stimuli",
+            label = f"{stimuli_type.capitalize()} stimuli", 
         )
 
 # the reference expected under the null: a dashed line, and for each model an interval of
@@ -254,7 +297,7 @@ def add_null_interval(ax, reference, null_standard_deviations):
         elinewidth = 2, 
         capsize = 4, 
         zorder = 1, 
-        label = "Null ± 1 SD",
+        label = "Null ± 1 SD", 
     )
 
 def plot_concept_distributions(ax, labels, concept_df, value_column):
@@ -280,7 +323,7 @@ def plot_concept_distributions(ax, labels, concept_df, value_column):
         c = concepts.map(colour_by_concept).tolist(), 
         alpha = concept_point_alpha(len(colour_by_concept)), 
         edgecolors = "none", 
-        zorder = 2,
+        zorder = 2, 
     )
     ax.boxplot(
         boxplot_values, 
@@ -291,7 +334,7 @@ def plot_concept_distributions(ax, labels, concept_df, value_column):
         whiskerprops = BOXPLOT_LINE_STYLE, 
         capprops = BOXPLOT_LINE_STYLE, 
         medianprops = BOXPLOT_LINE_STYLE, 
-        zorder = 3,
+        zorder = 3, 
     )
     mark_degenerate_boxplot_statistics(ax, boxplot_values)
 
@@ -320,7 +363,7 @@ def style_model_axes(
     y_label, 
     p_values, 
     q_values, 
-    legend_handles,
+    legend_handles, 
 ):
     # everything model figures share; call after boxplot(), which resets the ticks
     positions = np.arange(len(models))
@@ -349,11 +392,25 @@ def add_model_family_annotations(ax, models,):
             end += 1
 
         if start > 0:
-            ax.axvline(start - 0.5, linewidth=1, linestyle="--", color=NEUTRAL_COLOUR, alpha=0.6,)
+            ax.axvline(
+                start - 0.5, 
+                linewidth = 1, 
+                linestyle = "--", 
+                color = NEUTRAL_COLOUR, 
+                alpha = 0.6
+            )
 
-        midpoint = (start + end - 1) / 2
+        midpoint = (start + end - 1)/2
 
-        ax.text(midpoint, 1.015, family.replace("_", " "), transform=ax.get_xaxis_transform(), ha="center", va="bottom", fontweight="bold",)
+        ax.text(
+            midpoint, 
+            1.015, 
+            family.replace("_", " "), 
+            transform = ax.get_xaxis_transform(), 
+            ha = "center", 
+            va = "bottom", 
+            fontweight = "bold"
+        )
 
         start = end
 
@@ -373,14 +430,14 @@ def plot_pairwise_heatmap(
     labels, 
     model_metadata, 
     colour_limits, 
-    colourbar_label,
+    colourbar_label, 
 ):
     # a labels x labels heatmap with cell_text written in each finite cell; NaN cells stay blank
     image = ax.imshow(
         np.ma.masked_invalid(matrix), 
         vmin = colour_limits[0], 
         vmax = colour_limits[1], 
-        cmap = SEQUENTIAL_COLOURMAP,
+        cmap = SEQUENTIAL_COLOURMAP, 
     )
 
     for (i, j), value in np.ndenumerate(matrix):
@@ -392,7 +449,7 @@ def plot_pairwise_heatmap(
                 ha = "center", 
                 va = "center", 
                 fontsize = 7, 
-                color = contrasting_text_color(image, value),
+                color = contrasting_text_color(image, value), 
             )
 
     # model names only: the stimulus type is shown by the label colour
@@ -425,7 +482,7 @@ def plot_pairwise_heatmap(
         ), 
         loc = "lower left", 
         fontsize = 8, 
-        frameon = False,
+        frameon = False, 
     )
 
 def mark_degenerate_boxplot_statistics(ax, boxplot_values):
@@ -450,14 +507,16 @@ def mark_degenerate_boxplot_statistics(ax, boxplot_values):
             continue
 
         ax.plot(
-            position,
-            median,
+            position, 
+            median, 
             marker = "D", 
             color = "black", 
-            markeredgecolor="white",
+            markeredgecolor = "white", 
             markersize = 6, 
             zorder = 4, 
-            linestyle="none",
-            label="Degenerate box (zero-width quartile range)" if not labelled else None,
+            linestyle = "none", 
+            label = (
+                "Degenerate box (zero-width quartile range)" if not labelled else None
+            ), 
         )
         labelled = True

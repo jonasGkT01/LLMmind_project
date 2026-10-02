@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
+# last AI edit: 2026-10-02, see docs/changelog/developers/ for details
 import argparse
 
 import pandas as pd
@@ -6,7 +8,10 @@ import pandas as pd
 from libraries.compute_alignment import read_relabelled_alignment_scores
 from libraries.compute_statistics import empirical_upper_tail_p_value
 
-def compute_empirical_statistics(observed_df: pd.DataFrame, relabelled_df: pd.DataFrame) -> pd.DataFrame:
+def compute_empirical_statistics(
+    observed_df: pd.DataFrame, 
+    relabelled_df: pd.DataFrame, 
+) -> pd.DataFrame:
     number_of_relabellings = relabelled_df["shuffle_id"].nunique()
 
     observed_by_concept = observed_df.set_index("concept")
@@ -14,18 +19,20 @@ def compute_empirical_statistics(observed_df: pd.DataFrame, relabelled_df: pd.Da
     relabelled_summary_df = (
         relabelled_df
         .merge(
-            observed_by_concept[["alignment_score"]],
-            left_on="concept",
-            right_index=True,
-            suffixes=("", "_observed"),
+            observed_by_concept[["alignment_score"]], 
+            left_on = "concept", 
+            right_index = True, 
+            suffixes = ("", "_observed"), 
         )
         .assign(
-            exceeds_observed=lambda df: df["alignment_score"] >= df["alignment_score_observed"]
+            exceeds_observed = lambda df: (
+                df["alignment_score"] >= df["alignment_score_observed"]
+            )
         )
-        .groupby("concept", sort=False)
+        .groupby("concept", sort = False)
         .agg(
-            empirical_null_mean_alignment_score=("alignment_score", "mean"),
-            number_of_null_scores_at_least_as_large=("exceeds_observed", "sum"),
+            empirical_null_mean_alignment_score = ("alignment_score", "mean"), 
+            number_of_null_scores_at_least_as_large = ("exceeds_observed", "sum"), 
         )
     )
 
@@ -34,60 +41,65 @@ def compute_empirical_statistics(observed_df: pd.DataFrame, relabelled_df: pd.Da
     summary_df["number_of_relabellings"] = number_of_relabellings
     summary_df["empirical_upper_tail_p_value"] = (
         empirical_upper_tail_p_value(
-            number_at_least_as_large = summary_df["number_of_null_scores_at_least_as_large"],
-            number_of_relabellings = number_of_relabellings,
+            number_at_least_as_large = summary_df[
+                "number_of_null_scores_at_least_as_large"
+            ], 
+            number_of_relabellings = number_of_relabellings, 
         )
     )
 
     summary_df = summary_df.reset_index()
 
     summary_df = summary_df.rename(
-        columns={
-            "common_neighbours": "observed_common_neighbours",
-            "alignment_score": "observed_alignment_score",
+        columns = {
+            "common_neighbours": "observed_common_neighbours", 
+            "alignment_score": "observed_alignment_score", 
         }
     )
 
     return summary_df[
         [
-            "concept",
-            "observed_common_neighbours",
-            "observed_alignment_score",
-            "empirical_null_mean_alignment_score",
-            "number_of_relabellings",
-            "number_of_null_scores_at_least_as_large",
-            "empirical_upper_tail_p_value",
+            "concept", 
+            "observed_common_neighbours", 
+            "observed_alignment_score", 
+            "empirical_null_mean_alignment_score", 
+            "number_of_relabellings", 
+            "number_of_null_scores_at_least_as_large", 
+            "empirical_upper_tail_p_value", 
         ]
     ]
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Compute an upper-tail empirical p-value separately for each concept using observed and relabelled alignment-score Parquet files")
-    parser.add_argument("--observed_alignment_score",
-                        required=True,
-                        help="Path to the Parquet file containing the observed alignment scores",)
-    parser.add_argument("--relabelled_common_neighbours",
-                        required=True,
-                        help="Path to the all-k Parquet file containing the common neighbours for all relabellings",)
-    parser.add_argument("--number_of_neighbours",
-                        type=int,
-                        required=True,)
+    parser = argparse.ArgumentParser(description = "Compute an upper-tail empirical p-value separately for each concept using observed and relabelled alignment-score Parquet files")
+    parser.add_argument("--observed_alignment_score", 
+                        required = True, 
+                        help = "Path to the Parquet file containing the observed alignment scores")
+    parser.add_argument("--relabelled_common_neighbours", 
+                        required = True, 
+                        help = "Path to the all-k Parquet file containing the common neighbours for all relabellings")
+    parser.add_argument("--number_of_neighbours", 
+                        type = int, 
+                        required = True)
     args = parser.parse_args()
 
-    observed_df = pd.read_parquet(args.observed_alignment_score, engine="pyarrow")
-    relabelled_df = read_relabelled_alignment_scores(args.relabelled_common_neighbours, args.number_of_neighbours)
+    observed_df = pd.read_parquet(args.observed_alignment_score, engine = "pyarrow")
+    relabelled_df = read_relabelled_alignment_scores(
+        args.relabelled_common_neighbours, 
+        args.number_of_neighbours
+    )
 
     summary_df = compute_empirical_statistics(
-        observed_df=observed_df,
-        relabelled_df=relabelled_df,
+        observed_df = observed_df, 
+        relabelled_df = relabelled_df, 
     )
 
     print(
         summary_df.to_csv(
-            sep="\t",
-            index=False,
-            float_format = "%.6g",
-        ),
-        end="",
+            sep = "\t", 
+            index = False, 
+            float_format = "%.6g", 
+        ), 
+        end = "", 
     )
 
 if __name__ == "__main__":

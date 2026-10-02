@@ -1,9 +1,14 @@
+# edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
+# last AI edit: 2026-10-02, see docs/changelog/developers/ for details
 import argparse
 
 import pandas as pd
 
 from libraries.compute_alignment import compute_alignment_scores
-from libraries.compute_nearest_neighbours import require_stored_number_of_neighbours, slice_top_k_neighbours
+from libraries.compute_nearest_neighbours import (
+    require_stored_number_of_neighbours, 
+    slice_top_k_neighbours, 
+)
 
 def main():
     parser = argparse.ArgumentParser()
@@ -34,8 +39,14 @@ def main():
     require_stored_number_of_neighbours(llm_nearest_neighbours, number_of_neighbours)
 
     # load the dataframes
-    nearest_neighbours_df_1 = pd.read_parquet(isc_nearest_neighbours, engine = "pyarrow")
-    nearest_neighbours_df_2 = pd.read_parquet(llm_nearest_neighbours, engine = "pyarrow")
+    nearest_neighbours_df_1 = pd.read_parquet(
+        isc_nearest_neighbours, 
+        engine = "pyarrow"
+    )
+    nearest_neighbours_df_2 = pd.read_parquet(
+        llm_nearest_neighbours, 
+        engine = "pyarrow"
+    )
 
     required_columns = {"concept", "neighbour"}
 
@@ -43,18 +54,30 @@ def main():
     missing_columns_2 = required_columns - set(nearest_neighbours_df_2.columns)
 
     if missing_columns_1:
-        raise ValueError(f"The first nearest-neighbours dataframe is missing columns: {sorted(missing_columns_1)}")
+        raise ValueError(
+            "The first nearest-neighbours dataframe is missing columns: "
+            f"{sorted(missing_columns_1)}"
+        )
 
     if missing_columns_2:
-        raise ValueError(f"The second nearest-neighbours dataframe is missing columns: {sorted(missing_columns_2)}")
+        raise ValueError(
+            "The second nearest-neighbours dataframe is missing columns: "
+            f"{sorted(missing_columns_2)}"
+        )
 
-    nearest_neighbours_df_1 = slice_top_k_neighbours(nearest_neighbours_df_1, number_of_neighbours)
-    nearest_neighbours_df_2 = slice_top_k_neighbours(nearest_neighbours_df_2, number_of_neighbours)
+    nearest_neighbours_df_1 = slice_top_k_neighbours(
+        nearest_neighbours_df_1, 
+        number_of_neighbours
+    )
+    nearest_neighbours_df_2 = slice_top_k_neighbours(
+        nearest_neighbours_df_2, 
+        number_of_neighbours
+    )
 
     alignment_score_df = compute_alignment_scores(
-        nearest_neighbours_df_1=nearest_neighbours_df_1,
-        nearest_neighbours_df_2=nearest_neighbours_df_2,
-        number_of_neighbours=number_of_neighbours,
+        nearest_neighbours_df_1 = nearest_neighbours_df_1, 
+        nearest_neighbours_df_2 = nearest_neighbours_df_2, 
+        number_of_neighbours = number_of_neighbours, 
     )
 
     # save the alignment scores as a parquet file

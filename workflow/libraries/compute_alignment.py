@@ -13,15 +13,18 @@ def nearest_neighbours_to_dict(nearest_neighbours_df):
     }
 
 def compute_alignment_scores(
-    nearest_neighbours_df_1,
-    nearest_neighbours_df_2,
-    number_of_neighbours,
+    nearest_neighbours_df_1, 
+    nearest_neighbours_df_2, 
+    number_of_neighbours, 
 ):
     nearest_neighbours_dict_1 = nearest_neighbours_to_dict(nearest_neighbours_df_1)
     nearest_neighbours_dict_2 = nearest_neighbours_to_dict(nearest_neighbours_df_2)
 
     if set(nearest_neighbours_dict_1) != set(nearest_neighbours_dict_2):
-        raise ValueError("The two representations have different concepts, and therefore cannot be compared.")
+        raise ValueError(
+            "The two representations have different concepts, and therefore cannot be "
+            "compared."
+        )
 
     rows = []
 
@@ -34,33 +37,37 @@ def compute_alignment_scores(
 
         rows.append(
             {
-                "concept": concept,
-                "common_neighbours": common_neighbours,
-                "alignment_score": common_neighbours/number_of_neighbours,
+                "concept": concept, 
+                "common_neighbours": common_neighbours, 
+                "alignment_score": common_neighbours/number_of_neighbours, 
             }
         )
 
     return pd.DataFrame(
         rows, 
-        columns = ["concept", "common_neighbours", "alignment_score",],
+        columns = ["concept", "common_neighbours", "alignment_score",], 
     )
 
 def compute_common_neighbours(neighbours, neighbour_mask, concept_indices,):
-    return neighbour_mask[concept_indices[:, None], neighbours,].sum(axis=1)
+    return neighbour_mask[concept_indices[:, None], neighbours,].sum(axis = 1)
 
 def read_relabelled_alignment_scores(path, number_of_neighbours):
     # one k's rows of an all-k relabelled file, with alignment_score = common_neighbours / k
     relabelled_df = pd.read_parquet(
-        path,
-        engine="pyarrow",
-        columns=["shuffle_id", "concept", "common_neighbours"],
-        filters=[("number_of_neighbours", "==", number_of_neighbours)],
+        path, 
+        engine = "pyarrow", 
+        columns = ["shuffle_id", "concept", "common_neighbours"], 
+        filters = [("number_of_neighbours", "==", number_of_neighbours)], 
     )
 
     if relabelled_df.empty:
-        raise ValueError(f"{path} has no rows for number_of_neighbours={number_of_neighbours}")
+        raise ValueError(
+            f"{path} has no rows for number_of_neighbours={number_of_neighbours}"
+        )
 
-    relabelled_df["alignment_score"] = relabelled_df["common_neighbours"].to_numpy(dtype=np.float64)/number_of_neighbours
+    relabelled_df["alignment_score"] = relabelled_df["common_neighbours"].to_numpy(
+        dtype = np.float64
+    )/number_of_neighbours
 
     return relabelled_df
 
@@ -72,7 +79,7 @@ def read_alignment_scores(path, dataset, similarity_type, number_of_neighbours):
         "kind": "score", 
         "dataset": dataset, 
         "similarity_type": similarity_type, 
-        "number_of_neighbours": number_of_neighbours,
+        "number_of_neighbours": number_of_neighbours, 
     }
 
     for key, value in expected_metadata.items():
@@ -85,7 +92,7 @@ def read_alignment_scores(path, dataset, similarity_type, number_of_neighbours):
     df = pd.read_parquet(
         path, 
         engine = "pyarrow", 
-        columns = ["concept", "alignment_score"],
+        columns = ["concept", "alignment_score"], 
     )
     df["concept"] = df["concept"].astype(str)
     duplicated_concepts = df.loc[df["concept"].duplicated(), "concept"].tolist()

@@ -1,5 +1,5 @@
 # edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
-# last AI edit: 2026-10-01, see docs/changelog/developers/ for details
+# last AI edit: 2026-10-02, see docs/changelog/developers/ for details
 
 import argparse
 from pathlib import Path
@@ -10,9 +10,14 @@ from libraries.fmri_processing import compute_isc_from_files
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--parcel_ts", nargs="+", required=True)
-    parser.add_argument("--isc_npy", required=True)
-    parser.add_argument("--n_rois", type=int, required=True)
+    parser.add_argument("--parcel_ts", 
+                        nargs = "+", 
+                        required = True)
+    parser.add_argument("--isc_npy", 
+                        required = True)
+    parser.add_argument("--n_rois", 
+                        type = int, 
+                        required = True)
     args = parser.parse_args()
 
     print(f"Computing ISC {args.isc_npy} from {len(args.parcel_ts)} parcel files")

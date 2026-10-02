@@ -1,26 +1,26 @@
 # edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
-# last AI edit: 2026-10-01, see docs/changelog/developers/ for details
+# last AI edit: 2026-10-02, see docs/changelog/developers/ for details
 rule all_llm_llm_alignment:
     input:
-        [
+        llm_llm_alignment_scores = [
             f"results/alignment_scores/dataset-{pair['dataset']}_model-{pair['model_1']}-{pair['stimuli_type_1']}_model-{pair['model_2']}-{pair['stimuli_type_2']}_{pair['similarity_type']}-alignment_score_{pair['number_of_neighbours']}NN.parquet"
             for pair in LLM_LLM_PAIRINGS
-        ],
-        [
+        ], 
+        llm_llm_p_values = [
             f"results/alignment_scores/dataset-{pair['dataset']}_model-{pair['model_1']}-{pair['stimuli_type_1']}_model-{pair['model_2']}-{pair['stimuli_type_2']}_{method}_{pair['similarity_type']}-alignment_score_{pair['number_of_neighbours']}NN.p_value.tsv"
             for pair in LLM_LLM_PAIRINGS
             for method in ["empirical", "hypergeometric"]
-        ],
-        "results/all_model_model_alignment_scores.tsv"
+        ], 
+        llm_llm_summary = "results/all_model_model_alignment_scores.tsv"
 
 rule compute_llm_llm_alignment_score:
     input:
-        llm_nearest_neighbours_1="results/{stimuli_type_1}_models/{dataset}/{similarity_type}_nearest_neighbours/{model_1}_{similarity_type}_nearest_neighbours.parquet",
-        llm_nearest_neighbours_2="results/{stimuli_type_2}_models/{dataset}/{similarity_type}_nearest_neighbours/{model_2}_{similarity_type}_nearest_neighbours.parquet"
+        llm_nearest_neighbours_1 = "results/{stimuli_type_1}_models/{dataset}/{similarity_type}_nearest_neighbours/{model_1}_{similarity_type}_nearest_neighbours.parquet", 
+        llm_nearest_neighbours_2 = "results/{stimuli_type_2}_models/{dataset}/{similarity_type}_nearest_neighbours/{model_2}_{similarity_type}_nearest_neighbours.parquet"
     output:
-        llm_llm_alignment_score="results/alignment_scores/dataset-{dataset}_model-{model_1}-{stimuli_type_1}_model-{model_2}-{stimuli_type_2}_{similarity_type}-alignment_score_{number_of_neighbours}NN.parquet"
+        llm_llm_alignment_score = "results/alignment_scores/dataset-{dataset}_model-{model_1}-{stimuli_type_1}_model-{model_2}-{stimuli_type_2}_{similarity_type}-alignment_score_{number_of_neighbours}NN.parquet"
     params:
-        number_of_neighbours=lambda wc: wc.number_of_neighbours
+        number_of_neighbours = lambda wc: wc.number_of_neighbours
     conda:
         "envs/llm_llm_alignment_environment.yaml"
     shell:
@@ -33,20 +33,20 @@ rule compute_llm_llm_alignment_score:
         """
 
 rule relabel_llm_similarity_and_compute_relabelled_llm_llm_alignment_score:
-    # Mirrors relabel_llm_similarity_and_compute_relabelled_llm_alignment_score (llm_mind_alignment/):
+    # mirrors relabel_llm_similarity_and_compute_relabelled_llm_alignment_score (llm_mind_alignment/):
     # one job per pair and similarity type covers every configured k, and model_2 is relabelled
-    # against a fixed model_1, as the LLM is relabelled against the fixed brain there.
+    # against a fixed model_1, as the LLM is relabelled against the fixed brain there
     input:
-        embedding_dataframe_1="results/{stimuli_type_1}_models/{dataset}/embeddings/{model_1}_embeddings.parquet",
-        embedding_dataframe_2="results/{stimuli_type_2}_models/{dataset}/embeddings/{model_2}_embeddings.parquet"
+        embedding_dataframe_1 = "results/{stimuli_type_1}_models/{dataset}/embeddings/{model_1}_embeddings.parquet", 
+        embedding_dataframe_2 = "results/{stimuli_type_2}_models/{dataset}/embeddings/{model_2}_embeddings.parquet"
     output:
-        relabelled_common_neighbours="results/alignment_scores/relabelled_common_neighbours/dataset-{dataset}_model-{model_1}-{stimuli_type_1}_model-{model_2}-{stimuli_type_2}_{similarity_type}-relabelled_common_neighbours.parquet"
+        relabelled_common_neighbours = "results/alignment_scores/relabelled_common_neighbours/dataset-{dataset}_model-{model_1}-{stimuli_type_1}_model-{model_2}-{stimuli_type_2}_{similarity_type}-relabelled_common_neighbours.parquet"
     params:
-        numbers_of_neighbours=lambda wc: dataset_numbers_of_neighbours(wc.dataset),
-        model=lambda wc: wc.model_2,
-        similarity_type=lambda wc: wc.similarity_type,
-        number_of_relabellings=NUMBER_OF_RELABELLINGS,
-        random_seed=RANDOM_SEED
+        numbers_of_neighbours = lambda wc: dataset_numbers_of_neighbours(wc.dataset), 
+        model = lambda wc: wc.model_2, 
+        similarity_type = lambda wc: wc.similarity_type, 
+        number_of_relabellings = NUMBER_OF_RELABELLINGS, 
+        random_seed = RANDOM_SEED
     conda:
         "envs/llm_llm_alignment_environment.yaml"
     shell:
@@ -65,12 +65,12 @@ rule relabel_llm_similarity_and_compute_relabelled_llm_llm_alignment_score:
 # the rules below reuse the LLM-brain scripts, which do not depend on what the two sides are
 rule compute_llm_llm_empirical_p_value:
     input:
-        observed_alignment_score="results/alignment_scores/dataset-{dataset}_model-{model_1}-{stimuli_type_1}_model-{model_2}-{stimuli_type_2}_{similarity_type}-alignment_score_{number_of_neighbours}NN.parquet",
-        relabelled_common_neighbours="results/alignment_scores/relabelled_common_neighbours/dataset-{dataset}_model-{model_1}-{stimuli_type_1}_model-{model_2}-{stimuli_type_2}_{similarity_type}-relabelled_common_neighbours.parquet"
+        observed_alignment_score = "results/alignment_scores/dataset-{dataset}_model-{model_1}-{stimuli_type_1}_model-{model_2}-{stimuli_type_2}_{similarity_type}-alignment_score_{number_of_neighbours}NN.parquet", 
+        relabelled_common_neighbours = "results/alignment_scores/relabelled_common_neighbours/dataset-{dataset}_model-{model_1}-{stimuli_type_1}_model-{model_2}-{stimuli_type_2}_{similarity_type}-relabelled_common_neighbours.parquet"
     output:
-        empirical_p_value="results/alignment_scores/dataset-{dataset}_model-{model_1}-{stimuli_type_1}_model-{model_2}-{stimuli_type_2}_empirical_{similarity_type}-alignment_score_{number_of_neighbours}NN.p_value.tsv"
+        empirical_p_value = "results/alignment_scores/dataset-{dataset}_model-{model_1}-{stimuli_type_1}_model-{model_2}-{stimuli_type_2}_empirical_{similarity_type}-alignment_score_{number_of_neighbours}NN.p_value.tsv"
     params:
-        number_of_neighbours=lambda wc: wc.number_of_neighbours
+        number_of_neighbours = lambda wc: wc.number_of_neighbours
     conda:
         "envs/llm_llm_alignment_environment.yaml"
     shell:
@@ -83,11 +83,11 @@ rule compute_llm_llm_empirical_p_value:
 
 rule compute_llm_llm_hypergeometric_p_value:
     input:
-        observed_alignment_score="results/alignment_scores/dataset-{dataset}_model-{model_1}-{stimuli_type_1}_model-{model_2}-{stimuli_type_2}_{similarity_type}-alignment_score_{number_of_neighbours}NN.parquet"
+        observed_alignment_score = "results/alignment_scores/dataset-{dataset}_model-{model_1}-{stimuli_type_1}_model-{model_2}-{stimuli_type_2}_{similarity_type}-alignment_score_{number_of_neighbours}NN.parquet"
     output:
-        hypergeometric_p_value="results/alignment_scores/dataset-{dataset}_model-{model_1}-{stimuli_type_1}_model-{model_2}-{stimuli_type_2}_hypergeometric_{similarity_type}-alignment_score_{number_of_neighbours}NN.p_value.tsv"
+        hypergeometric_p_value = "results/alignment_scores/dataset-{dataset}_model-{model_1}-{stimuli_type_1}_model-{model_2}-{stimuli_type_2}_hypergeometric_{similarity_type}-alignment_score_{number_of_neighbours}NN.p_value.tsv"
     params:
-        number_of_neighbours=lambda wc: wc.number_of_neighbours
+        number_of_neighbours = lambda wc: wc.number_of_neighbours
     conda:
         "envs/llm_llm_alignment_environment.yaml"
     shell:
@@ -98,26 +98,27 @@ rule compute_llm_llm_hypergeometric_p_value:
         """
 
 rule aggregate_all_llm_llm_p_value_outputs:
-    # No multiple-testing correction here: these results stay out of the LLM-brain BH family.
+    # no multiple-testing correction here: these results stay out of the LLM-brain BH family
     input:
-        empirical_p_values=[
+        empirical_p_values = [
             f"results/alignment_scores/dataset-{pair['dataset']}_model-{pair['model_1']}-{pair['stimuli_type_1']}_model-{pair['model_2']}-{pair['stimuli_type_2']}_empirical_{pair['similarity_type']}-alignment_score_{pair['number_of_neighbours']}NN.p_value.tsv"
             for pair in LLM_LLM_PAIRINGS
-        ],
-        hypergeometric_p_values=[
+        ], 
+        hypergeometric_p_values = [
             f"results/alignment_scores/dataset-{pair['dataset']}_model-{pair['model_1']}-{pair['stimuli_type_1']}_model-{pair['model_2']}-{pair['stimuli_type_2']}_hypergeometric_{pair['similarity_type']}-alignment_score_{pair['number_of_neighbours']}NN.p_value.tsv"
             for pair in LLM_LLM_PAIRINGS
-        ],
+        ], 
         # one all-k file per (dataset, pair, similarity), serving every k
-        relabelled_common_neighbours=list(dict.fromkeys(
+        relabelled_common_neighbours = list(dict.fromkeys(
             f"results/alignment_scores/relabelled_common_neighbours/dataset-{pair['dataset']}_model-{pair['model_1']}-{pair['stimuli_type_1']}_model-{pair['model_2']}-{pair['stimuli_type_2']}_{pair['similarity_type']}-relabelled_common_neighbours.parquet"
             for pair in LLM_LLM_PAIRINGS
         ))
     output:
-        all_model_model_alignment_scores_tsv="results/all_model_model_alignment_scores.tsv"
+        all_model_model_alignment_scores_tsv = "results/all_model_model_alignment_scores.tsv"
     params:
-        model_order=MODEL_KEYS
-    threads: 4
+        model_order = MODEL_KEYS
+    threads:
+        4
     conda:
         "envs/llm_llm_alignment_environment.yaml"
     shell:

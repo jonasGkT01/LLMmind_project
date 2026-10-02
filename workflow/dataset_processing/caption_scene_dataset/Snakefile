@@ -1,5 +1,5 @@
 # edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
-# last AI edit: 2026-10-01, see docs/changelog/developers/ for details
+# last AI edit: 2026-10-02, see docs/changelog/developers/ for details
 
 import re
 from pathlib import Path
@@ -55,8 +55,8 @@ def caption_scene_run_table_path(subject, run):
 
     return str(
         Path("resources/datasets/caption_scene_dataset/V1/stimuli/CSD")
-        / f"sub-{subject}"
-        / f"subject{subject_int}_run{run_int}.txt"
+        /f"sub-{subject}"
+        /f"subject{subject_int}_run{run_int}.txt"
     )
 
 CAPTION_SCENE_BOLD_FILES = sorted(glob(CAPTION_SCENE_BOLD_GLOB))
@@ -90,12 +90,12 @@ for bold_file in CAPTION_SCENE_BOLD_FILES:
 
     CAPTION_SCENE_RUNS.append(
         {
-            "key": key,
-            "subject": subject,
-            "session": session,
-            "run": run,
-            "bold": bold_file,
-            "run_table": run_table,
+            "key": key, 
+            "subject": subject, 
+            "session": session, 
+            "run": run, 
+            "bold": bold_file, 
+            "run_table": run_table, 
         }
     )
 
@@ -104,7 +104,7 @@ CAPTION_SCENE_RUN_TABLES = [x["run_table"] for x in CAPTION_SCENE_RUNS]
 
 def caption_scene_split_done_files(wildcards):
     checkpoint_output = checkpoints.make_caption_scene_manifest.get().output.run_manifest_index
-    df = pd.read_csv(checkpoint_output, sep="\t")
+    df = pd.read_csv(checkpoint_output, sep = "\t")
 
     run_keys = sorted(df["run_key"].dropna().astype(str).unique().tolist())
 
@@ -115,16 +115,16 @@ def caption_scene_split_done_files(wildcards):
 
     return split_done_files
 
-def read_manifest(path=CAPTION_SCENE_MANIFEST):
-    df = pd.read_csv(path, sep="\t")
+def read_manifest(path = CAPTION_SCENE_MANIFEST):
+    df = pd.read_csv(path, sep = "\t")
 
     for column in [
-        "subject",
-        "session",
-        "run",
-        "event_index",
-        "stimulus_id",
-        "output_bold",
+        "subject", 
+        "session", 
+        "run", 
+        "event_index", 
+        "stimulus_id", 
+        "output_bold", 
     ]:
         if column in df.columns:
             df[column] = df[column].astype(str)
@@ -146,34 +146,34 @@ def caption_scene_all_isc_outputs(wildcards):
 
 rule all_caption_scene_dataset:
     input:
-        caption_scene_all_isc_outputs,
-        CAPTION_SCENE_ISC_DONE,
-        CAPTION_SCENE_STIMULI_READY,
-        CAPTION_SCENE_EXCLUDED_STIMULI
+        isc_outputs = caption_scene_all_isc_outputs, 
+        isc_done = CAPTION_SCENE_ISC_DONE, 
+        stimuli_ready = CAPTION_SCENE_STIMULI_READY, 
+        excluded_stimuli = CAPTION_SCENE_EXCLUDED_STIMULI
 
 rule finish_caption_scene_isc:
     input:
-        caption_scene_all_isc_outputs
+        isc_outputs = caption_scene_all_isc_outputs
     output:
-        touch(CAPTION_SCENE_ISC_DONE)
+        isc_done = touch(CAPTION_SCENE_ISC_DONE)
 
 checkpoint make_caption_scene_manifest:
     input:
-        bold_files=CAPTION_SCENE_BOLD_FILES,
-        run_tables=CAPTION_SCENE_RUN_TABLES,
-        visual_stimuli_dir=CAPTION_SCENE_VISUAL_STIMULI_DIR
+        bold_files = CAPTION_SCENE_BOLD_FILES, 
+        run_tables = CAPTION_SCENE_RUN_TABLES, 
+        visual_stimuli_dir = CAPTION_SCENE_VISUAL_STIMULI_DIR
     output:
-        excluded_stimuli=CAPTION_SCENE_EXCLUDED_STIMULI,
-        manifest=CAPTION_SCENE_MANIFEST,
-        run_manifest_dir=directory(CAPTION_SCENE_RUN_MANIFEST_DIR),
-        run_manifest_index=CAPTION_SCENE_RUN_MANIFEST_INDEX
+        excluded_stimuli = CAPTION_SCENE_EXCLUDED_STIMULI, 
+        manifest = CAPTION_SCENE_MANIFEST, 
+        run_manifest_dir = directory(CAPTION_SCENE_RUN_MANIFEST_DIR), 
+        run_manifest_index = CAPTION_SCENE_RUN_MANIFEST_INDEX
     params:
-        output_root=CAPTION_SCENE_INTERMEDIATE_DIR,
-        tr=config["caption_scene"]["tr"],
-        event_duration_s=config["caption_scene"]["event_duration_s"],
-        onset_shift_s=config["caption_scene"]["onset_shift_s"],
-        run_table_encoding=config["caption_scene"].get("run_table_encoding", "gbk"),
-        minimum_subjects_per_stimulus=MINIMUM_SUBJECTS_PER_STIMULUS,
+        output_root = CAPTION_SCENE_INTERMEDIATE_DIR, 
+        tr = config["caption_scene"]["tr"], 
+        event_duration_s = config["caption_scene"]["event_duration_s"], 
+        onset_shift_s = config["caption_scene"]["onset_shift_s"], 
+        run_table_encoding = config["caption_scene"].get("run_table_encoding", "gbk"), 
+        minimum_subjects_per_stimulus = MINIMUM_SUBJECTS_PER_STIMULUS, 
     conda:
         "envs/caption_scene_dataset_processing_environment.yaml"
     shell:
@@ -196,12 +196,12 @@ checkpoint make_caption_scene_manifest:
 
 rule split_caption_scene_bold_by_run_manifest:
     input:
-        manifest=CAPTION_SCENE_MANIFEST,
-        run_manifest_dir=CAPTION_SCENE_RUN_MANIFEST_DIR
+        manifest = CAPTION_SCENE_MANIFEST, 
+        run_manifest_dir = CAPTION_SCENE_RUN_MANIFEST_DIR
     output:
-        done=f"{CAPTION_SCENE_INTERMEDIATE_DIR}/single_stimulus_bold/split_done/{{run_key}}.done"
+        done = f"{CAPTION_SCENE_INTERMEDIATE_DIR}/single_stimulus_bold/split_done/{{run_key}}.done"
     params:
-        run_manifest=lambda wildcards: f"{CAPTION_SCENE_RUN_MANIFEST_DIR}/{wildcards.run_key}.tsv"
+        run_manifest = lambda wildcards: f"{CAPTION_SCENE_RUN_MANIFEST_DIR}/{wildcards.run_key}.tsv"
     conda:
         "envs/caption_scene_dataset_processing_environment.yaml"
     shell:
@@ -221,14 +221,14 @@ def caption_scene_parcel_paths(wildcards):
     parcel_paths = [
         str(
             Path(CAPTION_SCENE_PROCESSING_OUTPUT_DIR)
-            / "parcels"
-            / f"task-{row.stimulus_id}"
-            / (
+            /"parcels"
+            /f"task-{row.stimulus_id}"
+            /(
                 f"sub-{row.subject}_ses-{row.session}_run-{row.run}_"
                 f"task-{row.stimulus_id}_event-{row.event_index}_parcel_ts.npy"
             )
         )
-        for row in rows.itertuples(index=False)
+        for row in rows.itertuples(index = False)
     ]
 
     if len(parcel_paths) < 2:
@@ -238,15 +238,15 @@ def caption_scene_parcel_paths(wildcards):
 
 rule extract_caption_scene_parcels:
     input:
-        manifest=CAPTION_SCENE_MANIFEST,
-        split_done=caption_scene_split_done_files
+        manifest = CAPTION_SCENE_MANIFEST, 
+        split_done = caption_scene_split_done_files
     output:
-        touch(CAPTION_SCENE_PARCELS_DONE)
+        parcels_done = touch(CAPTION_SCENE_PARCELS_DONE)
     params:
-        n_rois=config["atlas"]["n_rois"],
-        yeo_networks=config["atlas"]["yeo_networks"],
-        atlas_dir=config["atlas"]["atlas_dir"],
-        output_root=CAPTION_SCENE_PROCESSING_OUTPUT_DIR
+        n_rois = config["atlas"]["n_rois"], 
+        yeo_networks = config["atlas"]["yeo_networks"], 
+        atlas_dir = config["atlas"]["atlas_dir"], 
+        output_root = CAPTION_SCENE_PROCESSING_OUTPUT_DIR
     conda:
         "envs/caption_scene_dataset_processing_environment.yaml"
     shell:
@@ -261,11 +261,11 @@ rule extract_caption_scene_parcels:
 
 rule compute_caption_scene_isc:
     input:
-        parcels_done=CAPTION_SCENE_PARCELS_DONE
+        parcels_done = CAPTION_SCENE_PARCELS_DONE
     output:
         isc_npy = f"{CAPTION_SCENE_ISC_DIR}/task-{{stimulus_id}}_isc_mean.npy"
     params:
-        parcel_ts = caption_scene_parcel_paths,
+        parcel_ts = caption_scene_parcel_paths, 
         n_rois = config["atlas"]["n_rois"]
     conda:
         "envs/caption_scene_dataset_processing_environment.yaml"
@@ -279,11 +279,11 @@ rule compute_caption_scene_isc:
 
 rule write_caption_scene_stimuli_transcripts:
     input:
-        image_caption_table=CAPTION_SCENE_IMAGE_CAPTION_TSV,
-        manifest=CAPTION_SCENE_MANIFEST
+        image_caption_table = CAPTION_SCENE_IMAGE_CAPTION_TSV, 
+        manifest = CAPTION_SCENE_MANIFEST
     output:
-        stimuli_dir=directory(config["caption_scene"]["stimuli_dir"]["language"]),
-        transcripts_done=touch(CAPTION_SCENE_STIMULI_READY)
+        stimuli_dir = directory(config["caption_scene"]["stimuli_dir"]["language"]), 
+        transcripts_done = touch(CAPTION_SCENE_STIMULI_READY)
     conda:
         "envs/caption_scene_dataset_processing_environment.yaml"
     shell:

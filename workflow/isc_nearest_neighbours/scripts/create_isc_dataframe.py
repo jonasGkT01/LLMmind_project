@@ -13,6 +13,7 @@ def load_isc_value(npy_path: Path):
     # convert 0-d arrays / numpy scalars to plain Python scalars when possible
     if isinstance(value, np.ndarray) and value.shape == ():
         value = value.item()
+
     return value
 
 def isc_npys_to_dataframe(input_isc_npys: list[str]) -> pd.DataFrame:
@@ -24,8 +25,8 @@ def isc_npys_to_dataframe(input_isc_npys: list[str]) -> pd.DataFrame:
         isc = load_isc_value(path)
 
         records.append({
-            "concept": task,
-            "isc": isc,
+            "concept": task, 
+            "isc": isc, 
         })
 
     df = pd.DataFrame(records).set_index("concept")
@@ -33,15 +34,22 @@ def isc_npys_to_dataframe(input_isc_npys: list[str]) -> pd.DataFrame:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--isc_npys", type=str, nargs="+", required=True, help="List of ISC numpy files, one per task")
-    parser.add_argument("--isc_dataframe", type=str, required=True, help="Path to output parquet dataframe")
+    parser.add_argument("--isc_npys", 
+                        type = str, 
+                        nargs = "+", 
+                        required = True, 
+                        help = "List of ISC numpy files, one per task")
+    parser.add_argument("--isc_dataframe", 
+                        type = str, 
+                        required = True, 
+                        help = "Path to output parquet dataframe")
     args = parser.parse_args()
 
     df = isc_npys_to_dataframe(args.isc_npys)
 
     output_path = Path(args.isc_dataframe)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    df.to_parquet(output_path, engine="pyarrow", index=True)
+    output_path.parent.mkdir(parents = True, exist_ok = True)
+    df.to_parquet(output_path, engine = "pyarrow", index = True)
 
 if __name__ == "__main__":
     main()

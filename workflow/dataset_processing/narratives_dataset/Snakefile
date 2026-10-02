@@ -1,5 +1,5 @@
 # edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
-# last AI edit: 2026-10-01, see docs/changelog/developers/ for details
+# last AI edit: 2026-10-02, see docs/changelog/developers/ for details
 
 import json
 
@@ -47,35 +47,35 @@ def narratives_parcel_output(c):
 
 NARRATIVES_BOLD_FILES = []
 for subject, task, run_tag, space, resolution, descriptor in product(
-    NARRATIVES_SUBJECTS,
-    config["narratives"]["tasks"],
-    config["narratives"]["run_tags"],
-    config["narratives"]["spaces"],
-    config["narratives"]["resolutions"],
-    config["narratives"]["descriptors"],
+    NARRATIVES_SUBJECTS, 
+    config["narratives"]["tasks"], 
+    config["narratives"]["run_tags"], 
+    config["narratives"]["spaces"], 
+    config["narratives"]["resolutions"], 
+    config["narratives"]["descriptors"], 
 ):
     if narratives_excluded(subject, task, run_tag):
         continue
 
     bold_file = config["narratives"]["bold_pattern"].format(
-        subject=subject,
-        task=task,
-        run_tag=run_tag,
-        space=space,
-        resolution=resolution,
-        descriptor=descriptor,
+        subject = subject, 
+        task = task, 
+        run_tag = run_tag, 
+        space = space, 
+        resolution = resolution, 
+        descriptor = descriptor, 
     )
 
     if Path(bold_file).exists():
         NARRATIVES_BOLD_FILES.append({
-            "subject": subject,
-            "task": task,
-            "run_tag": run_tag,
-            "run_label": narratives_run_label(run_tag),
-            "space": space,
-            "resolution": resolution,
-            "descriptor": descriptor,
-            "bold_file": bold_file,
+            "subject": subject, 
+            "task": task, 
+            "run_tag": run_tag, 
+            "run_label": narratives_run_label(run_tag), 
+            "space": space, 
+            "resolution": resolution, 
+            "descriptor": descriptor, 
+            "bold_file": bold_file, 
         })
 
 NARRATIVES_TASK_GROUPS = {}
@@ -85,8 +85,8 @@ for c in NARRATIVES_BOLD_FILES:
 
     NARRATIVES_TASK_GROUPS.setdefault(c["task"], []).append(c)
 
-# Every scan is its own fMRI observation, but a task is retained only if it was presented to at
-# least MINIMUM_SUBJECTS_PER_STIMULUS different subjects, so that its ISC is not purely a within-subject quantity.
+# every scan is its own fMRI observation, but a task is retained only if it was presented to at
+# least MINIMUM_SUBJECTS_PER_STIMULUS different subjects, so that its ISC is not purely a within-subject quantity
 NARRATIVES_TASK_GROUPS = {
     task: scans
     for task, scans in NARRATIVES_TASK_GROUPS.items()
@@ -107,7 +107,7 @@ NARRATIVES_PARCEL_OUTPUTS = [
 
 def write_narratives_parcel_manifest(output_tsv):
     output_tsv = Path(output_tsv)
-    output_tsv.parent.mkdir(parents=True, exist_ok=True)
+    output_tsv.parent.mkdir(parents = True, exist_ok = True)
 
     with open(output_tsv, "w") as f:
         f.write("bold_file\tparcel_ts\n")
@@ -118,7 +118,7 @@ def write_narratives_parcel_manifest(output_tsv):
 
 def write_narratives_isc_manifest(output_tsv):
     output_tsv = Path(output_tsv)
-    output_tsv.parent.mkdir(parents=True, exist_ok=True)
+    output_tsv.parent.mkdir(parents = True, exist_ok = True)
 
     with open(output_tsv, "w") as f:
         f.write("task\tparcel_ts\tisc_npy\n")
@@ -140,40 +140,40 @@ NARRATIVES_EXCLUDED_STIMULI = config["narratives"]["excluded_stimuli"]
 
 rule all_narratives_dataset:
     input:
-        NARRATIVES_ISC_NPY_OUTPUTS,
-        NARRATIVES_ISC_DONE,
-        NARRATIVES_STIMULI_READY,
-        NARRATIVES_EXCLUDED_STIMULI
+        isc_npy = NARRATIVES_ISC_NPY_OUTPUTS, 
+        isc_done = NARRATIVES_ISC_DONE, 
+        stimuli_ready = NARRATIVES_STIMULI_READY, 
+        excluded_stimuli = NARRATIVES_EXCLUDED_STIMULI
 
 rule mark_narratives_isc_done:
     input:
-        NARRATIVES_ISC_NPY_OUTPUTS
+        isc_npy = NARRATIVES_ISC_NPY_OUTPUTS
     output:
-        touch(NARRATIVES_ISC_DONE)
+        isc_done = touch(NARRATIVES_ISC_DONE)
 
 rule write_narratives_parcel_manifest:
     output:
-        manifest=NARRATIVES_PARCEL_MANIFEST
+        manifest = NARRATIVES_PARCEL_MANIFEST
     run:
         write_narratives_parcel_manifest(output.manifest)
 
 rule write_narratives_isc_manifest:
     input:
-        parcel_manifest=NARRATIVES_PARCEL_MANIFEST
+        parcel_manifest = NARRATIVES_PARCEL_MANIFEST
     output:
-        manifest=NARRATIVES_ISC_MANIFEST
+        manifest = NARRATIVES_ISC_MANIFEST
     run:
         write_narratives_isc_manifest(output.manifest)
 
 rule extract_narratives_parcels:
     input:
-        manifest=NARRATIVES_PARCEL_MANIFEST
+        manifest = NARRATIVES_PARCEL_MANIFEST
     output:
-        NARRATIVES_PARCEL_OUTPUTS
+        parcel_ts = NARRATIVES_PARCEL_OUTPUTS
     params:
-        n_rois=config["atlas"]["n_rois"],
-        yeo_networks=config["atlas"]["yeo_networks"],
-        atlas_dir=config["atlas"]["atlas_dir"]
+        n_rois = config["atlas"]["n_rois"], 
+        yeo_networks = config["atlas"]["yeo_networks"], 
+        atlas_dir = config["atlas"]["atlas_dir"]
     conda:
         "envs/narratives_dataset_processing_environment.yaml"
     shell:
@@ -187,8 +187,8 @@ rule extract_narratives_parcels:
 
 rule compute_narratives_isc:
     input:
-        manifest=NARRATIVES_ISC_MANIFEST,
-        parcel_ts=NARRATIVES_PARCEL_OUTPUTS
+        manifest = NARRATIVES_ISC_MANIFEST, 
+        parcel_ts = NARRATIVES_PARCEL_OUTPUTS
     output:
         isc_npy = NARRATIVES_ISC_NPY_OUTPUTS
     params:
@@ -204,10 +204,10 @@ rule compute_narratives_isc:
 
 rule rename_narratives_stimuli_transcipts:
     output:
-        touch(NARRATIVES_STIMULI_READY),
-        output_stimuli_dir=directory(config["narratives"]["stimuli_dir"]["language"])
+        stimuli_ready = touch(NARRATIVES_STIMULI_READY), 
+        output_stimuli_dir = directory(config["narratives"]["stimuli_dir"]["language"])
     shell:
-        """
+        r"""
             input_stimuli_dir="resources/datasets/narratives_dataset/stimuli/transcripts"
             output_stimuli_dir="{output.output_stimuli_dir:q}"
 
@@ -224,17 +224,17 @@ rule rename_narratives_stimuli_transcipts:
         """
 
 rule write_narratives_problematic_stimuli:
-    # Lists every transcript stimulus that has no ISC: the problematic subtasks, plus any task
+    # lists every transcript stimulus that has no ISC: the problematic subtasks, plus any task
     # dropped by the scan-level checks above (no usable scans, or scans from fewer than two
-    # different subjects). get_embeddings skips every stimulus listed here.
+    # different subjects). get_embeddings skips every stimulus listed here
     input:
-        NARRATIVES_STIMULI_READY
+        stimuli_ready = NARRATIVES_STIMULI_READY
     output:
-        txt=NARRATIVES_EXCLUDED_STIMULI
+        txt = NARRATIVES_EXCLUDED_STIMULI
     params:
-        stimuli_dir=config["narratives"]["stimuli_dir"]["language"],
-        problematic_stimuli=config["narratives"]["problematic_subtasks"],
-        retained_tasks=sorted(NARRATIVES_TASK_GROUPS)
+        stimuli_dir = config["narratives"]["stimuli_dir"]["language"], 
+        problematic_stimuli = config["narratives"]["problematic_subtasks"], 
+        retained_tasks = sorted(NARRATIVES_TASK_GROUPS)
     run:
         transcript_stimuli = {
             path.stem
@@ -245,7 +245,7 @@ rule write_narratives_problematic_stimuli:
         excluded_stimuli = set(params.problematic_stimuli) | (transcript_stimuli - set(params.retained_tasks))
 
         output_path = Path(output.txt)
-        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.parent.mkdir(parents = True, exist_ok = True)
 
         with output_path.open("w") as f:
             for stimulus in sorted(excluded_stimuli):

@@ -1,9 +1,11 @@
+# edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
+# last AI edit: 2026-10-02, see docs/changelog/developers/ for details
 SPEARMAN_PAIRINGS = [
     {
-        "dataset": dataset,
-        "stimuli_type": stimuli_type,
-        "model": model,
-        "similarity_type": similarity_type,
+        "dataset": dataset, 
+        "stimuli_type": stimuli_type, 
+        "model": model, 
+        "similarity_type": similarity_type, 
     }
     for dataset in DATASETS
     for stimuli_type in config[dataset]["stimuli_dir"]
@@ -14,26 +16,26 @@ SPEARMAN_PAIRINGS = [
 
 rule all_spearman_alignment:
     input:
-        [
+        spearman_model_level = [
             f"results/spearman_alignment_scores/dataset-{pair['dataset']}_model-{pair['model']}-{pair['stimuli_type']}_brain_empirical_{pair['similarity_type']}-spearman_alignment_model_level.p_value.tsv"
             for pair in SPEARMAN_PAIRINGS
-        ],
-        [
+        ], 
+        spearman_concept_level = [
             f"results/spearman_alignment_scores/dataset-{pair['dataset']}_model-{pair['model']}-{pair['stimuli_type']}_brain_empirical_{pair['similarity_type']}-spearman_alignment_concept_level.p_value.tsv"
             for pair in SPEARMAN_PAIRINGS
-        ],
-        "results/all_spearman_alignment_scores.tsv"
+        ], 
+        spearman_summary = "results/all_spearman_alignment_scores.tsv"
 
 rule compute_spearman_alignmentwith_empirical_p_value:
     input:
-        brain_embeddings="results/mind/{dataset}/isc_dataframe.parquet",
-        model_embeddings="results/{stimuli_type}_models/{dataset}/embeddings/{model}_embeddings.parquet"
+        brain_embeddings = "results/mind/{dataset}/isc_dataframe.parquet", 
+        model_embeddings = "results/{stimuli_type}_models/{dataset}/embeddings/{model}_embeddings.parquet"
     output:
-        model_level="results/spearman_alignment_scores/dataset-{dataset}_model-{model}-{stimuli_type}_brain_empirical_{similarity_type}-spearman_alignment_model_level.p_value.tsv",
-        concept_level="results/spearman_alignment_scores/dataset-{dataset}_model-{model}-{stimuli_type}_brain_empirical_{similarity_type}-spearman_alignment_concept_level.p_value.tsv"
+        model_level = "results/spearman_alignment_scores/dataset-{dataset}_model-{model}-{stimuli_type}_brain_empirical_{similarity_type}-spearman_alignment_model_level.p_value.tsv", 
+        concept_level = "results/spearman_alignment_scores/dataset-{dataset}_model-{model}-{stimuli_type}_brain_empirical_{similarity_type}-spearman_alignment_concept_level.p_value.tsv"
     params:
-        number_of_relabellings=NUMBER_OF_RELABELLINGS,
-        random_seed=RANDOM_SEED
+        number_of_relabellings = NUMBER_OF_RELABELLINGS, 
+        random_seed = RANDOM_SEED
     conda:
         "envs/spearman_alignment_environment.yaml"
     shell:
@@ -53,12 +55,12 @@ rule compute_spearman_alignmentwith_empirical_p_value:
 
 rule aggregate_all_spearman_alignment_scores:
     input:
-        model_level_scores=[
+        model_level_scores = [
             f"results/spearman_alignment_scores/dataset-{pair['dataset']}_model-{pair['model']}-{pair['stimuli_type']}_brain_empirical_{pair['similarity_type']}-spearman_alignment_model_level.p_value.tsv"
             for pair in SPEARMAN_PAIRINGS
         ]
     output:
-        all_spearman_alignment_scores_tsv="results/all_spearman_alignment_scores.tsv"
+        all_spearman_alignment_scores_tsv = "results/all_spearman_alignment_scores.tsv"
     conda:
         "envs/spearman_alignment_environment.yaml"
     shell:
