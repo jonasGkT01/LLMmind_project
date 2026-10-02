@@ -6,7 +6,7 @@ from pathlib import Path
 
 import numpy as np
 
-from libraries.fmri_processing import compute_isc_from_files
+from libraries.compute_isc import compute_isc_from_files
 
 def main():
     parser = argparse.ArgumentParser()

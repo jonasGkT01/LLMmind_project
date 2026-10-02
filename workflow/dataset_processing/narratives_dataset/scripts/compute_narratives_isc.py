@@ -7,7 +7,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from libraries.fmri_processing import compute_isc_from_files, single_value
+from libraries.compute_isc import compute_isc_from_files, single_value
 
 def main():
     parser = argparse.ArgumentParser()
