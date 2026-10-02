@@ -280,6 +280,9 @@ caption_scene:
   # numbers of nearest neighbours k; every analysis runs once per k
   number_of_neighbours: [5, 25, 50, 100]
   bold_glob: "resources/datasets/caption_scene_dataset/V1/derivatives/pp_data/sub-*/func/sub-*_ses-*_task-CSD_run-*.nii.gz"
+  # T1w registered to MNI; the BOLD data are aligned to it. Each subject has four repeated T1w
+  # scans on one grid, and run-001 matches the mean BOLD image at least as well as the others
+  t1w_pattern: "resources/datasets/caption_scene_dataset/V1/sub-{subject}/anat/sub-{subject}_ses-01_run-001_T1w.nii.gz"
   processing_output_dir: "results/mind/caption_scene"
   # one stimulus folder per stimulus type; the file names are the concept names
   stimuli_dir:

@@ -12,11 +12,20 @@ CAPTION_SCENE_PROCESSING_OUTPUT_DIR = config["caption_scene"]["processing_output
 CAPTION_SCENE_ISC_DIR = f"{CAPTION_SCENE_PROCESSING_OUTPUT_DIR}/isc"
 
 CAPTION_SCENE_BOLD_GLOB = config["caption_scene"]["bold_glob"]
-CAPTION_SCENE_MANIFEST = f"{CAPTION_SCENE_INTERMEDIATE_DIR}/manifest/csd_events_manifest.tsv"
+# the record of every event window (crop) used for the ISC: kept permanently, next to isc_inputs.tsv
+CAPTION_SCENE_MANIFEST = f"{CAPTION_SCENE_PROCESSING_OUTPUT_DIR}/manifests/csd_events_manifest.tsv"
 CAPTION_SCENE_RUN_MANIFEST_DIR = f"{CAPTION_SCENE_INTERMEDIATE_DIR}/manifest/by_run"
 CAPTION_SCENE_RUN_MANIFEST_INDEX = f"{CAPTION_SCENE_INTERMEDIATE_DIR}/manifest/by_run_manifest_index.tsv"
 
 CAPTION_SCENE_PARCELS_DONE = f"{CAPTION_SCENE_PROCESSING_OUTPUT_DIR}/manifests/.parcels_done"
+CAPTION_SCENE_RUN_PARCELS_DONE = f"{CAPTION_SCENE_INTERMEDIATE_DIR}/parcel_flags/{{run_key}}.done"
+
+# the BOLD data are in each subject's T1w space: they are warped to MNI152NLin6Asym (the space of
+# the Schaefer atlas) through a registration of the subject's T1w to the template
+CAPTION_SCENE_REGISTRATION_DIR = f"{CAPTION_SCENE_PROCESSING_OUTPUT_DIR}/registration"
+CAPTION_SCENE_T1W = config["caption_scene"]["t1w_pattern"]
+MNI_TEMPLATE = f"{config['atlas']['atlas_dir']}/tpl-MNI152NLin6Asym_res-01_T1w.nii.gz"
+MNI_TEMPLATE_URL = "https://templateflow.s3.amazonaws.com/tpl-MNI152NLin6Asym/tpl-MNI152NLin6Asym_res-01_T1w.nii.gz"
 CAPTION_SCENE_ISC_DONE = f"{CAPTION_SCENE_PROCESSING_OUTPUT_DIR}/manifests/.isc_done"
 
 CAPTION_SCENE_IMAGE_CAPTION_TSV = "resources/datasets/caption_scene_dataset/V1/stimuli/COCO_CN/Translated_Image_Caption_pairs.tsv"
@@ -99,21 +108,22 @@ for bold_file in CAPTION_SCENE_BOLD_FILES:
         }
     )
 
-CAPTION_SCENE_RUN_KEYS = [x["key"] for x in CAPTION_SCENE_RUNS]
 CAPTION_SCENE_RUN_TABLES = [x["run_table"] for x in CAPTION_SCENE_RUNS]
+CAPTION_SCENE_SUBJECT_BY_KEY = {x["key"]: x["subject"] for x in CAPTION_SCENE_RUNS}
+CAPTION_SCENE_BOLD_BY_SUBJECT = {}
 
-def caption_scene_split_done_files(wildcards):
+for caption_scene_run in CAPTION_SCENE_RUNS:
+    CAPTION_SCENE_BOLD_BY_SUBJECT.setdefault(caption_scene_run["subject"], []).append(caption_scene_run["bold"])
+
+def caption_scene_run_parcel_flags(wildcards):
+    # one flag per run with retained events, once the manifest checkpoint has run
     checkpoint_output = checkpoints.make_caption_scene_manifest.get().output.run_manifest_index
     df = pd.read_csv(checkpoint_output, sep = "\t")
 
-    run_keys = sorted(df["run_key"].dropna().astype(str).unique().tolist())
-
-    split_done_files = [
-        f"{CAPTION_SCENE_INTERMEDIATE_DIR}/single_stimulus_bold/split_done/{run_key}.done"
-        for run_key in run_keys
+    return [
+        CAPTION_SCENE_RUN_PARCELS_DONE.format(run_key = run_key)
+        for run_key in sorted(df["run_key"].dropna().astype(str).unique())
     ]
-
-    return split_done_files
 
 def read_manifest(path = CAPTION_SCENE_MANIFEST):
     df = pd.read_csv(path, sep = "\t")
@@ -124,7 +134,6 @@ def read_manifest(path = CAPTION_SCENE_MANIFEST):
         "run", 
         "event_index", 
         "stimulus_id", 
-        "output_bold", 
     ]:
         if column in df.columns:
             df[column] = df[column].astype(str)
@@ -168,7 +177,6 @@ checkpoint make_caption_scene_manifest:
         run_manifest_dir = directory(CAPTION_SCENE_RUN_MANIFEST_DIR), 
         run_manifest_index = CAPTION_SCENE_RUN_MANIFEST_INDEX
     params:
-        output_root = CAPTION_SCENE_INTERMEDIATE_DIR, 
         tr = config["caption_scene"]["tr"], 
         event_duration_s = config["caption_scene"]["event_duration_s"], 
         onset_shift_s = config["caption_scene"]["onset_shift_s"], 
@@ -186,7 +194,6 @@ checkpoint make_caption_scene_manifest:
                 --output_manifest {output.manifest:q} \
                 --output_run_manifest_dir {output.run_manifest_dir:q} \
                 --output_run_manifest_index {output.run_manifest_index:q} \
-                --output_root {params.output_root:q} \
                 --tr {params.tr} \
                 --event_duration_s {params.event_duration_s} \
                 --onset_shift_s {params.onset_shift_s} \
@@ -194,29 +201,123 @@ checkpoint make_caption_scene_manifest:
                 --minimum_subjects_per_stimulus {params.minimum_subjects_per_stimulus}
         """
 
-rule split_caption_scene_bold_by_run_manifest:
-    input:
-        manifest = CAPTION_SCENE_MANIFEST, 
-        run_manifest_dir = CAPTION_SCENE_RUN_MANIFEST_DIR
+rule fetch_mni_template:
     output:
-        done = f"{CAPTION_SCENE_INTERMEDIATE_DIR}/single_stimulus_bold/split_done/{{run_key}}.done"
+        template = MNI_TEMPLATE
     params:
-        run_manifest = lambda wildcards: f"{CAPTION_SCENE_RUN_MANIFEST_DIR}/{wildcards.run_key}.tsv"
+        url = MNI_TEMPLATE_URL
+    shell:
+        r"""
+            curl -fsSL -o {output.template:q} {params.url:q}
+        """
+
+rule register_caption_scene_t1w:
+    # registers the subject's T1w to MNI152NLin6Asym (rigid, affine and SyN); the BOLD runs are
+    # already aligned to this T1w by the dataset authors. The QC plot is the only output kept
+    # besides the transforms
+    input:
+        t1w = CAPTION_SCENE_T1W, 
+        template = MNI_TEMPLATE
+    output:
+        affine = f"{CAPTION_SCENE_REGISTRATION_DIR}/sub-{{subject}}_0GenericAffine.mat", 
+        warp = f"{CAPTION_SCENE_REGISTRATION_DIR}/sub-{{subject}}_1Warp.nii.gz", 
+        inverse_warp = temp(f"{CAPTION_SCENE_REGISTRATION_DIR}/sub-{{subject}}_1InverseWarp.nii.gz"), 
+        warped_t1w = temp(f"{CAPTION_SCENE_REGISTRATION_DIR}/sub-{{subject}}_Warped.nii.gz"), 
+        inverse_warped_template = temp(f"{CAPTION_SCENE_REGISTRATION_DIR}/sub-{{subject}}_InverseWarped.nii.gz"), 
+        qc = f"{CAPTION_SCENE_REGISTRATION_DIR}/sub-{{subject}}_t1w_to_mni_qc.png"
+    params:
+        prefix = f"{CAPTION_SCENE_REGISTRATION_DIR}/sub-{{subject}}_", 
+        random_seed = RANDOM_SEED
+    threads:
+        8
     conda:
         "envs/caption_scene_dataset_processing_environment.yaml"
     shell:
         r"""
-            python workflow/dataset_processing/caption_scene_dataset/scripts/split_caption_scene_bold_by_run_manifest.py \
-                --manifest {params.run_manifest:q}
+            antsRegistrationSyNQuick.sh \
+                -d 3 \
+                -f {input.template:q} \
+                -m {input.t1w:q} \
+                -o {params.prefix:q} \
+                -t s \
+                -n {threads} \
+                -e {params.random_seed}
 
-            touch {output.done}
+            MPLBACKEND=Agg python3 workflow/dataset_processing/caption_scene_dataset/scripts/plot_caption_scene_registration_qc.py \
+                --warped_t1 {output.warped_t1w:q} \
+                --template {input.template:q} \
+                --subject {wildcards.subject:q} \
+                --output {output.qc:q}
         """
 
-def caption_scene_parcel_paths(wildcards):
+rule compute_caption_scene_sampling_coordinates:
+    # for every atlas voxel in a parcel, the native BOLD voxel coordinate to sample
+    input:
+        bold_files = lambda wildcards: CAPTION_SCENE_BOLD_BY_SUBJECT[wildcards.subject], 
+        affine = f"{CAPTION_SCENE_REGISTRATION_DIR}/sub-{{subject}}_0GenericAffine.mat", 
+        warp = f"{CAPTION_SCENE_REGISTRATION_DIR}/sub-{{subject}}_1Warp.nii.gz"
+    output:
+        sampling_coordinates = f"{CAPTION_SCENE_REGISTRATION_DIR}/sub-{{subject}}_sampling_coordinates.npz"
+    params:
+        n_rois = config["atlas"]["n_rois"], 
+        yeo_networks = config["atlas"]["yeo_networks"], 
+        atlas_dir = config["atlas"]["atlas_dir"]
+    conda:
+        "envs/caption_scene_dataset_processing_environment.yaml"
+    shell:
+        r"""
+            python3 workflow/dataset_processing/caption_scene_dataset/scripts/compute_caption_scene_sampling_coordinates.py \
+                --bold_files {input.bold_files:q} \
+                --affine {input.affine:q} \
+                --warp {input.warp:q} \
+                --n_rois {params.n_rois} \
+                --yeo_networks {params.yeo_networks} \
+                --atlas_dir {params.atlas_dir:q} \
+                --output {output.sampling_coordinates:q}
+        """
+
+rule extract_caption_scene_run_parcels:
+    # warps one run to MNI in memory, averages it per parcel and writes one parcel file per
+    # event window; no cropped BOLD volume is written
+    input:
+        run_manifest_dir = CAPTION_SCENE_RUN_MANIFEST_DIR, 
+        bold = lambda wildcards: CAPTION_SCENE_BOLD_BY_KEY[wildcards.run_key], 
+        sampling_coordinates = lambda wildcards: f"{CAPTION_SCENE_REGISTRATION_DIR}/sub-{CAPTION_SCENE_SUBJECT_BY_KEY[wildcards.run_key]}_sampling_coordinates.npz"
+    output:
+        run_parcels_done = touch(CAPTION_SCENE_RUN_PARCELS_DONE)
+    params:
+        run_manifest = lambda wildcards: f"{CAPTION_SCENE_RUN_MANIFEST_DIR}/{wildcards.run_key}.tsv", 
+        n_rois = config["atlas"]["n_rois"], 
+        output_root = CAPTION_SCENE_PROCESSING_OUTPUT_DIR
+    conda:
+        "envs/caption_scene_dataset_processing_environment.yaml"
+    shell:
+        r"""
+            python3 workflow/dataset_processing/caption_scene_dataset/scripts/extract_caption_scene_parcels.py \
+                --run_manifest {params.run_manifest:q} \
+                --bold {input.bold:q} \
+                --sampling_coordinates {input.sampling_coordinates:q} \
+                --output_root {params.output_root:q} \
+                --n_rois {params.n_rois}
+        """
+
+rule extract_caption_scene_parcels:
+    input:
+        run_parcels_done = caption_scene_run_parcel_flags
+    output:
+        parcels_done = touch(CAPTION_SCENE_PARCELS_DONE)
+
+def caption_scene_stimulus_rows(wildcards):
     checkpoint_output = checkpoints.make_caption_scene_manifest.get().output.manifest
     df = read_manifest(checkpoint_output)
 
-    rows = df[df["stimulus_id"] == wildcards.stimulus_id]
+    return df[df["stimulus_id"] == wildcards.stimulus_id]
+
+def caption_scene_parcel_subjects(wildcards):
+    return caption_scene_stimulus_rows(wildcards)["subject"].tolist()
+
+def caption_scene_parcel_paths(wildcards):
+    rows = caption_scene_stimulus_rows(wildcards)
 
     parcel_paths = [
         str(
@@ -236,29 +337,6 @@ def caption_scene_parcel_paths(wildcards):
 
     return parcel_paths
 
-rule extract_caption_scene_parcels:
-    input:
-        manifest = CAPTION_SCENE_MANIFEST, 
-        split_done = caption_scene_split_done_files
-    output:
-        parcels_done = touch(CAPTION_SCENE_PARCELS_DONE)
-    params:
-        n_rois = config["atlas"]["n_rois"], 
-        yeo_networks = config["atlas"]["yeo_networks"], 
-        atlas_dir = config["atlas"]["atlas_dir"], 
-        output_root = CAPTION_SCENE_PROCESSING_OUTPUT_DIR
-    conda:
-        "envs/caption_scene_dataset_processing_environment.yaml"
-    shell:
-        r"""
-            python3 workflow/dataset_processing/caption_scene_dataset/scripts/extract_caption_scene_parcels.py \
-                --manifest {input.manifest:q} \
-                --output_root {params.output_root:q} \
-                --n_rois {params.n_rois} \
-                --yeo_networks {params.yeo_networks} \
-                --atlas_dir {params.atlas_dir:q}
-        """
-
 rule compute_caption_scene_isc:
     input:
         parcels_done = CAPTION_SCENE_PARCELS_DONE
@@ -266,6 +344,7 @@ rule compute_caption_scene_isc:
         isc_npy = f"{CAPTION_SCENE_ISC_DIR}/task-{{stimulus_id}}_isc_mean.npy"
     params:
         parcel_ts = caption_scene_parcel_paths, 
+        subjects = caption_scene_parcel_subjects, 
         n_rois = config["atlas"]["n_rois"]
     conda:
         "envs/caption_scene_dataset_processing_environment.yaml"
@@ -273,6 +352,7 @@ rule compute_caption_scene_isc:
         r"""
             python3 workflow/dataset_processing/caption_scene_dataset/scripts/compute_caption_scene_isc.py \
                 --parcel_ts {params.parcel_ts:q} \
+                --subjects {params.subjects:q} \
                 --isc_npy {output.isc_npy:q} \
                 --n_rois {params.n_rois}
         """

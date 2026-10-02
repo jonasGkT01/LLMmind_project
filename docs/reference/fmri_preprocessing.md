@@ -49,7 +49,8 @@ steps are listed below.
 
 - Caption Scene: `start_vol = round((onset + onset_shift_s) / TR)` and
   `n_vols = ceil(event_duration_s / TR)` = ceil(12 / 2) = **6 volumes**, with `onset_shift_s = 0`.
-  The windows are recorded per event in `csd_events_manifest.tsv`.
+  The windows are recorded per event in `results/mind/caption_scene/manifests/csd_events_manifest.tsv`,
+  which is kept permanently; no cropped BOLD volume is written to disk.
 - NSD: from the design files, `start_vol = onset volume + onset_shift_volumes` (= 0) and
   `n_vols = ceil(4 s / 1.333 s)` = **3 volumes**. They are recorded in `nsd_occurrence_manifest.tsv`.
 - Narratives and Nature Stories: whole stories. Nature Stories' concatenated `zRresp` is split
@@ -62,13 +63,26 @@ steps are listed below.
   cubic interpolation).
 - Nature Stories: native voxels are mapped to fsaverage with the dataset's `mappers`, keeping only
   voxels with finite data and renormalising the rows.
-- Caption Scene: **no normalisation is applied**. The MNI atlas is resampled directly onto the
-  native grids. This is a known error, tracked as TODO P31, and the Caption Scene results are to be
-  regenerated after it is fixed.
+- Caption Scene (since 2026-10-02): each subject's T1w (`ses-01_run-001`; the four repeated
+  T1w scans share one grid and match the mean BOLD image equally well) is registered to
+  MNI152NLin6Asym 1 mm, the space of the Schaefer volume atlas, with ANTs
+  `antsRegistrationSyNQuick.sh -t s` (rigid, affine and SyN; seed `random_seed`). The BOLD runs are
+  already aligned to that T1w by the dataset authors and share one grid per subject, so the same
+  transforms map them to MNI. For every atlas voxel in a parcel, the native BOLD voxel to sample is
+  found once per subject by warping native index images onto the atlas grid
+  (`antsApplyTransforms`, linear). Each run is then sampled at these coordinates volume by volume
+  with cubic spline interpolation (as NSD), averaged per parcel, and only then cut into event
+  windows; this equals cutting first, since every step acts volume by volume. All 200 parcels lie
+  fully inside every subject's field of view. A QC plot per subject (`registration/sub-*_t1w_to_mni_qc.png`)
+  shows the registered T1w with the template's edges. Before 2026-10-02 no normalisation was applied
+  and the MNI atlas was matched to the native grids by world coordinates only (TODO P31).
 
 **4. Parcellation.** Schaefer 2018, 200 parcels, 7 networks: the MNI volume atlas, resampled with
-nearest neighbour onto the BOLD grid, or the fsaverage atlas for Nature Stories. Each parcel's time
-series is the **unweighted mean of its voxels** (or vertices).
+nearest neighbour onto the MNI BOLD grid (Narratives, NSD), sampled directly on its own 1 mm grid
+(Caption Scene, step 3), or the fsaverage atlas for Nature Stories. Each parcel's time series is the
+**unweighted mean of its voxels** (or vertices). `get_resampled_parcel_matrix()` refuses images with
+`sform_code` 0 or 1 (scanner or unknown coordinates), so native data can no longer be parcellated
+with the MNI atlas by mistake.
 
 **5. Equal lengths.** Narratives truncates all subjects of a story to the shortest run and lists the
 truncated files, with their original lengths, in the job log. This is safe because every subject of
@@ -79,9 +93,18 @@ sherlock (724–746), shapesphysical (309–321), shapessocial (309–316) and s
 (1205–1223); checked on 2026-09-30. The other datasets require equal lengths and stop with an
 error otherwise.
 
-**6. ISC.** For each stimulus and parcel: the Pearson correlation between each subject (NSD: each
-presentation) and the mean of all others, averaged over subjects. It is set to 0 when either time
-series is constant. The 200 values form the stimulus's brain representation.
+**6. ISC.** For each stimulus and parcel: the Pearson correlation between each subject and the
+mean of all other subjects, averaged over subjects (leave-one-subject-out ISC). It is set to 0 when
+either time series is constant. The 200 values form the stimulus's brain representation.
+
+- NSD and Caption Scene show the same image to a subject several times (NSD: up to 3, Caption
+  Scene: about 2). Since 2026-10-02 each subject's presentations are first **averaged time point by
+  time point** (`average_repeats_by_subject()`), so the reference mean never contains the held-out
+  subject's own repeats; before, every presentation counted as a separate observation (TODO P10).
+  Averaging also reduces noise: on 40 NSD stimuli the median ISC went from 0.043 to 0.047, and the
+  parcel patterns correlate 0.83 (median) with the previous ones.
+- Narratives: each scan counts as one observation. In `pieman`, 11 of the 75 subjects contribute
+  two runs (86 scans), so for those subjects the reference mean contains their own other run.
 
 The average over subjects is the arithmetic mean of r, without a Fisher z-transform. This is on
 purpose:
@@ -141,7 +164,7 @@ The methods section should state the same.
 *This document was written, in whole or in part, with AI coding assistants via Claude Code (Anthropic).*
 
 - *Models: Claude Opus 5.5 (`claude-opus-5-5`).*
-- *Latest AI edit: 2026-10-01, Claude Opus 5.5: step 6 explains why the ISC is a plain mean of r, without Fisher z (TODO S11, after the developer asked to implement the remaining solutions while waiting for S34).*
+- *Latest AI edit: 2026-10-02, Claude Opus 5.5: Caption Scene registration to MNI (TODO S31), repeat averaging in the ISC (TODO S10) and the Narratives pieman repeats, after the developer asked to implement S10 and S31.*
 - *Basis: the developer (Jonas Salvalaggio) asked for a short document separating the dataset
   authors' preprocessing from the workflow's own processing (TODO P9), with the missing facts
   checked online. The dataset rows come from the sources listed above. The Caption Scene space and
