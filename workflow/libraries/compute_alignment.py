@@ -1,3 +1,6 @@
+# edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
+# last AI edit: 2026-10-02, see docs/changelog/developers/ for details
+
 import numpy as np
 import pandas as pd
 
@@ -18,11 +21,10 @@ def compute_alignment_scores(
     if set(nearest_neighbours_dict_1) != set(nearest_neighbours_dict_2):
         raise ValueError("The two representations have different concepts, and therefore cannot be compared.")
 
-    concepts = set(nearest_neighbours_dict_1)
-
     rows = []
 
-    for concept in concepts:
+    # iterate in sorted order, so the rows are written in the same order on every run
+    for concept in sorted(nearest_neighbours_dict_1):
         neighbours_1 = nearest_neighbours_dict_1[concept]
         neighbours_2 = nearest_neighbours_dict_2[concept]
 
@@ -33,11 +35,13 @@ def compute_alignment_scores(
                 "concept": concept,
                 "common_neighbours": common_neighbours,
                 "alignment_score": common_neighbours/number_of_neighbours,
-                "alignment_score_percentage": common_neighbours/number_of_neighbours*100,
             }
         )
 
-    return pd.DataFrame(rows, columns=["concept", "common_neighbours", "alignment_score", "alignment_score_percentage",],)
+    return pd.DataFrame(
+        rows, 
+        columns = ["concept", "common_neighbours", "alignment_score",],
+    )
 
 def compute_common_neighbours(neighbours, neighbour_mask, concept_indices,):
     return neighbour_mask[concept_indices[:, None], neighbours,].sum(axis=1)
