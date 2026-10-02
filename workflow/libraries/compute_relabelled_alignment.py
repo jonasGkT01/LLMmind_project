@@ -1,3 +1,5 @@
+# edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
+# last AI edit: 2026-10-02, see docs/changelog/developers/ for details
 from pathlib import Path
 
 import numpy as np
@@ -6,7 +8,6 @@ import pandas as pd
 from libraries.compute_alignment import compute_common_neighbours
 from libraries.compute_nearest_neighbours import compute_blockwise_topk_from_embeddings, create_neighbour_mask, relabel_nearest_neighbours
 from libraries.compute_similarity import extract_embedding_matrix, normalize_fn_for_similarity_type
-from libraries.compute_statistics import create_relabelling_rng
 
 def compute_topk_on_concept_subset(embedding_df, concepts, number_of_neighbours, similarity_type):
     # top-k is recomputed within `concepts`, not filtered from a larger file: the permutation needs
@@ -58,8 +59,11 @@ def compute_relabelled_common_neighbours_for_all_k(
 
     inverse_permutation = np.empty(number_of_concepts, dtype=np.int64)
 
+    # one stream for all shuffles, as in the Spearman null, so every test of a dataset draws the
+    # same permutations and every model shares them
+    rng = np.random.default_rng(random_seed)
+
     for shuffle_i in range(number_of_relabellings):
-        rng = create_relabelling_rng(random_seed, shuffle_i)
         permutation = rng.permutation(number_of_concepts)
         relabelled_neighbours = relabel_nearest_neighbours(
             observed_neighbours=relabelled_neighbours_at_max_k,
