@@ -1,3 +1,5 @@
+# edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
+# last AI edit: 2026-10-01, see docs/changelog/developers/ for details
 from pathlib import Path
 
 def chunk_max_length_arg(model):
@@ -26,7 +28,9 @@ rule download_pretrained_llm:
         "envs/llm_nearest_neighbours_environment.yaml"
     shell:
         r"""
-            python3 workflow/llm_nearest_neighbours/scripts/download_pretrained_llm.py {params.hf_name:q} {output.model_dir:q}
+            python3 workflow/llm_nearest_neighbours/scripts/download_pretrained_llm.py \
+                --model_name {params.hf_name:q} \
+                --save_dir {output.model_dir:q}
         """
 
 rule get_embeddings:
