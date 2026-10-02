@@ -85,19 +85,13 @@ for c in NARRATIVES_BOLD_FILES:
 
     NARRATIVES_TASK_GROUPS.setdefault(c["task"], []).append(c)
 
-# every scan is its own fMRI observation, but a task is retained only if it was presented to at
-# least MINIMUM_SUBJECTS_PER_STIMULUS different subjects, so that its ISC is not purely a within-subject quantity
+# a task is retained only if it was presented to at least MINIMUM_SUBJECTS_PER_STIMULUS different
+# subjects; the ISC averages the runs of a subject who heard the story more than once (pieman)
 NARRATIVES_TASK_GROUPS = {
     task: scans
     for task, scans in NARRATIVES_TASK_GROUPS.items()
     if len({c["subject"] for c in scans}) >= MINIMUM_SUBJECTS_PER_STIMULUS
 }
-
-def parcel_outputs_for_task(task):
-    return [
-        narratives_parcel_output(c)
-        for c in NARRATIVES_TASK_GROUPS.get(task, [])
-    ]
 
 NARRATIVES_PARCEL_OUTPUTS = [
     narratives_parcel_output(c)
@@ -121,13 +115,13 @@ def write_narratives_isc_manifest(output_tsv):
     output_tsv.parent.mkdir(parents = True, exist_ok = True)
 
     with open(output_tsv, "w") as f:
-        f.write("task\tparcel_ts\tisc_npy\n")
+        f.write("task\tsubject\tparcel_ts\tisc_npy\n")
 
-        for task in NARRATIVES_TASK_GROUPS:
+        for task, scans in NARRATIVES_TASK_GROUPS.items():
             isc_npy = f"{NARRATIVES_PROCESSING_OUTPUT_DIR}/isc/task-{task}_isc_mean.npy"
 
-            for parcel_ts in parcel_outputs_for_task(task):
-                f.write(f"{task}\t{parcel_ts}\t{isc_npy}\n")
+            for c in scans:
+                f.write(f"{task}\t{c['subject']}\t{narratives_parcel_output(c)}\t{isc_npy}\n")
 
 NARRATIVES_ISC_NPY_OUTPUTS = [
     f"{NARRATIVES_PROCESSING_OUTPUT_DIR}/isc/task-{task}_isc_mean.npy"
