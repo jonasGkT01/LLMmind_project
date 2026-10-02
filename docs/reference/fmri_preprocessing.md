@@ -144,6 +144,12 @@ The story datasets give highly reliable ISC vectors. The 3- and 6-volume ISC vec
 Caption Scene are not reliable: two halves of the subjects agree on a stimulus's parcel pattern
 barely above zero. Few ISC values are near ±1, because the ISC averages r over 8 subjects.
 
+**Decision (developer, 2026-10-02):** the ISC definition stays as it is for all four datasets. The
+NSD and Caption Scene brain-model results are reported as exploratory, together with the
+reliability of their brain representations from `all_isc_reliability.tsv`. Single-trial GLM betas
+(NSD) and longer event windows were considered and not adopted. The methods and results should
+state this.
+
 ### Why z-scoring would change (almost) nothing, and what it means for cosine similarity
 
 - **ISC is Pearson-based.** Pearson's r between two time series is unchanged if either series is
@@ -189,7 +195,7 @@ barely above zero. Few ISC values are near ±1, because the ISC averages r over 
 *This document was written, in whole or in part, with AI coding assistants via Claude Code (Anthropic).*
 
 - *Models: Claude Opus 5.5 (`claude-opus-5-5`).*
-- *Latest AI edit: 2026-10-02, Claude Opus 5.5: step 7, reliability of the ISC vectors with the first measurements (TODO S30), after the developer asked to proceed with S30.*
+- *Latest AI edit: 2026-10-02, Claude Opus 5.5: step 7, reliability of the ISC vectors, its first measurements and the decision to keep the ISC and report NSD and Caption Scene as exploratory (TODO S30).*
 - *Basis: the developer (Jonas Salvalaggio) asked for a short document separating the dataset
   authors' preprocessing from the workflow's own processing (TODO P9), with the missing facts
   checked online. The dataset rows come from the sources listed above. The Caption Scene space and
