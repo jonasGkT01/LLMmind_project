@@ -40,7 +40,7 @@ steps are listed below.
 **1. Stimulus selection.** A stimulus is kept only if at least `minimum_subjects_per_stimulus`
 (= 2) different subjects saw it, and it is not in the dataset's `excluded_stimuli.txt`.
 
-- Narratives: the 10 `problematic_subtasks` of `config.yaml` (the schema sub-stories and the two
+- Narratives: the 10 tasks of `schema_subtasks` and `notthefall_variants` in `config.yaml` (the schema sub-stories and the two
   scrambled "Not the Fall" versions) are dropped, and scans listed in `scan_exclude.json` are
   excluded. That leaves 18 stories.
 - Caption Scene: events flagged `Blank` or `Unmatch` in the run tables are dropped.

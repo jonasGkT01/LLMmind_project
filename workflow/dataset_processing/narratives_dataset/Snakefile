@@ -14,8 +14,12 @@ NARRATIVES_ISC_MANIFEST = f"{NARRATIVES_PROCESSING_OUTPUT_DIR}/manifests/isc_man
 
 NARRATIVES_STIMULI_READY = config["narratives"]["stimuli_ready"]
 
+# the tasks left out of the analysis: the schema sub-stories and the scrambled "Not the Fall"
+# versions, kept as two lists in config.yaml for readability
+NARRATIVES_PROBLEMATIC_SUBTASKS = config["narratives"]["schema_subtasks"] + config["narratives"]["notthefall_variants"]
+
 def narratives_task_is_excluded(task):
-    return task in config["narratives"]["problematic_subtasks"]
+    return task in NARRATIVES_PROBLEMATIC_SUBTASKS
 
 VALID_NARRATIVES_TASKS = [task for task in config["narratives"]["tasks"] if not narratives_task_is_excluded(task)]
 
@@ -227,7 +231,7 @@ rule write_narratives_problematic_stimuli:
         txt = NARRATIVES_EXCLUDED_STIMULI
     params:
         stimuli_dir = config["narratives"]["stimuli_dir"]["language"], 
-        problematic_stimuli = config["narratives"]["problematic_subtasks"], 
+        problematic_stimuli = NARRATIVES_PROBLEMATIC_SUBTASKS, 
         retained_tasks = sorted(NARRATIVES_TASK_GROUPS)
     run:
         transcript_stimuli = {

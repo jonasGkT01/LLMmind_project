@@ -357,8 +357,8 @@ narratives:
     - "native"
   descriptors:
     - "clean"
-  # schema_subtasks and notthefall_variants are not read by the workflow: they document where
-  # problematic_subtasks comes from (subtasks with no separate BOLD data, so no ISC)
+  # tasks left out of the analysis (no ISC, transcripts added to excluded_stimuli), in two groups:
+  # the schema sub-stories
   schema_subtasks:
     - "bigbang"
     - "friends"
@@ -368,19 +368,8 @@ narratives:
     - "shame"
     - "upintheair"
     - "vinny"
+  # and the two scrambled versions of "Not the Fall"
   notthefall_variants:
-    - "notthefalllongscram"
-    - "notthefallshortscram"
-  # tasks whose transcripts get no ISC and are added to excluded_stimuli
-  problematic_subtasks:
-    - "bigbang"
-    - "friends"
-    - "himym"
-    - "santa"
-    - "seinfeld"
-    - "shame"
-    - "upintheair"
-    - "vinny"
     - "notthefalllongscram"
     - "notthefallshortscram"
 
