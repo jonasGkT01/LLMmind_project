@@ -103,8 +103,9 @@ either time series is constant. The 200 values form the stimulus's brain represe
   subject's own repeats; before, every presentation counted as a separate observation (TODO P10).
   Averaging also reduces noise: on 40 NSD stimuli the median ISC went from 0.043 to 0.047, and the
   parcel patterns correlate 0.83 (median) with the previous ones.
-- Narratives: each scan counts as one observation. In `pieman`, 11 of the 75 subjects contribute
-  two runs (86 scans), so for those subjects the reference mean contains their own other run.
+- Narratives: in `pieman`, 11 of the 75 subjects heard the story twice (86 scans). Since
+  2026-10-02 their two runs are averaged in the same way, after the truncation of step 5; the
+  median ISC went from 0.125 to 0.133 and the parcel pattern correlates 0.999 with the previous one.
 
 The average over subjects is the arithmetic mean of r, without a Fisher z-transform. This is on
 purpose:
@@ -164,7 +165,7 @@ The methods section should state the same.
 *This document was written, in whole or in part, with AI coding assistants via Claude Code (Anthropic).*
 
 - *Models: Claude Opus 5.5 (`claude-opus-5-5`).*
-- *Latest AI edit: 2026-10-02, Claude Opus 5.5: Caption Scene registration to MNI (TODO S31), repeat averaging in the ISC (TODO S10) and the Narratives pieman repeats, after the developer asked to implement S10 and S31.*
+- *Latest AI edit: 2026-10-02, Claude Opus 5.5: Caption Scene registration to MNI (TODO S31), repeat averaging in the ISC (TODO S10) and for the Narratives pieman runs, after the developer asked to implement S10 and S31 and to add pieman to the batch.*
 - *Basis: the developer (Jonas Salvalaggio) asked for a short document separating the dataset
   authors' preprocessing from the workflow's own processing (TODO P9), with the missing facts
   checked online. The dataset rows come from the sources listed above. The Caption Scene space and

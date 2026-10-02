@@ -18,18 +18,21 @@ def main():
                         required = True)
     args = parser.parse_args()
 
-    manifest = pd.read_csv(args.manifest, sep = "\t")
+    manifest = pd.read_csv(args.manifest, sep = "\t", dtype = {"subject": str})
 
-    required_columns = {"task", "parcel_ts", "isc_npy"}
+    required_columns = {"task", "subject", "parcel_ts", "isc_npy"}
     missing_columns = required_columns - set(manifest.columns)
 
     if missing_columns:
         raise ValueError(f"Manifest is missing columns: {sorted(missing_columns)}")
 
+    # truncate to the shortest run, then average the runs of a subject who heard the story
+    # more than once (pieman), so the leave-one-out ISC never compares a subject with itself
     for task, task_df in manifest.groupby("task", sort = False):
         isc_mean = compute_isc_from_files(
             task_df["parcel_ts"].tolist(), 
             n_rois = args.n_rois, 
+            subjects = task_df["subject"].tolist(), 
             truncate_to_shortest = True, 
         )
 
