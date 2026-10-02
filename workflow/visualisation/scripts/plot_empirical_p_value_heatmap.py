@@ -11,16 +11,16 @@ from libraries.compute_statistics import benjamini_hochberg, model_level_signifi
 from libraries.manage_model_metadata import (
     model_key, 
     parse_model_parameters, 
-    sorted_pairwise_labels,
+    sorted_pairwise_labels, 
 )
 from libraries.visualisation_utils import (
-    EMPIRICAL_P_VALUE_LABEL,
-    PAIRWISE_EMPIRICAL_P_VALUE,
-    PAIRWISE_LEVEL,
-    plot_pairwise_heatmap,
-    plot_title,
-    save_figure,
-    significance_label,
+    EMPIRICAL_P_VALUE_LABEL, 
+    PAIRWISE_EMPIRICAL_P_VALUE, 
+    PAIRWISE_LEVEL, 
+    plot_pairwise_heatmap, 
+    plot_title, 
+    save_figure, 
+    significance_label, 
 )
 
 def validate_p_value(value, source):
@@ -32,15 +32,29 @@ def validate_p_value(value, source):
     return p_value
 
 def read_llm_llm_records(path, dataset, similarity_type, number_of_neighbours):
-    p_value_df = pd.read_csv(path, sep="\t")
+    p_value_df = pd.read_csv(path, sep = "\t")
     pair_columns = ["model_1", "stimuli_type_1", "model_2", "stimuli_type_2"]
-    required_columns = {"dataset", "similarity_type", "number_of_neighbours", *pair_columns, "statistic", "value"}
+    required_columns = {
+        "dataset", 
+        "similarity_type", 
+        "number_of_neighbours", 
+        *pair_columns, 
+        "statistic", 
+        "value"
+    }
     missing_columns = required_columns - set(p_value_df.columns)
 
     if missing_columns:
-        raise ValueError(f"{path} is missing required columns: {sorted(missing_columns)}")
+        raise ValueError(
+            f"{path} is missing required columns: {sorted(missing_columns)}"
+        )
 
-    p_value_df["number_of_neighbours"] = pd.to_numeric(p_value_df["number_of_neighbours"], errors="raise",).astype(int)
+    p_value_df["number_of_neighbours"] = pd.to_numeric(
+        p_value_df["number_of_neighbours"], 
+        errors = "raise"
+    ).astype(
+        int
+    )
 
     selected_df = p_value_df[
         (p_value_df["dataset"].astype(str) == dataset)
@@ -50,24 +64,34 @@ def read_llm_llm_records(path, dataset, similarity_type, number_of_neighbours):
     ].copy()
 
     if selected_df.empty:
-        raise ValueError(f"No model-model empirical p-values were found in {path} for dataset={dataset}, similarity_type={similarity_type}, number_of_neighbours={number_of_neighbours}")
+        raise ValueError(
+            f"No model-model empirical p-values were found in {path} for "
+            f"dataset={dataset}, similarity_type={similarity_type}, "
+            f"number_of_neighbours={number_of_neighbours}"
+        )
 
-    duplicated_rows = selected_df.duplicated(subset=pair_columns, keep=False)
+    duplicated_rows = selected_df.duplicated(subset = pair_columns, keep = False)
 
     if duplicated_rows.any():
-        duplicates = selected_df.loc[duplicated_rows, pair_columns].drop_duplicates().to_dict(orient="records")
-        raise ValueError(f"Duplicated model-model empirical p-values were found: {duplicates[:10]}")
+        duplicates = (
+            selected_df.loc[duplicated_rows, pair_columns]
+            .drop_duplicates()
+            .to_dict(orient = "records")
+        )
+        raise ValueError(
+            f"Duplicated model-model empirical p-values were found: {duplicates[:10]}"
+        )
 
     records = []
 
-    for row in selected_df.itertuples(index=False):
+    for row in selected_df.itertuples(index = False):
         records.append(
             {
-                "model_1": str(row.model_1),
-                "stimuli_type_1": str(row.stimuli_type_1),
-                "model_2": str(row.model_2),
-                "stimuli_type_2": str(row.stimuli_type_2),
-                "empirical_p_value": validate_p_value(row.value, path),
+                "model_1": str(row.model_1), 
+                "stimuli_type_1": str(row.stimuli_type_1), 
+                "model_2": str(row.model_2), 
+                "stimuli_type_2": str(row.stimuli_type_2), 
+                "empirical_p_value": validate_p_value(row.value, path), 
             }
         )
 
@@ -81,21 +105,30 @@ def format_p_value(p_value):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--llm_brain_empirical_p_values", required=True)
-    parser.add_argument("--llm_llm_empirical_p_values", required=True)
-    parser.add_argument("--model_parameters", nargs="+", required=True)
-    parser.add_argument("--dataset", required=True)
-    parser.add_argument("--similarity_type", required=True)
-    parser.add_argument("--number_of_neighbours", type=int, required=True)
-    parser.add_argument("--heatmap", required=True)
+    parser.add_argument("--llm_brain_empirical_p_values", 
+                        required = True)
+    parser.add_argument("--llm_llm_empirical_p_values", 
+                        required = True)
+    parser.add_argument("--model_parameters", 
+                        nargs = "+", 
+                        required = True)
+    parser.add_argument("--dataset", 
+                        required = True)
+    parser.add_argument("--similarity_type", 
+                        required = True)
+    parser.add_argument("--number_of_neighbours", 
+                        type = int, 
+                        required = True)
+    parser.add_argument("--heatmap", 
+                        required = True)
     args = parser.parse_args()
 
     # model-model cells: one Benjamini-Hochberg family of all pairs of this configuration
     records = read_llm_llm_records(
-        path=args.llm_llm_empirical_p_values,
-        dataset=args.dataset,
-        similarity_type=args.similarity_type,
-        number_of_neighbours=args.number_of_neighbours,
+        path = args.llm_llm_empirical_p_values, 
+        dataset = args.dataset, 
+        similarity_type = args.similarity_type, 
+        number_of_neighbours = args.number_of_neighbours, 
     )
     model_model_q_values = benjamini_hochberg(
         [record["empirical_p_value"] for record in records]
@@ -116,17 +149,20 @@ def main():
         label_1, label_2 = pair_labels
 
         if (label_1, label_2) in pair_values or (label_2, label_1) in pair_values:
-            raise ValueError(f"The empirical p-value for {label_1} and {label_2} was provided more than once")
+            raise ValueError(
+                f"The empirical p-value for {label_1} and {label_2} was provided more "
+                "than once"
+            )
 
         pair_values[(label_1, label_2)] = pair_values[(label_2, label_1)] = (
             record["empirical_p_value"], 
-            float(q_value),
+            float(q_value), 
         )
 
     # brain-model cells: the same family as the brain-model plots, so their asterisks agree
     labels = sorted_pairwise_labels(
         model_metadata, 
-        parse_model_parameters(args.model_parameters),
+        parse_model_parameters(args.model_parameters), 
     )
     model_labels = labels[:-1]
     brain_p_values, brain_q_values = model_level_significance(
@@ -134,7 +170,7 @@ def main():
         args.llm_brain_empirical_p_values, 
         args.dataset, 
         args.similarity_type, 
-        args.number_of_neighbours,
+        args.number_of_neighbours, 
     )
 
     for label, p_value, q_value in zip(model_labels, brain_p_values, brain_q_values):
@@ -172,7 +208,7 @@ def main():
         labels, 
         model_metadata, 
         (0, max(1.0, float(finite_values.max()))), 
-        EMPIRICAL_P_VALUE_LABEL,
+        EMPIRICAL_P_VALUE_LABEL, 
     )
     ax.set_title(
         plot_title(
@@ -180,7 +216,7 @@ def main():
             PAIRWISE_EMPIRICAL_P_VALUE, 
             args.dataset, 
             args.similarity_type, 
-            args.number_of_neighbours,
+            args.number_of_neighbours, 
         )
         + "\nasterisks: Benjamini-Hochberg q-value"
     )

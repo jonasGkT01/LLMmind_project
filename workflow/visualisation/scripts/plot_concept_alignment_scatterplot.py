@@ -7,37 +7,50 @@ import pandas as pd
 
 from libraries.compute_alignment import (
     common_hypergeometric_expectation, 
-    read_alignment_scores,
+    read_alignment_scores, 
 )
 from libraries.compute_statistics import model_level_significance
 from libraries.manage_model_metadata import (
     model_key, 
     parse_model_parameters, 
-    sort_models,
+    sort_models, 
 )
 from libraries.visualisation_utils import (
-    add_null_line,
-    ALIGNMENT_SCORE_LABEL,
-    BRAIN_MODEL_ALIGNMENT_SCORE,
-    CONCEPT_LEVEL,
-    create_model_figure,
-    plot_concept_distributions,
-    plot_title,
-    save_figure,
-    set_alignment_score_y_axis,
-    stimuli_type_legend_handles,
-    style_model_axes,
+    add_null_line, 
+    ALIGNMENT_SCORE_LABEL, 
+    BRAIN_MODEL_ALIGNMENT_SCORE, 
+    CONCEPT_LEVEL, 
+    create_model_figure, 
+    plot_concept_distributions, 
+    plot_title, 
+    save_figure, 
+    set_alignment_score_y_axis, 
+    stimuli_type_legend_handles, 
+    style_model_axes, 
 )
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--llm_brain_alignment_scores", nargs="+", required=True, help="LLM-brain concept-level alignment-score Parquet files",)
-    parser.add_argument("--model_level_statistics", required=True, help="TSV file containing model-level statistics",)
-    parser.add_argument("--model_parameters", nargs="+", required=True, help="Model parameter counts formatted as model=parameters_millions",)
-    parser.add_argument("--dataset", required=True,)
-    parser.add_argument("--similarity_type", required=True,)
-    parser.add_argument("--number_of_neighbours", type=int, required=True,)
-    parser.add_argument("--plot", required=True,)
+    parser.add_argument("--llm_brain_alignment_scores", 
+                        nargs = "+", 
+                        required = True, 
+                        help = "LLM-brain concept-level alignment-score Parquet files")
+    parser.add_argument("--model_level_statistics", 
+                        required = True, 
+                        help = "TSV file containing model-level statistics")
+    parser.add_argument("--model_parameters", 
+                        nargs = "+", 
+                        required = True, 
+                        help = "Model parameter counts formatted as model=parameters_millions")
+    parser.add_argument("--dataset", 
+                        required = True)
+    parser.add_argument("--similarity_type", 
+                        required = True)
+    parser.add_argument("--number_of_neighbours", 
+                        type = int, 
+                        required = True)
+    parser.add_argument("--plot", 
+                        required = True)
     args = parser.parse_args()
 
     # load every model's concept-level alignment scores
@@ -49,7 +62,7 @@ def main():
             path, 
             args.dataset, 
             args.similarity_type, 
-            args.number_of_neighbours,
+            args.number_of_neighbours, 
         )
         scores_df["model"] = metadata["model"]
         scores_df["stimuli_type"] = metadata["stimuli_type"]
@@ -60,7 +73,7 @@ def main():
     concept_df = pd.concat(concept_dataframes, ignore_index = True)
     model_df = sort_models(
         concept_df[["label", "model", "stimuli_type"]].drop_duplicates(), 
-        parse_model_parameters(args.model_parameters),
+        parse_model_parameters(args.model_parameters), 
     )
 
     if len(model_df) != len(concept_dataframes):
@@ -74,7 +87,7 @@ def main():
         args.model_level_statistics, 
         args.dataset, 
         args.similarity_type, 
-        args.number_of_neighbours,
+        args.number_of_neighbours, 
     )
 
     # plot the concept scores of each model against the hypergeometric expectation
@@ -84,7 +97,7 @@ def main():
     add_null_line(
         ax, 
         common_hypergeometric_expectation(expectations), 
-        "Null expectation (hypergeometric)",
+        "Null expectation (hypergeometric)", 
     )
     style_model_axes(
         ax, 
@@ -95,12 +108,12 @@ def main():
             BRAIN_MODEL_ALIGNMENT_SCORE, 
             args.dataset, 
             args.similarity_type, 
-            args.number_of_neighbours,
+            args.number_of_neighbours, 
         ), 
         ALIGNMENT_SCORE_LABEL, 
         p_values, 
         q_values, 
-        stimuli_type_legend_handles(model_df["stimuli_type"]),
+        stimuli_type_legend_handles(model_df["stimuli_type"]), 
     )
     set_alignment_score_y_axis(ax)
 

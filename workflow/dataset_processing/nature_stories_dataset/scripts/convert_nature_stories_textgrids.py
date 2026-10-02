@@ -1,3 +1,5 @@
+# edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
+# last AI edit: 2026-10-02, see docs/changelog/developers/ for details
 import argparse
 from pathlib import Path
 
@@ -13,9 +15,8 @@ def _unquote_praat_string(value):
             f"Expected quoted Praat string, got: {value!r}"
         )
 
-    # Praat represents a literal quote inside a string as "".
+    # Praat represents a literal quote inside a string as ""
     return value[1:-1].replace('""', '"')
-
 
 def parse_chronological_textgrid(data, input_file):
     """
@@ -38,30 +39,32 @@ def parse_chronological_textgrid(data, input_file):
     if lines[0] != '"Praat chronological TextGrid text file"':
         raise ValueError(f"Not a chronological TextGrid: {input_file}")
 
-    # Example:
-    # 0.0124716553288 819.988889088   ! Time domain.
+    # example:
+    # 0.0124716553288 819.988889088   ! Time domain
     time_tokens = lines[1].split()
 
     if len(time_tokens) < 2:
-        raise ValueError(f"Invalid chronological TextGrid time domain in {input_file}: {lines[1]!r}")
+        raise ValueError(
+            f"Invalid chronological TextGrid time domain in {input_file}: {lines[1]!r}"
+        )
 
     tg_min = float(time_tokens[0])
     tg_max = float(time_tokens[1])
 
-    # Example:
-    # 2   ! Number of tiers.
+    # example:
+    # 2   ! Number of tiers
     n_tiers = int(lines[2].split()[0])
 
     tiers = []
 
-    # Tier headers immediately follow the global header:
+    # tier headers immediately follow the global header:
     #
     # "IntervalTier" "phone" 0.012... 819.98...
     # "IntervalTier" "word"  0.012... 819.98...
     for i in range(n_tiers):
         line = lines[3 + i]
 
-        # Nature Stories tier names/classes contain no whitespace, so split() is enough.
+        # Nature Stories tier names/classes contain no whitespace, so split() is enough
         parts = line.split()
 
         if len(parts) < 4:
@@ -74,15 +77,15 @@ def parse_chronological_textgrid(data, input_file):
 
         tiers.append(
             {
-                "class": tier_class,
-                "name": tier_name,
-                "xmin": tier_min,
-                "xmax": tier_max,
-                "entries": [],
+                "class": tier_class, 
+                "name": tier_name, 
+                "xmin": tier_min, 
+                "xmax": tier_max, 
+                "entries": [], 
             }
         )
 
-    # Remaining lines come in pairs:
+    # remaining lines come in pairs:
     #
     # 1 1.26961451247 1.48948829731937
     # "S"
@@ -90,14 +93,17 @@ def parse_chronological_textgrid(data, input_file):
     # 2 1.26961451247 2.23741496599
     # "SO"
     #
-    # The first integer identifies the tier.
+    # The first integer identifies the tier
     i = 3 + n_tiers
 
     while i < len(lines):
         timing_line = lines[i]
 
         if i + 1 >= len(lines):
-            raise ValueError(f"Missing label after chronological entry in {input_file}: {timing_line!r}")
+            raise ValueError(
+                f"Missing label after chronological entry in {input_file}: "
+                f"{timing_line!r}"
+            )
 
         label_line = lines[i + 1]
 
@@ -117,7 +123,9 @@ def parse_chronological_textgrid(data, input_file):
 
         if tier["class"] == "IntervalTier":
             if len(parts) != 3:
-                raise ValueError(f"Invalid interval entry in {input_file}: {timing_line!r}")
+                raise ValueError(
+                    f"Invalid interval entry in {input_file}: {timing_line!r}"
+                )
 
             start = float(parts[1])
             end = float(parts[2])
@@ -126,23 +134,26 @@ def parse_chronological_textgrid(data, input_file):
 
         elif tier["class"] == "TextTier":
             if len(parts) != 2:
-                raise ValueError(f"Invalid point entry in {input_file}: {timing_line!r}")
+                raise ValueError(
+                    f"Invalid point entry in {input_file}: {timing_line!r}"
+                )
 
             timestamp = float(parts[1])
 
             tier["entries"].append((timestamp, label))
 
         else:
-            raise ValueError(f"Unsupported tier class {tier['class']!r} in {input_file}")
+            raise ValueError(
+                f"Unsupported tier class {tier['class']!r} in {input_file}"
+            )
 
         i += 2
 
     return {
-        "xmin": tg_min,
-        "xmax": tg_max,
-        "tiers": tiers,
+        "xmin": tg_min, 
+        "xmax": tg_max, 
+        "tiers": tiers, 
     }
-
 
 def read_textgrid(input_file):
     """
@@ -163,14 +174,14 @@ def read_textgrid(input_file):
             line.strip()
             for line in data.splitlines()
             if line.strip()
-        ),
-        "",
+        ), 
+        "", 
     )
 
     if first_nonempty_line == '"Praat chronological TextGrid text file"':
         return parse_chronological_textgrid(data, input_file,)
 
-    return textgrid_io.parseTextgridStr(data, includeEmptyIntervals=True,)
+    return textgrid_io.parseTextgridStr(data, includeEmptyIntervals = True,)
 
 def get_word_tier(tg, input_file):
     """
@@ -193,13 +204,15 @@ def get_word_tier(tg, input_file):
         if "word" in tier_name.lower():
             return tier
 
-    # Original Huth processing uses tiers[1] for the word transcript.
+    # original Huth processing uses tiers[1] for the word transcript
     if len(tiers) > 1:
         return tiers[1]
 
     tier_names = [tier["name"] for tier in tiers]
 
-    raise ValueError(f"Could not identify word tier in {input_file}. Available tiers: {tier_names}")
+    raise ValueError(
+        f"Could not identify word tier in {input_file}. Available tiers: {tier_names}"
+    )
 
 def textgrid_to_txt(input_file, output_file):
     tg = read_textgrid(input_file)
@@ -226,17 +239,20 @@ def textgrid_to_txt(input_file, output_file):
     if not words:
         raise ValueError(f"No words were extracted from {input_file}")
 
-    output_file.parent.mkdir(parents=True, exist_ok=True,)
+    output_file.parent.mkdir(parents = True, exist_ok = True,)
 
-    output_file.write_text(" ".join(words) + "\n", encoding="utf-8",)
+    output_file.write_text(" ".join(words) + "\n", encoding = "utf-8",)
 
     print(f"{input_file.name}: {len(words)} words -> {output_file}")
 
-
 def main():
-    parser = argparse.ArgumentParser(description="Convert TextGrid files to text transcripts.")
-    parser.add_argument("--textgrids", nargs="+", help="Input TextGrid files.")
-    parser.add_argument("--transcripts", nargs="+", help="Output transcript files.")
+    parser = argparse.ArgumentParser(description = "Convert TextGrid files to text transcripts.")
+    parser.add_argument("--textgrids", 
+                        nargs = "+", 
+                        help = "Input TextGrid files.")
+    parser.add_argument("--transcripts", 
+                        nargs = "+", 
+                        help = "Output transcript files.")
     args = parser.parse_args()
 
     input_files = [
@@ -256,7 +272,7 @@ def main():
         if not input_file.exists():
             raise FileNotFoundError(f"Missing TextGrid: {input_file}")
 
-        textgrid_to_txt(input_file=input_file, output_file=output_file,)
+        textgrid_to_txt(input_file = input_file, output_file = output_file,)
 
 if __name__ == "__main__":
     main()

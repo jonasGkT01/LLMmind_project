@@ -1,5 +1,5 @@
 # edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
-# last AI edit: 2026-10-01, see docs/changelog/developers/ for details
+# last AI edit: 2026-10-02, see docs/changelog/developers/ for details
 from pathlib import Path
 
 def chunk_max_length_arg(model):
@@ -14,16 +14,16 @@ def chunk_max_length_arg(model):
 
 rule all_llm_nearest_neighbours:
     input:
-        [
+        llm_nearest_neighbours = [
             f"results/{pair['stimuli_type']}_models/{pair['dataset']}/{pair['similarity_type']}_nearest_neighbours/{pair['model']}_{pair['similarity_type']}_nearest_neighbours.parquet"
             for pair in LLM_NEIGHBOUR_GENERATION_PAIRINGS
         ]
 
 rule download_pretrained_llm:
     output:
-        model_dir=directory("resources/models/{model}")
+        model_dir = directory("resources/models/{model}")
     params:
-        hf_name=lambda wc: config["models"][wc.model]["hf_name"]
+        hf_name = lambda wc: config["models"][wc.model]["hf_name"]
     conda:
         "envs/llm_nearest_neighbours_environment.yaml"
     shell:
@@ -35,28 +35,28 @@ rule download_pretrained_llm:
 
 rule get_embeddings:
     input:
-        stimuli_transcripts_done=lambda wc: config[wc.dataset]["stimuli_ready"],
-        excluded_stimuli=lambda wc: config[wc.dataset]["excluded_stimuli"],
-        model="resources/models/{model}"
+        stimuli_transcripts_done = lambda wc: config[wc.dataset]["stimuli_ready"], 
+        excluded_stimuli = lambda wc: config[wc.dataset]["excluded_stimuli"], 
+        model = "resources/models/{model}"
     output:
-        "results/{stimuli_type}_models/{dataset}/embeddings/{model}_embeddings.parquet"
+        embeddings = "results/{stimuli_type}_models/{dataset}/embeddings/{model}_embeddings.parquet"
     resources:
-        gpu=1
+        gpu = 1
     params:
-        stimuli_dir=lambda wc: config[wc.dataset]["stimuli_dir"][wc.stimuli_type],
-        modality=lambda wc: config["models"][wc.model]["modality"],
-        quantization_arg=lambda wc: (
+        stimuli_dir = lambda wc: config[wc.dataset]["stimuli_dir"][wc.stimuli_type], 
+        modality = lambda wc: config["models"][wc.model]["modality"], 
+        quantization_arg = lambda wc: (
             "" if config["models"][wc.model]["quantization_method"] is None
             else f"--quantization_method {config['models'][wc.model]['quantization_method']}"
-        ),
-        chunk_max_length_arg=lambda wc: chunk_max_length_arg(wc.model)
+        ), 
+        chunk_max_length_arg = lambda wc: chunk_max_length_arg(wc.model)
     conda:
         "envs/llm_nearest_neighbours_environment.yaml"
     shell:
         r"""
             python3 workflow/llm_nearest_neighbours/scripts/get_embeddings.py \
                 --stimuli_dir {params.stimuli_dir:q} \
-                --output {output:q} \
+                --output {output.embeddings:q} \
                 --model_path {input.model:q} \
                 --modality {params.modality:q} \
                 {params.quantization_arg} \
@@ -65,18 +65,18 @@ rule get_embeddings:
         """
 
 rule compute_llm_nearest_neighbours:
-    # Computes similarity blockwise straight from embeddings and keeps only the dataset's largest
+    # computes similarity blockwise straight from embeddings and keeps only the dataset's largest
     # configured number_of_neighbours per concept — the dense N x N similarity matrix is never written
     # to disk. Output is unversioned by k (see max_number_of_neighbours in workflow/Snakefile): every
-    # k-specific consumer rule slices the k it needs from this one file via slice_top_k_neighbours.
+    # k-specific consumer rule slices the k it needs from this one file via slice_top_k_neighbours
     input:
-        embedding_dataframe="results/{stimuli_type}_models/{dataset}/embeddings/{model}_embeddings.parquet"
+        embedding_dataframe = "results/{stimuli_type}_models/{dataset}/embeddings/{model}_embeddings.parquet"
     output:
-        cosine_nearest_neighbours="results/{stimuli_type}_models/{dataset}/cosine_nearest_neighbours/{model}_cosine_nearest_neighbours.parquet",
-        pearson_nearest_neighbours="results/{stimuli_type}_models/{dataset}/pearson_nearest_neighbours/{model}_pearson_nearest_neighbours.parquet",
-        spearman_nearest_neighbours="results/{stimuli_type}_models/{dataset}/spearman_nearest_neighbours/{model}_spearman_nearest_neighbours.parquet"
+        cosine_nearest_neighbours = "results/{stimuli_type}_models/{dataset}/cosine_nearest_neighbours/{model}_cosine_nearest_neighbours.parquet", 
+        pearson_nearest_neighbours = "results/{stimuli_type}_models/{dataset}/pearson_nearest_neighbours/{model}_pearson_nearest_neighbours.parquet", 
+        spearman_nearest_neighbours = "results/{stimuli_type}_models/{dataset}/spearman_nearest_neighbours/{model}_spearman_nearest_neighbours.parquet"
     params:
-        number_of_neighbours=lambda wc: max_number_of_neighbours(wc.dataset)
+        number_of_neighbours = lambda wc: max_number_of_neighbours(wc.dataset)
     conda:
         "envs/llm_nearest_neighbours_environment.yaml"
     shell:

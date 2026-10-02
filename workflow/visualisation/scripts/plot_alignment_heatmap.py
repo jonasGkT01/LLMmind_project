@@ -8,31 +8,46 @@ import numpy as np
 
 from libraries.compute_alignment import (
     common_hypergeometric_expectation, 
-    read_alignment_scores,
+    read_alignment_scores, 
 )
 from libraries.manage_model_metadata import (
     model_key, 
     parse_model_parameters, 
-    sorted_pairwise_labels,
+    sorted_pairwise_labels, 
 )
 from libraries.visualisation_utils import (
-    MEAN_ALIGNMENT_SCORE_LABEL,
-    PAIRWISE_ALIGNMENT_SCORE,
-    PAIRWISE_LEVEL,
-    plot_pairwise_heatmap,
-    plot_title,
-    save_figure,
+    MEAN_ALIGNMENT_SCORE_LABEL, 
+    PAIRWISE_ALIGNMENT_SCORE, 
+    PAIRWISE_LEVEL, 
+    plot_pairwise_heatmap, 
+    plot_title, 
+    save_figure, 
 )
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--llm_brain_alignment_scores", nargs="*", default=[], help="LLM-brain alignment score parquet files",)
-    parser.add_argument("--llm_llm_alignment_scores", nargs="*", default=[], help="LLM-LLM alignment score parquet files",)
-    parser.add_argument("--model_parameters", nargs="+", required=True, help="Model parameter counts formatted as model=parameters_millions",)
-    parser.add_argument("--dataset", required=True,)
-    parser.add_argument("--similarity_type", required=True,)
-    parser.add_argument("--number_of_neighbours", type=int, required=True,)
-    parser.add_argument("--heatmap", type=str, required=True)
+    parser.add_argument("--llm_brain_alignment_scores", 
+                        nargs = "*", 
+                        default = [], 
+                        help = "LLM-brain alignment score parquet files")
+    parser.add_argument("--llm_llm_alignment_scores", 
+                        nargs = "*", 
+                        default = [], 
+                        help = "LLM-LLM alignment score parquet files")
+    parser.add_argument("--model_parameters", 
+                        nargs = "+", 
+                        required = True, 
+                        help = "Model parameter counts formatted as model=parameters_millions")
+    parser.add_argument("--dataset", 
+                        required = True)
+    parser.add_argument("--similarity_type", 
+                        required = True)
+    parser.add_argument("--number_of_neighbours", 
+                        type = int, 
+                        required = True)
+    parser.add_argument("--heatmap", 
+                        type = str, 
+                        required = True)
     args = parser.parse_args()
 
     # read the mean alignment score of every model-brain and model-model pair
@@ -45,7 +60,7 @@ def main():
             path, 
             args.dataset, 
             args.similarity_type, 
-            args.number_of_neighbours,
+            args.number_of_neighbours, 
         )
         expectations.append(expectation)
 
@@ -54,7 +69,7 @@ def main():
         else:
             sides = [
                 (metadata["model_1"], metadata["stimuli_type_1"]), 
-                (metadata["model_2"], metadata["stimuli_type_2"]),
+                (metadata["model_2"], metadata["stimuli_type_2"]), 
             ]
 
         pair_labels = []
@@ -74,7 +89,7 @@ def main():
     expected_alignment_score = common_hypergeometric_expectation(expectations)
     labels = sorted_pairwise_labels(
         model_metadata, 
-        parse_model_parameters(args.model_parameters),
+        parse_model_parameters(args.model_parameters), 
     )
 
     # self-cells stay NaN, so they are drawn blank: they are 1 by definition, not computed
@@ -96,7 +111,7 @@ def main():
         labels, 
         model_metadata, 
         (0, 1), 
-        MEAN_ALIGNMENT_SCORE_LABEL,
+        MEAN_ALIGNMENT_SCORE_LABEL, 
     )
     ax.set_title(
         plot_title(
@@ -104,7 +119,7 @@ def main():
             PAIRWISE_ALIGNMENT_SCORE, 
             args.dataset, 
             args.similarity_type, 
-            args.number_of_neighbours,
+            args.number_of_neighbours, 
         )
         + f"\nexpected alignment score (hypergeometric): {expected_alignment_score:.4f}"
     )

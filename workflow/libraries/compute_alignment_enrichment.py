@@ -8,7 +8,7 @@ import pandas as pd
 
 from libraries.compute_alignment import (
     read_alignment_scores, 
-    read_relabelled_alignment_scores,
+    read_relabelled_alignment_scores, 
 )
 from libraries.manage_model_metadata import model_key
 from libraries.path_metadata import relabelled_name_for_observed_path
@@ -16,28 +16,48 @@ from libraries.visualisation_utils import legend_headroom_top
 
 def relabelled_null_matrix(relabelled_df, concepts, source):
     # (relabellings x concepts) matrix of relabelled scores, columns in the order of `concepts`. Built
-    # from the categorical codes rather than a pivot, which is far too slow on the ~10^7-row files.
-    shuffle_ids = relabelled_df["shuffle_id"].astype("category").cat.remove_unused_categories()
+    # from the categorical codes rather than a pivot, which is far too slow on the ~10^7-row files
+    shuffle_ids = relabelled_df["shuffle_id"].astype(
+        "category"
+    ).cat.remove_unused_categories()
     concept_ids = relabelled_df["concept"].astype("category")
 
     concept_position = {concept: position for position, concept in enumerate(concepts)}
-    category_positions = np.asarray([concept_position.get(str(concept), -1) for concept in concept_ids.cat.categories], dtype=np.int64)
+    category_positions = np.asarray(
+        [
+            concept_position.get(str(concept), -1)
+            for concept in concept_ids.cat.categories
+        ], 
+        dtype = np.int64
+    )
     concept_codes = concept_ids.cat.codes.to_numpy()
     column_positions = category_positions[concept_codes]
 
     if (concept_codes < 0).any() or (column_positions < 0).any():
-        raise ValueError(f"{source} contains concepts that are not in the observed alignment scores")
+        raise ValueError(
+            f"{source} contains concepts that are not in the observed alignment scores"
+        )
 
     number_of_relabellings = len(shuffle_ids.cat.categories)
     null_matrix = np.full((number_of_relabellings, len(concepts)), np.nan)
-    null_matrix[shuffle_ids.cat.codes.to_numpy(), column_positions] = relabelled_df["alignment_score"].to_numpy(dtype=float)
+    null_matrix[shuffle_ids.cat.codes.to_numpy(), column_positions] = relabelled_df[
+        "alignment_score"
+    ].to_numpy(dtype = float)
 
     if len(relabelled_df) != null_matrix.size or np.isnan(null_matrix).any():
-        raise ValueError(f"{source} does not contain exactly one score per concept per relabelling")
+        raise ValueError(
+            f"{source} does not contain exactly one score per concept per relabelling"
+        )
 
     return null_matrix
 
-def compute_model_alignment_enrichment(observed_path, relabelled_path, expected_dataset, expected_similarity_type, expected_number_of_neighbours):
+def compute_model_alignment_enrichment(
+    observed_path, 
+    relabelled_path, 
+    expected_dataset, 
+    expected_similarity_type, 
+    expected_number_of_neighbours, 
+):
     """
     Enrichment of one model's observed brain-model alignment over its
     relabelling null.
@@ -60,52 +80,81 @@ def compute_model_alignment_enrichment(observed_path, relabelled_path, expected_
         observed_path, 
         expected_dataset, 
         expected_similarity_type, 
-        expected_number_of_neighbours,
+        expected_number_of_neighbours, 
     )
     relabelled_df = read_relabelled_alignment_scores(
         relabelled_path, 
-        expected_number_of_neighbours,
+        expected_number_of_neighbours, 
     )
 
     # rows: relabellings, columns: concepts (in the observed order); every observed concept must appear
-    null_values = relabelled_null_matrix(relabelled_df, observed_df["concept"].tolist(), relabelled_path)
+    null_values = relabelled_null_matrix(
+        relabelled_df, 
+        observed_df["concept"].tolist(), 
+        relabelled_path
+    )
 
     if null_values.shape[0] < 2:
-        raise ValueError(f"{relabelled_path} contains fewer than two relabellings, so no null standard deviation can be computed")
+        raise ValueError(
+            f"{relabelled_path} contains fewer than two relabellings, so no null "
+            "standard deviation can be computed"
+        )
+
     expected_alignment_score = float(null_values.mean())
 
     if expected_alignment_score <= 0:
-        raise ValueError(f"The mean relabelled alignment score in {relabelled_path} is {expected_alignment_score}, so no enrichment can be computed")
+        raise ValueError(
+            f"The mean relabelled alignment score in {relabelled_path} is "
+            f"{expected_alignment_score}, so no enrichment can be computed"
+        )
 
-    observed_scores = observed_df["alignment_score"].to_numpy(dtype=float)
+    observed_scores = observed_df["alignment_score"].to_numpy(dtype = float)
 
     concept_df = pd.DataFrame(
         {
-            "model": metadata["model"],
-            "stimuli_type": metadata["stimuli_type"],
-            "label": model_key(metadata["model"], metadata["stimuli_type"]),
-            "concept": observed_df["concept"].to_numpy(),
-            "enrichment": observed_scores/expected_alignment_score,
+            "model": metadata["model"], 
+            "stimuli_type": metadata["stimuli_type"], 
+            "label": model_key(metadata["model"], metadata["stimuli_type"]), 
+            "concept": observed_df["concept"].to_numpy(), 
+            "enrichment": observed_scores/expected_alignment_score, 
         }
     )
 
     model_summary = {
-        "model": metadata["model"],
-        "stimuli_type": metadata["stimuli_type"],
-        "label": model_key(metadata["model"], metadata["stimuli_type"]),
-        "enrichment": float(observed_scores.mean()/expected_alignment_score),
-        "null_standard_deviation": float(null_values.mean(axis=1).std(ddof=1)/expected_alignment_score),
+        "model": metadata["model"], 
+        "stimuli_type": metadata["stimuli_type"], 
+        "label": model_key(metadata["model"], metadata["stimuli_type"]), 
+        "enrichment": float(observed_scores.mean()/expected_alignment_score), 
+        "null_standard_deviation": float(
+            null_values.mean(axis = 1).std(ddof = 1)/expected_alignment_score
+        ), 
     }
 
     return concept_df, model_summary
 
-def compute_alignment_enrichment(observed_paths, relabelled_paths, expected_dataset, expected_similarity_type, expected_number_of_neighbours):
+def compute_alignment_enrichment(
+    observed_paths, 
+    relabelled_paths, 
+    expected_dataset, 
+    expected_similarity_type, 
+    expected_number_of_neighbours, 
+):
     relabelled_path_by_name = {Path(path).name: path for path in relabelled_paths}
-    relabelled_name_by_observed_path = {path: relabelled_name_for_observed_path(path, expected_number_of_neighbours) for path in observed_paths}
+    relabelled_name_by_observed_path = {
+        path: relabelled_name_for_observed_path(path, expected_number_of_neighbours)
+        for path in observed_paths
+    }
 
     if set(relabelled_path_by_name) != set(relabelled_name_by_observed_path.values()):
-        unmatched = sorted(set(relabelled_path_by_name) ^ set(relabelled_name_by_observed_path.values()))
-        raise ValueError(f"Observed alignment-score and relabelled common-neighbours files do not match one-to-one, e.g. {unmatched[:5]}")
+        unmatched = sorted(
+            set(relabelled_path_by_name) ^ set(
+                relabelled_name_by_observed_path.values()
+            )
+        )
+        raise ValueError(
+            "Observed alignment-score and relabelled common-neighbours files do not "
+            f"match one-to-one, e.g. {unmatched[:5]}"
+        )
 
     concept_dataframes = []
     model_summaries = []
@@ -113,11 +162,11 @@ def compute_alignment_enrichment(observed_paths, relabelled_paths, expected_data
     for observed_path, relabelled_name in relabelled_name_by_observed_path.items():
         relabelled_path = relabelled_path_by_name[relabelled_name]
         concept_df, model_summary = compute_model_alignment_enrichment(
-            observed_path=observed_path,
-            relabelled_path=relabelled_path,
-            expected_dataset=expected_dataset,
-            expected_similarity_type=expected_similarity_type,
-            expected_number_of_neighbours=expected_number_of_neighbours,
+            observed_path = observed_path, 
+            relabelled_path = relabelled_path, 
+            expected_dataset = expected_dataset, 
+            expected_similarity_type = expected_similarity_type, 
+            expected_number_of_neighbours = expected_number_of_neighbours, 
         )
         concept_dataframes.append(concept_df)
         model_summaries.append(model_summary)
@@ -128,16 +177,23 @@ def compute_alignment_enrichment(observed_paths, relabelled_paths, expected_data
     model_df = pd.DataFrame(model_summaries)
 
     if model_df["label"].duplicated().any():
-        raise ValueError(f"More than one alignment-score file was provided for: {sorted(model_df.loc[model_df['label'].duplicated(), 'label'].unique())}")
+        raise ValueError(
+            "More than one alignment-score file was provided for: "
+            f"{sorted(model_df.loc[model_df['label'].duplicated(), 'label'].unique())}"
+        )
 
-    return pd.concat(concept_dataframes, ignore_index=True,), model_df
+    return pd.concat(concept_dataframes, ignore_index = True,), model_df
 
-# Enrichment y-axis: linear on [0, 1] and log10 above 1, so enrichments well above 1 do not
+# enrichment y-axis: linear on [0, 1] and log10 above 1, so enrichments well above 1 do not
 # squash everything else. With linthresh = 1 and linscale = 1 - 1/base, matplotlib's symlog
-# maps y to y on [0, 1] and to 1 + log10(y) above, so [0, 1] is as tall as one decade.
+# maps y to y on [0, 1] and to 1 + log10(y) above, so [0, 1] is as tall as one decade
 ENRICHMENT_Y_SCALE = {"linthresh": 1.0, "linscale": 0.9, "base": 10,}
 # quarter steps on the linear part, 1-2-5 steps on the log part; ticks beyond the y-limits are not drawn
-ENRICHMENT_Y_TICKS = [0.0, 0.25, 0.5, 0.75] + [step*10**exponent for exponent in range(6) for step in (1, 2, 5)]
+ENRICHMENT_Y_TICKS = [0.0, 0.25, 0.5, 0.75] + [
+    step*10**exponent
+    for exponent in range(6)
+    for step in (1, 2, 5)
+]
 
 def enrichment_axis_position(value):
     return value if value <= 1.0 else 1.0 + np.log10(value)
@@ -154,22 +210,22 @@ def set_enrichment_y_scale(ax):
 ENRICHMENT_Y_PADDING = 0.15
 
 def enrichment_ylim(concept_df, model_df):
-    # Shared by the concept- and model-level enrichment plots of one (dataset, similarity, k), so
+    # shared by the concept- and model-level enrichment plots of one (dataset, similarity, k), so
     # both scripts derive the same limits from the same inputs. The top always leaves the
     # enrichment = 1 reference line and the model-level null intervals (1 ± null SD) visible.
     # Padding and legend headroom are fractions of the axis height, so they are applied to axis
-    # positions, not values.
+    # positions, not values
     upper_values = np.concatenate(
         [
             concept_df["enrichment"].to_numpy(dtype = float), 
             model_df["enrichment"].to_numpy(dtype = float), 
-            1.0 + model_df["null_standard_deviation"].to_numpy(dtype = float),
+            1.0 + model_df["null_standard_deviation"].to_numpy(dtype = float), 
         ]
     )
     top = float(np.nanmax(upper_values))
     top_position = legend_headroom_top(
         0.0, 
-        enrichment_axis_position(top)*(1.0 + ENRICHMENT_Y_PADDING),
+        enrichment_axis_position(top)*(1.0 + ENRICHMENT_Y_PADDING), 
     )
 
     return 0.0, enrichment_axis_value(top_position)

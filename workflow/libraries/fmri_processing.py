@@ -1,9 +1,8 @@
 # edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
-# last AI edit: 2026-10-01, see docs/changelog/developers/ for details
+# last AI edit: 2026-10-02, see docs/changelog/developers/ for details
 
 import numpy as np
 from scipy import sparse
-
 import nibabel as nib
 from nilearn.image import resample_to_img
 
@@ -14,15 +13,21 @@ def build_parcel_matrix(labels_3d, n_rois):
     voxel_idx = np.where(valid)[0]
     parcel_idx = labels[valid] - 1
 
-    counts = np.bincount(parcel_idx, minlength=n_rois).astype(np.float32)
+    counts = np.bincount(parcel_idx, minlength = n_rois).astype(np.float32)
 
     if np.any(counts == 0):
         missing = np.where(counts == 0)[0] + 1
-        raise ValueError(f"Atlas has empty parcels after resampling: {missing.tolist()}")
+        raise ValueError(
+            f"Atlas has empty parcels after resampling: {missing.tolist()}"
+        )
 
     weights = 1.0/counts[parcel_idx]
 
-    return sparse.csr_matrix((weights, (parcel_idx, voxel_idx)), shape=(n_rois, labels.size), dtype=np.float32,)
+    return sparse.csr_matrix(
+        (weights, (parcel_idx, voxel_idx)), 
+        shape = (n_rois, labels.size), 
+        dtype = np.float32
+    )
 
 def bold_grid_key(img):
     return (img.shape[:3], tuple(np.round(img.affine.ravel(), 6)),)
@@ -32,11 +37,11 @@ def get_resampled_parcel_matrix(img, atlas_img, n_rois, cache):
 
     if key not in cache:
         resampled_atlas_img = resample_to_img(
-            source_img=atlas_img,
-            target_img=img,
-            interpolation="nearest",
-            force_resample=True,
-            copy_header=True,
+            source_img = atlas_img, 
+            target_img = img, 
+            interpolation = "nearest", 
+            force_resample = True, 
+            copy_header = True, 
         )
 
         labels = resampled_atlas_img.get_fdata().astype(np.int32)
@@ -51,13 +56,13 @@ def extract_parcels(bold_file, atlas_img, n_rois, parcel_matrix_cache,):
         raise ValueError(f"Expected 4D BOLD image, got shape {img.shape}: {bold_file}")
 
     parcel_matrix = get_resampled_parcel_matrix(
-        img=img,
-        atlas_img=atlas_img,
-        n_rois=n_rois,
-        cache=parcel_matrix_cache,
+        img = img, 
+        atlas_img = atlas_img, 
+        n_rois = n_rois, 
+        cache = parcel_matrix_cache, 
     )
 
-    data = np.asarray(img.dataobj, dtype=np.float32)
+    data = np.asarray(img.dataobj, dtype = np.float32)
     n_tp = data.shape[3]
 
     flat = data.reshape(-1, n_tp)
@@ -66,15 +71,15 @@ def extract_parcels(bold_file, atlas_img, n_rois, parcel_matrix_cache,):
 
     return ts
 
-# A float32 signal whose range is within a few ulps of its magnitude is only rounding noise.
+# a float32 signal whose range is within a few ulps of its magnitude is only rounding noise.
 # np.isclose() defaults (rtol=1e-5) were too loose: they flagged real low-amplitude signals
-# (e.g. < ~0.01 variation on BOLD values around 1000) as constant.
+# (e.g. < ~0.01 variation on BOLD values around 1000) as constant
 CONSTANT_SIGNAL_RTOL = 8*np.finfo(np.float32).eps
 
-def is_constant_signal(x, axis=0):
-    x = np.asarray(x, dtype=np.float64,)
-    signal_range = np.ptp(x, axis=axis,)
-    magnitude = np.max(np.abs(x), axis=axis,)
+def is_constant_signal(x, axis = 0):
+    x = np.asarray(x, dtype = np.float64,)
+    signal_range = np.ptp(x, axis = axis,)
+    magnitude = np.max(np.abs(x), axis = axis,)
 
     return signal_range <= CONSTANT_SIGNAL_RTOL*magnitude
 
@@ -89,30 +94,32 @@ def compute_leave_one_out_isc(data):
     n_subjects = data.shape[0]
     n_parcels = data.shape[2]
 
-    isc = np.zeros((n_subjects, n_parcels), dtype=np.float64,)
+    isc = np.zeros((n_subjects, n_parcels), dtype = np.float64,)
 
     for subject_idx in range(n_subjects):
         other_subjects = np.arange(n_subjects) != subject_idx
         x = data[subject_idx].astype(np.float64,)
-        y = data[other_subjects].mean(axis=0,).astype(np.float64,)
+        y = data[other_subjects].mean(axis = 0,).astype(np.float64,)
 
-        x_centered = x - x.mean(axis=0, keepdims=True,)
-        y_centered = y - y.mean(axis=0, keepdims=True,)
+        x_centered = x - x.mean(axis = 0, keepdims = True,)
+        y_centered = y - y.mean(axis = 0, keepdims = True,)
 
-        numerator = (x_centered*y_centered).sum(axis=0,)
-        denominator = np.sqrt((x_centered**2).sum(axis=0,)*(y_centered**2).sum(axis=0,))
+        numerator = (x_centered*y_centered).sum(axis = 0,)
+        denominator = np.sqrt(
+            (x_centered**2).sum(axis = 0,)*(y_centered**2).sum(axis = 0,)
+        )
 
-        with np.errstate(invalid="ignore", divide="ignore",):
+        with np.errstate(invalid = "ignore", divide = "ignore",):
             r = numerator/denominator
 
-        is_constant_x = is_constant_signal(x, axis=0,)
-        is_constant_y = is_constant_signal(y, axis=0,)
+        is_constant_x = is_constant_signal(x, axis = 0,)
+        is_constant_y = is_constant_signal(y, axis = 0,)
 
         r = np.where(is_constant_x | is_constant_y, 0.0, r,)
 
-        isc[subject_idx] = np.nan_to_num(r, nan=0.0, posinf=0.0, neginf=0.0,)
+        isc[subject_idx] = np.nan_to_num(r, nan = 0.0, posinf = 0.0, neginf = 0.0,)
 
-    return isc.mean(axis=0).astype(np.float32)
+    return isc.mean(axis = 0).astype(np.float32)
 
 def compute_isc_from_files(paths, n_rois, truncate_to_shortest = False):
     # load the (time x parcel) arrays and check their shapes

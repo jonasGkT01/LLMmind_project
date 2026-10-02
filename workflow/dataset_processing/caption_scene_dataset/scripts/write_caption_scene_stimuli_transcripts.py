@@ -1,3 +1,5 @@
+# edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
+# last AI edit: 2026-10-02, see docs/changelog/developers/ for details
 import argparse
 from pathlib import Path
 
@@ -8,22 +10,31 @@ def stimulus_id_from_image(image):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--image_caption_table", required=True)
-    parser.add_argument("--manifest", required=True)
-    parser.add_argument("--output_dir", required=True)
+    parser.add_argument("--image_caption_table", 
+                        required = True)
+    parser.add_argument("--manifest", 
+                        required = True)
+    parser.add_argument("--output_dir", 
+                        required = True)
     args = parser.parse_args()
 
-    df = pd.read_csv(args.image_caption_table, sep="\t")
-    manifest = pd.read_csv(args.manifest, sep="\t")
+    df = pd.read_csv(args.image_caption_table, sep = "\t")
+    manifest = pd.read_csv(args.manifest, sep = "\t")
 
     required_columns = {"image_id", "chinese_caption", "checked_english_caption"}
     missing_columns = required_columns - set(df.columns)
 
     if missing_columns:
-        raise ValueError(f"Image-caption table is missing columns: {sorted(missing_columns)}. Available columns are: {list(df.columns)}")
+        raise ValueError(
+            f"Image-caption table is missing columns: {sorted(missing_columns)}. "
+            f"Available columns are: {list(df.columns)}"
+        )
 
     if "stimulus_id" not in manifest.columns:
-        raise ValueError(f"Manifest is missing column: stimulus_id. Available columns are: {list(manifest.columns)}")
+        raise ValueError(
+            "Manifest is missing column: stimulus_id. Available columns are: "
+            f"{list(manifest.columns)}"
+        )
 
     manifest_stimuli = set(
         manifest["stimulus_id"]
@@ -33,7 +44,7 @@ def main():
     )
 
     output_dir = Path(args.output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
+    output_dir.mkdir(parents = True, exist_ok = True)
 
     for _, row in df.iterrows():
         image = str(row["image_id"]).strip()
@@ -46,9 +57,9 @@ def main():
 
         if stimulus_id not in manifest_stimuli:
             continue
-        
-        output_caption = output_dir / f"{stimulus_id}.txt"
-        output_caption.write_text(caption + "\n", encoding="utf-8")
+
+        output_caption = output_dir/f"{stimulus_id}.txt"
+        output_caption.write_text(caption + "\n", encoding = "utf-8")
 
 if __name__ == "__main__":
     main()

@@ -706,19 +706,24 @@ combined summary tables have a `similarity_type` column instead.
 
 ## Code conventions
 
-Python sources under `workflow/` follow two layout rules:
+All code under `workflow/`, the Snakefiles, `config/config.yaml` and `parquet2tsv.sh` follow the
+layout rules in section 4 of `LLMmind/.claude/CLAUDE.md` (applied to the whole project on
+2026-10-02). The main points:
 
-- **Imports** come in up to four groups, separated by one blank line:
-  standard library → general scientific stack (`numpy`, `pandas`, `scipy`,
-  `matplotlib`, `pyarrow`, `h5py`, `PIL`, `torch`) → domain-specific
-  libraries (`nibabel`, `nilearn`, `nsdcode`, `netneurotools`, `praatio`,
-  `transformers`, `huggingface_hub`) → the project's own `libraries.*`.
-  Within a group, lines are sorted alphabetically by module name, ignoring
-  case and ignoring `import` vs `from … import`. Names inside a
-  `from … import` are sorted too.
-- **Comments** use `#`, stay short (ideally 1–3 lines), and explain *why*
-  rather than restate the code. Triple-quoted strings are kept for
-  docstrings only.
+- **Python:** 4-space indentation, code lines of at most 88 characters (long strings are split
+  into adjacent literals; comments and `argparse` calls may be longer), one blank line between
+  top-level functions, spaces around `=` (also in keyword arguments and defaults), `+`, `-` and
+  comparisons, no spaces around `*` and `/`, and one space after every comma, including a comma
+  that ends a line. Long calls use a 4-space hanging indent with one argument per line;
+  `argparse` arguments put each keyword on its own line, aligned with the opening parenthesis.
+- **Imports** come in three groups separated by one blank line: standard library, third-party,
+  then the project's own `libraries.*`.
+- **Comments** go on the line above the code, in lowercase and the imperative, with no final
+  full stop. Triple-quoted strings are kept for docstrings only.
+- **Snakefiles:** every input and output is named; `shell:` blocks are `r"""` strings with the
+  command at 12 spaces and each `--flag {value}` on its own line at 16. The main `Snakefile`
+  defines its helpers before the `include:` lines, because the included Snakefiles use them.
+- **Bash:** `#!/usr/bin/env bash`, `set -euo pipefail`, `[[ ... ]]` tests and quoted variables.
 
 Example import block:
 
@@ -726,17 +731,16 @@ Example import block:
 import argparse
 from pathlib import Path
 
-import numpy as np
-import pandas as pd
-
 import nibabel as nib
 from nilearn import datasets, image
+import numpy as np
+import pandas as pd
 
 from libraries.fmri_processing import compute_leave_one_out_isc
 ```
 
-These are not enforced by a linter. Please follow them by hand when adding
-or editing scripts.
+These rules are not enforced by a linter. Please follow them by hand when adding or editing
+code.
 
 ## Documentation
 
@@ -767,6 +771,6 @@ or editing scripts.
 *This document was written, in whole or in part, with AI coding assistants via Claude Code (Anthropic).*
 
 - *Models: Claude Sonnet 5 (`claude-sonnet-5`, until 2026-09-22); Claude Opus 5.5 (`claude-opus-5-5`, from 2026-09-23).*
-- *Latest AI edit: 2026-10-02, Claude Opus 5.5: merged the pinned-environment documentation (TODO S22, "Pinned versions" section) with the plotting and statistics documentation (TODO S2, S3, S4, S13, S15, S16, S20), when the developer asked to merge S7, S22, S37 and S17 for the full recomputation.*
+- *Latest AI edit: 2026-10-02, Claude Opus 5.5: rewrote "Code conventions" for the project-wide layout pass (TODO S35), after the developer asked to do the steps before the full rerun.*
 - *Edit history: see [`docs/changelog/`](docs/changelog/).*
 - *Review status: not yet reviewed by the developer.*

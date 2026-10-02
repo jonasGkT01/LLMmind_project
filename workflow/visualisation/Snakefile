@@ -1,50 +1,52 @@
+# edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
+# last AI edit: 2026-10-02, see docs/changelog/developers/ for details
 rule all_visualisation:
     input:
-        [
+        alignment_heatmaps = [
             f"results/pictures/alignment_heatmaps/dataset-{pair['dataset']}_{pair['similarity_type']}-alignment_score_{pair['number_of_neighbours']}NN.png"
             for pair in HEATMAP_PAIRINGS
-        ],
-        [
+        ], 
+        p_value_heatmaps = [
             f"results/pictures/alignment_p_value_heatmaps/dataset-{pair['dataset']}_{pair['similarity_type']}-alignment_score_{pair['number_of_neighbours']}NN_empirical_p_values.png"
             for pair in HEATMAP_PAIRINGS
-        ],
-        [
+        ], 
+        concept_alignment_scatterplots = [
             f"results/pictures/concept_alignment_scatterplots/dataset-{pair['dataset']}_{pair['similarity_type']}-concept_alignment_{pair['number_of_neighbours']}NN.png"
             for pair in HEATMAP_PAIRINGS
-        ],
-        [
+        ], 
+        alignment_lineplots = [
             f"results/pictures/alignment_lineplots/dataset-{pair['dataset']}_{pair['similarity_type']}-brain_model_alignment_{pair['number_of_neighbours']}NN.png"
             for pair in HEATMAP_PAIRINGS
-        ],
-        [
+        ], 
+        concept_alignment_enrichment_scatterplots = [
             f"results/pictures/concept_alignment_enrichment_scatterplots/dataset-{pair['dataset']}_{pair['similarity_type']}-concept_alignment_enrichment_{pair['number_of_neighbours']}NN.png"
             for pair in HEATMAP_PAIRINGS
-        ],
-        [
+        ], 
+        alignment_enrichment_lineplots = [
             f"results/pictures/alignment_enrichment_lineplots/dataset-{pair['dataset']}_{pair['similarity_type']}-brain_model_alignment_enrichment_{pair['number_of_neighbours']}NN.png"
             for pair in HEATMAP_PAIRINGS
-        ],
-        [
+        ], 
+        spearman_lineplots = [
             f"results/pictures/spearman_alignment_lineplots/dataset-{dataset}_{similarity_type}-brain_model_spearman_alignment.png"
             for dataset in DATASETS
             for similarity_type in SIMILARITY_TYPES
-        ],
-        [
+        ], 
+        concept_spearman_scatterplots = [
             f"results/pictures/concept_spearman_alignment_scatterplots/dataset-{dataset}_{similarity_type}-concept_spearman_alignment.png"
             for dataset in DATASETS
             for similarity_type in SIMILARITY_TYPES
-        ],
+        ], 
 
 rule plot_alignment_heatmap:
     input:
-        llm_brain_alignment_scores=lambda wc: [
+        llm_brain_alignment_scores = lambda wc: [
             f"results/alignment_scores/dataset-{wc.dataset}_model-{pair['model']}-{pair['stimuli_type']}_brain_{wc.similarity_type}-alignment_score_{wc.number_of_neighbours}NN.parquet"
             for pair in PAIRINGS
             if pair["dataset"] == wc.dataset
             and pair["similarity_type"] == wc.similarity_type
             and str(pair["number_of_neighbours"]) == str(wc.number_of_neighbours)
-        ],
-        llm_llm_alignment_scores=lambda wc: [
+        ], 
+        llm_llm_alignment_scores = lambda wc: [
             f"results/alignment_scores/dataset-{wc.dataset}_model-{pair['model_1']}-{pair['stimuli_type_1']}_model-{pair['model_2']}-{pair['stimuli_type_2']}_{wc.similarity_type}-alignment_score_{wc.number_of_neighbours}NN.parquet"
             for pair in LLM_LLM_PAIRINGS
             if pair["dataset"] == wc.dataset
@@ -52,9 +54,9 @@ rule plot_alignment_heatmap:
             and str(pair["number_of_neighbours"]) == str(wc.number_of_neighbours)
         ]
     output:
-        heatmap="results/pictures/alignment_heatmaps/dataset-{dataset}_{similarity_type}-alignment_score_{number_of_neighbours}NN.png"
+        heatmap = "results/pictures/alignment_heatmaps/dataset-{dataset}_{similarity_type}-alignment_score_{number_of_neighbours}NN.png"
     params:
-        model_parameters=[
+        model_parameters = [
             f"{model}={config['models'][model]['parameters_millions']}"
             for model in MODEL_KEYS
         ]
@@ -74,18 +76,18 @@ rule plot_alignment_heatmap:
 
 rule plot_empirical_p_value_heatmap:
     input:
-        llm_brain_empirical_p_values="results/all_model_brain_alignment_scores.tsv",
-        llm_llm_empirical_p_values="results/all_model_model_alignment_scores.tsv"
+        llm_brain_empirical_p_values = "results/all_model_brain_alignment_scores.tsv", 
+        llm_llm_empirical_p_values = "results/all_model_model_alignment_scores.tsv"
     output:
-        heatmap="results/pictures/alignment_p_value_heatmaps/dataset-{dataset}_{similarity_type}-alignment_score_{number_of_neighbours}NN_empirical_p_values.png"
+        heatmap = "results/pictures/alignment_p_value_heatmaps/dataset-{dataset}_{similarity_type}-alignment_score_{number_of_neighbours}NN_empirical_p_values.png"
     params:
-        model_parameters=[
+        model_parameters = [
             f"{model}={config['models'][model]['parameters_millions']}"
             for model in MODEL_KEYS
-        ],
-        dataset=lambda wc: wc.dataset,
-        similarity_type=lambda wc: wc.similarity_type,
-        number_of_neighbours=lambda wc: wc.number_of_neighbours
+        ], 
+        dataset = lambda wc: wc.dataset, 
+        similarity_type = lambda wc: wc.similarity_type, 
+        number_of_neighbours = lambda wc: wc.number_of_neighbours
     conda:
         "envs/visualisation_environment.yaml"
     shell:
@@ -102,24 +104,24 @@ rule plot_empirical_p_value_heatmap:
 
 rule plot_concept_alignment_scatterplot:
     input:
-        llm_brain_alignment_scores=lambda wc: [
+        llm_brain_alignment_scores = lambda wc: [
             f"results/alignment_scores/dataset-{wc.dataset}_model-{pair['model']}-{pair['stimuli_type']}_brain_{wc.similarity_type}-alignment_score_{wc.number_of_neighbours}NN.parquet"
             for pair in PAIRINGS
             if pair["dataset"] == wc.dataset
             and pair["similarity_type"] == wc.similarity_type
             and str(pair["number_of_neighbours"]) == str(wc.number_of_neighbours)
-        ],
-        model_level_statistics="results/all_model_brain_alignment_scores.tsv"
+        ], 
+        model_level_statistics = "results/all_model_brain_alignment_scores.tsv"
     output:
-        plot="results/pictures/concept_alignment_scatterplots/dataset-{dataset}_{similarity_type}-concept_alignment_{number_of_neighbours}NN.png"
+        plot = "results/pictures/concept_alignment_scatterplots/dataset-{dataset}_{similarity_type}-concept_alignment_{number_of_neighbours}NN.png"
     params:
-        model_parameters=[
+        model_parameters = [
             f"{model}={config['models'][model]['parameters_millions']}"
             for model in MODEL_KEYS
-        ],
-        dataset=lambda wc: wc.dataset,
-        similarity_type=lambda wc: wc.similarity_type,
-        number_of_neighbours=lambda wc: wc.number_of_neighbours
+        ], 
+        dataset = lambda wc: wc.dataset, 
+        similarity_type = lambda wc: wc.similarity_type, 
+        number_of_neighbours = lambda wc: wc.number_of_neighbours
     conda:
         "envs/visualisation_environment.yaml"
     shell:
@@ -136,18 +138,18 @@ rule plot_concept_alignment_scatterplot:
 
 rule plot_brain_model_alignment_lineplot:
     input:
-        llm_brain_alignment_scores=lambda wc: [
+        llm_brain_alignment_scores = lambda wc: [
             f"results/alignment_scores/dataset-{wc.dataset}_model-{pair['model']}-{pair['stimuli_type']}_brain_{wc.similarity_type}-alignment_score_{wc.number_of_neighbours}NN.parquet"
             for pair in PAIRINGS
             if pair["dataset"] == wc.dataset
             and pair["similarity_type"] == wc.similarity_type
             and str(pair["number_of_neighbours"]) == str(wc.number_of_neighbours)
-        ],
-        model_level_statistics="results/all_model_brain_alignment_scores.tsv",
+        ], 
+        model_level_statistics = "results/all_model_brain_alignment_scores.tsv", 
     output:
-        plot="results/pictures/alignment_lineplots/dataset-{dataset}_{similarity_type}-brain_model_alignment_{number_of_neighbours}NN.png"
+        plot = "results/pictures/alignment_lineplots/dataset-{dataset}_{similarity_type}-brain_model_alignment_{number_of_neighbours}NN.png"
     params:
-        model_parameters=[
+        model_parameters = [
             f"{model}={config['models'][model]['parameters_millions']}"
             for model in MODEL_KEYS
         ]
@@ -167,31 +169,31 @@ rule plot_brain_model_alignment_lineplot:
 
 rule plot_concept_alignment_enrichment_scatterplot:
     input:
-        llm_brain_alignment_scores=lambda wc: [
+        llm_brain_alignment_scores = lambda wc: [
             f"results/alignment_scores/dataset-{wc.dataset}_model-{pair['model']}-{pair['stimuli_type']}_brain_{wc.similarity_type}-alignment_score_{wc.number_of_neighbours}NN.parquet"
             for pair in PAIRINGS
             if pair["dataset"] == wc.dataset
             and pair["similarity_type"] == wc.similarity_type
             and str(pair["number_of_neighbours"]) == str(wc.number_of_neighbours)
-        ],
-        relabelled_llm_brain_alignment_scores=lambda wc: [
+        ], 
+        relabelled_llm_brain_alignment_scores = lambda wc: [
             f"results/alignment_scores/relabelled_common_neighbours/dataset-{wc.dataset}_model-{pair['model']}-{pair['stimuli_type']}_brain_{wc.similarity_type}-relabelled_common_neighbours.parquet"
             for pair in PAIRINGS
             if pair["dataset"] == wc.dataset
             and pair["similarity_type"] == wc.similarity_type
             and str(pair["number_of_neighbours"]) == str(wc.number_of_neighbours)
-        ],
-        model_level_statistics="results/all_model_brain_alignment_scores.tsv"
+        ], 
+        model_level_statistics = "results/all_model_brain_alignment_scores.tsv"
     output:
-        plot="results/pictures/concept_alignment_enrichment_scatterplots/dataset-{dataset}_{similarity_type}-concept_alignment_enrichment_{number_of_neighbours}NN.png"
+        plot = "results/pictures/concept_alignment_enrichment_scatterplots/dataset-{dataset}_{similarity_type}-concept_alignment_enrichment_{number_of_neighbours}NN.png"
     params:
-        model_parameters=[
+        model_parameters = [
             f"{model}={config['models'][model]['parameters_millions']}"
             for model in MODEL_KEYS
-        ],
-        dataset=lambda wc: wc.dataset,
-        similarity_type=lambda wc: wc.similarity_type,
-        number_of_neighbours=lambda wc: wc.number_of_neighbours
+        ], 
+        dataset = lambda wc: wc.dataset, 
+        similarity_type = lambda wc: wc.similarity_type, 
+        number_of_neighbours = lambda wc: wc.number_of_neighbours
     conda:
         "envs/visualisation_environment.yaml"
     shell:
@@ -209,25 +211,25 @@ rule plot_concept_alignment_enrichment_scatterplot:
 
 rule plot_brain_model_alignment_enrichment_lineplot:
     input:
-        llm_brain_alignment_scores=lambda wc: [
+        llm_brain_alignment_scores = lambda wc: [
             f"results/alignment_scores/dataset-{wc.dataset}_model-{pair['model']}-{pair['stimuli_type']}_brain_{wc.similarity_type}-alignment_score_{wc.number_of_neighbours}NN.parquet"
             for pair in PAIRINGS
             if pair["dataset"] == wc.dataset
             and pair["similarity_type"] == wc.similarity_type
             and str(pair["number_of_neighbours"]) == str(wc.number_of_neighbours)
-        ],
-        relabelled_llm_brain_alignment_scores=lambda wc: [
+        ], 
+        relabelled_llm_brain_alignment_scores = lambda wc: [
             f"results/alignment_scores/relabelled_common_neighbours/dataset-{wc.dataset}_model-{pair['model']}-{pair['stimuli_type']}_brain_{wc.similarity_type}-relabelled_common_neighbours.parquet"
             for pair in PAIRINGS
             if pair["dataset"] == wc.dataset
             and pair["similarity_type"] == wc.similarity_type
             and str(pair["number_of_neighbours"]) == str(wc.number_of_neighbours)
-        ],
-        model_level_statistics="results/all_model_brain_alignment_scores.tsv",
+        ], 
+        model_level_statistics = "results/all_model_brain_alignment_scores.tsv", 
     output:
-        plot="results/pictures/alignment_enrichment_lineplots/dataset-{dataset}_{similarity_type}-brain_model_alignment_enrichment_{number_of_neighbours}NN.png"
+        plot = "results/pictures/alignment_enrichment_lineplots/dataset-{dataset}_{similarity_type}-brain_model_alignment_enrichment_{number_of_neighbours}NN.png"
     params:
-        model_parameters=[
+        model_parameters = [
             f"{model}={config['models'][model]['parameters_millions']}"
             for model in MODEL_KEYS
         ]
@@ -248,23 +250,23 @@ rule plot_brain_model_alignment_enrichment_lineplot:
 
 rule plot_spearman_alignment:
     input:
-        model_level_spearman_scores=lambda wc: [
+        model_level_spearman_scores = lambda wc: [
             f"results/spearman_alignment_scores/dataset-{wc.dataset}_model-{pair['model']}-{pair['stimuli_type']}_brain_empirical_{wc.similarity_type}-spearman_alignment_model_level.p_value.tsv"
             for pair in SPEARMAN_PAIRINGS
             if pair["dataset"] == wc.dataset
             and pair["similarity_type"] == wc.similarity_type
-        ],
-        concept_level_spearman_scores=lambda wc: [
+        ], 
+        concept_level_spearman_scores = lambda wc: [
             f"results/spearman_alignment_scores/dataset-{wc.dataset}_model-{pair['model']}-{pair['stimuli_type']}_brain_empirical_{wc.similarity_type}-spearman_alignment_concept_level.p_value.tsv"
             for pair in SPEARMAN_PAIRINGS
             if pair["dataset"] == wc.dataset
             and pair["similarity_type"] == wc.similarity_type
         ]
     output:
-        model_level_plot="results/pictures/spearman_alignment_lineplots/dataset-{dataset}_{similarity_type}-brain_model_spearman_alignment.png",
-        concept_level_plot="results/pictures/concept_spearman_alignment_scatterplots/dataset-{dataset}_{similarity_type}-concept_spearman_alignment.png"
+        model_level_plot = "results/pictures/spearman_alignment_lineplots/dataset-{dataset}_{similarity_type}-brain_model_spearman_alignment.png", 
+        concept_level_plot = "results/pictures/concept_spearman_alignment_scatterplots/dataset-{dataset}_{similarity_type}-concept_spearman_alignment.png"
     params:
-        model_parameters=[
+        model_parameters = [
             f"{model}={config['models'][model]['parameters_millions']}"
             for model in MODEL_KEYS
         ]

@@ -1,9 +1,11 @@
+# edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
+# last AI edit: 2026-10-02, see docs/changelog/developers/ for details
 import pandas as pd
 from pathlib import Path
 
 rule all_isc_nearest_neighbours:
     input:
-        [
+        isc_nearest_neighbours = [
             f"results/mind/{pair['dataset']}/isc_{pair['similarity_type']}_nearest_neighbours.parquet"
             for pair in MIND_NEIGHBOUR_GENERATION_PAIRINGS
         ]
@@ -16,15 +18,15 @@ def isc_dir_for_dataset(wc):
 
 checkpoint create_isc_manifest:
     input:
-        isc_done=isc_done_for_dataset,
-        excluded_stimuli=lambda wc: config[wc.dataset]["excluded_stimuli"],
-        stimuli_ready=lambda wc: config[wc.dataset]["stimuli_ready"]
+        isc_done = isc_done_for_dataset, 
+        excluded_stimuli = lambda wc: config[wc.dataset]["excluded_stimuli"], 
+        stimuli_ready = lambda wc: config[wc.dataset]["stimuli_ready"]
     output:
-        output_manifest="results/mind/{dataset}/manifests/isc_inputs.tsv"
+        output_manifest = "results/mind/{dataset}/manifests/isc_inputs.tsv"
     params:
-        dataset="{dataset}",
-        isc_dir=isc_dir_for_dataset,
-        stimuli_dirs=lambda wc: list(config[wc.dataset]["stimuli_dir"].values())
+        dataset = "{dataset}", 
+        isc_dir = isc_dir_for_dataset, 
+        stimuli_dirs = lambda wc: list(config[wc.dataset]["stimuli_dir"].values())
     conda:
         "envs/isc_nearest_neighbours_environment.yaml"
     shell:
@@ -39,40 +41,40 @@ checkpoint create_isc_manifest:
 
 def isc_npys_from_manifest(wc):
     manifest = checkpoints.create_isc_manifest.get(
-        dataset=wc.dataset
+        dataset = wc.dataset
     ).output.output_manifest
 
-    df = pd.read_csv(manifest, sep="\t")
+    df = pd.read_csv(manifest, sep = "\t")
 
     return df["isc_file"].tolist()
 
 rule create_isc_dataframe:
     input:
-        isc_npys_from_manifest
+        isc_npys = isc_npys_from_manifest
     output:
-        isc_dataframe="results/mind/{dataset}/isc_dataframe.parquet"
+        isc_dataframe = "results/mind/{dataset}/isc_dataframe.parquet"
     conda:
         "envs/isc_nearest_neighbours_environment.yaml"
     shell:
         r"""
             python3 workflow/isc_nearest_neighbours/scripts/create_isc_dataframe.py \
-                --isc_npys {input:q} \
+                --isc_npys {input.isc_npys:q} \
                 --isc_dataframe {output.isc_dataframe:q}
         """
 
 rule compute_isc_nearest_neighbours:
-    # Computes similarity blockwise straight from the ISC dataframe and keeps only the dataset's largest
+    # computes similarity blockwise straight from the ISC dataframe and keeps only the dataset's largest
     # configured number_of_neighbours per concept — the dense N x N similarity matrix is never written
     # to disk. Output is unversioned by k: every k-specific consumer rule slices the k it needs from this
-    # one file via slice_top_k_neighbours.
+    # one file via slice_top_k_neighbours
     input:
-        isc_dataframe="results/mind/{dataset}/isc_dataframe.parquet"
+        isc_dataframe = "results/mind/{dataset}/isc_dataframe.parquet"
     output:
-        isc_cosine_nearest_neighbours="results/mind/{dataset}/isc_cosine_nearest_neighbours.parquet",
-        isc_pearson_nearest_neighbours="results/mind/{dataset}/isc_pearson_nearest_neighbours.parquet",
-        isc_spearman_nearest_neighbours="results/mind/{dataset}/isc_spearman_nearest_neighbours.parquet"
+        isc_cosine_nearest_neighbours = "results/mind/{dataset}/isc_cosine_nearest_neighbours.parquet", 
+        isc_pearson_nearest_neighbours = "results/mind/{dataset}/isc_pearson_nearest_neighbours.parquet", 
+        isc_spearman_nearest_neighbours = "results/mind/{dataset}/isc_spearman_nearest_neighbours.parquet"
     params:
-        number_of_neighbours=lambda wc: max_number_of_neighbours(wc.dataset)
+        number_of_neighbours = lambda wc: max_number_of_neighbours(wc.dataset)
     conda:
         "envs/isc_nearest_neighbours_environment.yaml"
     shell:

@@ -1,3 +1,5 @@
+# edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
+# last AI edit: 2026-10-02, see docs/changelog/developers/ for details
 import argparse
 from pathlib import Path
 
@@ -5,7 +7,6 @@ import h5py
 import numpy as np
 import pandas as pd
 from scipy.sparse import csr_matrix, diags
-
 from netneurotools.datasets import fetch_schaefer2018
 import nibabel.freesurfer.io as fsio
 
@@ -23,18 +24,18 @@ def load_mapper(path):
 
         mapper = csr_matrix(
             (
-                f["voxel_to_fsaverage_data"][:],
-                f["voxel_to_fsaverage_indices"][:],
-                f["voxel_to_fsaverage_indptr"][:],
-            ),
-            shape=shape,
+                f["voxel_to_fsaverage_data"][:], 
+                f["voxel_to_fsaverage_indices"][:], 
+                f["voxel_to_fsaverage_indptr"][:], 
+            ), 
+            shape = shape, 
         )
 
     return mapper
 
 def compute_valid_voxel_mask(
-    bold_file,
-    chunk_size=256,
+    bold_file, 
+    chunk_size = 256, 
 ):
     """
     Return native voxels that are finite for every TR in both
@@ -56,28 +57,33 @@ def compute_valid_voxel_mask(
         n_voxels = f["zRresp"].shape[1]
 
         if f["zPresp"].shape[1] != n_voxels:
-            raise ValueError(f"{bold_file}: zRresp and zPresp have different voxel dimensions.")
+            raise ValueError(
+                f"{bold_file}: zRresp and zPresp have different voxel dimensions."
+            )
 
-        valid_voxels = np.ones(n_voxels, dtype=bool,)
+        valid_voxels = np.ones(n_voxels, dtype = bool,)
 
         for key in required_keys:
             dataset = f[key]
 
             if dataset.ndim != 2:
-                raise ValueError(f"{bold_file}:{key} has shape {dataset.shape}; expected time x voxels.")
+                raise ValueError(
+                    f"{bold_file}:{key} has shape {dataset.shape}; expected time x "
+                    "voxels."
+                )
 
             for start in range(0, dataset.shape[0], chunk_size,):
                 stop = min(start + chunk_size, dataset.shape[0],)
 
                 block = dataset[start:stop, :]
 
-                valid_voxels &= np.isfinite(block).all(axis=0)
+                valid_voxels &= np.isfinite(block).all(axis = 0)
 
     return valid_voxels
 
 def clean_mapper(
-    mapper,
-    valid_voxels,
+    mapper, 
+    valid_voxels, 
 ):
     """
     Remove invalid native-voxel columns from the mapper and
@@ -91,22 +97,25 @@ def clean_mapper(
     if not np.isfinite(mapper.data).all():
         raise ValueError("Mapper contains non-finite weights.")
 
-    original_row_sums = np.asarray(mapper.sum(axis=1)).ravel()
+    original_row_sums = np.asarray(mapper.sum(axis = 1)).ravel()
 
     cleaned_mapper = mapper[:, valid_voxels,].tocsr()
     cleaned_mapper.eliminate_zeros()
 
     support = (np.diff(cleaned_mapper.indptr) > 0)
 
-    cleaned_row_sums = np.asarray(cleaned_mapper.sum(axis=1)).ravel()
+    cleaned_row_sums = np.asarray(cleaned_mapper.sum(axis = 1)).ravel()
 
     eps = 1e-12
     unstable = support & (np.abs(cleaned_row_sums) < eps)
 
     if np.any(unstable):
-        raise ValueError(f"Cleaned mapper contains {unstable.sum()} supported rows with near-zero total interpolation weight.")
+        raise ValueError(
+            f"Cleaned mapper contains {unstable.sum()} supported rows with near-zero "
+            "total interpolation weight."
+        )
 
-    scale = np.zeros(cleaned_mapper.shape[0], dtype=np.float64,)
+    scale = np.zeros(cleaned_mapper.shape[0], dtype = np.float64,)
 
     scale[support] = original_row_sums[support]/cleaned_row_sums[support]
 
@@ -123,10 +132,10 @@ def decode_name(name):
     return str(name)
 
 def remap_hemisphere(
-    vertex_labels,
-    annotation_names,
-    parcel_offset,
-    expected_parcels,
+    vertex_labels, 
+    annotation_names, 
+    parcel_offset, 
+    expected_parcels, 
 ):
     """
     Convert a FreeSurfer annotation into sequential parcel IDs.
@@ -155,15 +164,18 @@ def remap_hemisphere(
         parcel_annotation_ids.append((annotation_id, name))
 
     if len(parcel_annotation_ids) != expected_parcels:
-        raise ValueError(f"Unexpected number of parcels in hemisphere: expected {expected_parcels}, found {len(parcel_annotation_ids)}.")
+        raise ValueError(
+            f"Unexpected number of parcels in hemisphere: expected {expected_parcels}, "
+            f"found {len(parcel_annotation_ids)}."
+        )
 
-    remapped = np.zeros(vertex_labels.shape, dtype=np.int32,)
+    remapped = np.zeros(vertex_labels.shape, dtype = np.int32,)
 
     parcel_names = []
 
     for local_idx, (annotation_id, name) in enumerate(
-        parcel_annotation_ids,
-        start=1,
+        parcel_annotation_ids, 
+        start = 1, 
     ):
         global_idx = parcel_offset + local_idx
 
@@ -174,9 +186,9 @@ def remap_hemisphere(
     return remapped, parcel_names
 
 def load_schaefer_fsaverage(
-    n_rois,
-    yeo_networks,
-    atlas_dir,
+    n_rois, 
+    yeo_networks, 
+    atlas_dir, 
 ):
     """
     Load Schaefer labels on the full-resolution fsaverage mesh.
@@ -186,28 +198,28 @@ def load_schaefer_fsaverage(
     """
 
     atlas = fetch_schaefer2018(
-        version="fsaverage",
-        data_dir=atlas_dir,
-        verbose=1,
+        version = "fsaverage", 
+        data_dir = atlas_dir, 
+        verbose = 1, 
     )
-    
+
     scale = f"{n_rois}Parcels{yeo_networks}Networks"
-    
+
     if scale not in atlas:
         raise KeyError(
             f"Schaefer scale {scale} not found. "
             f"Available scales: {list(atlas.keys())}"
         )
-    
+
     annotation = atlas[scale]
-    
+
     if hasattr(annotation, "L"):
         lh_annotation = annotation.L
         rh_annotation = annotation.R
     else:
         lh_annotation = annotation.lh
         rh_annotation = annotation.rh
-    
+
     lh_labels, _, lh_names = fsio.read_annot(str(lh_annotation))
     rh_labels, _, rh_names = fsio.read_annot(str(rh_annotation))
 
@@ -217,23 +229,23 @@ def load_schaefer_fsaverage(
     parcels_per_hemisphere = n_rois//2
 
     lh_remapped, lh_parcel_names = remap_hemisphere(
-        lh_labels,
-        lh_names,
-        parcel_offset=0,
-        expected_parcels=parcels_per_hemisphere,
+        lh_labels, 
+        lh_names, 
+        parcel_offset = 0, 
+        expected_parcels = parcels_per_hemisphere, 
     )
 
     rh_remapped, rh_parcel_names = remap_hemisphere(
-        rh_labels,
-        rh_names,
-        parcel_offset=parcels_per_hemisphere,
-        expected_parcels=parcels_per_hemisphere,
+        rh_labels, 
+        rh_names, 
+        parcel_offset = parcels_per_hemisphere, 
+        expected_parcels = parcels_per_hemisphere, 
     )
 
     labels = np.concatenate(
         [
-            lh_remapped,
-            rh_remapped,
+            lh_remapped, 
+            rh_remapped, 
         ]
     )
 
@@ -255,9 +267,9 @@ def compute_common_support(manifest):
     subject_sources = (
         manifest[
             [
-                "subject",
-                "bold_file",
-                "mapper_file",
+                "subject", 
+                "bold_file", 
+                "mapper_file", 
             ]
         ].drop_duplicates()
     )
@@ -265,7 +277,9 @@ def compute_common_support(manifest):
     subject_counts = subject_sources.groupby("subject").size()
 
     if np.any(subject_counts != 1):
-        raise ValueError("Each subject must correspond to exactly one BOLD file and one mapper file.")
+        raise ValueError(
+            "Each subject must correspond to exactly one BOLD file and one mapper file."
+        )
 
     common_support = None
     expected_vertices = None
@@ -273,7 +287,7 @@ def compute_common_support(manifest):
     valid_voxel_masks = {}
     qc_rows = []
 
-    for row in subject_sources.itertuples(index=False):
+    for row in subject_sources.itertuples(index = False):
         valid_voxels = compute_valid_voxel_mask(row.bold_file)
         mapper = load_mapper(row.mapper_file)
         cleaned_mapper, support = clean_mapper(mapper, valid_voxels,)
@@ -292,11 +306,11 @@ def compute_common_support(manifest):
 
         qc_rows.append(
             {
-                "subject": row.subject,
-                "total_voxels": len(valid_voxels),
-                "valid_voxels": int(valid_voxels.sum()),
-                "invalid_voxels": int((~valid_voxels).sum()),
-                "invalid_fraction": float((~valid_voxels).mean()),
+                "subject": row.subject, 
+                "total_voxels": len(valid_voxels), 
+                "valid_voxels": int(valid_voxels.sum()), 
+                "invalid_voxels": int((~valid_voxels).sum()), 
+                "invalid_fraction": float((~valid_voxels).mean()), 
             }
         )
 
@@ -306,9 +320,9 @@ def compute_common_support(manifest):
     return (common_support, valid_voxel_masks, pd.DataFrame(qc_rows),)
 
 def build_parcel_averager(
-    vertex_labels,
-    common_support,
-    n_rois,
+    vertex_labels, 
+    common_support, 
+    n_rois, 
 ):
     """
     Build a sparse matrix:
@@ -339,9 +353,11 @@ def build_parcel_averager(
             raise ValueError(f"Schaefer parcel {parcel_id} contains no vertices.")
 
         if n_common == 0:
-            raise ValueError(f"Schaefer parcel {parcel_id} has no vertices shared by all subjects.")
+            raise ValueError(
+                f"Schaefer parcel {parcel_id} has no vertices shared by all subjects."
+            )
 
-        weight = 1.0 / n_common
+        weight = 1.0/n_common
 
         rows.extend([parcel_id - 1]*n_common)
         columns.extend(common_vertices.tolist())
@@ -349,24 +365,28 @@ def build_parcel_averager(
 
         coverage_rows.append(
             {
-                "parcel": parcel_id,
-                "total_vertices": n_total,
-                "common_vertices": n_common,
-                "coverage": n_common / n_total,
+                "parcel": parcel_id, 
+                "total_vertices": n_total, 
+                "common_vertices": n_common, 
+                "coverage": n_common/n_total, 
             }
         )
 
-    averager = csr_matrix((values, (rows, columns),), shape=(n_rois, len(vertex_labels),), dtype=np.float64,)
+    averager = csr_matrix(
+        (values, (rows, columns),), 
+        shape = (n_rois, len(vertex_labels),), 
+        dtype = np.float64
+    )
 
     coverage = pd.DataFrame(coverage_rows)
 
     return averager, coverage
 
 def extract_subject(
-    subject_df,
-    parcel_averager,
-    n_rois,
-    valid_voxels,
+    subject_df, 
+    parcel_averager, 
+    n_rois, 
+    valid_voxels, 
 ):
     """
     Process all stories for one subject.
@@ -407,138 +427,187 @@ def extract_subject(
     mapper, subject_support = clean_mapper(mapper, valid_voxels,)
 
     if parcel_averager.shape[1] != mapper.shape[0]:
-        raise ValueError(f"Parcel averager expects {parcel_averager.shape[1]} fsaverage vertices, but {subject} mapper contains {mapper.shape[0]}.")
+        raise ValueError(
+            f"Parcel averager expects {parcel_averager.shape[1]} fsaverage vertices, "
+            f"but {subject} mapper contains {mapper.shape[0]}."
+        )
 
-    # This is mathematically:
+    # this is mathematically:
     #
     # native voxels
     #   -> fsaverage vertices
     #   -> common-support Schaefer means
     #
-    # but avoids materializing T x 327684 in memory.
+    # but avoids materializing T x 327684 in memory
     voxel_to_parcel = (parcel_averager @ mapper).tocsr()
 
     with h5py.File(bold_file, "r") as bold_hdf:
-        for row in subject_df.itertuples(index=False):
+        for row in subject_df.itertuples(index = False):
             if row.response_key not in bold_hdf:
                 raise KeyError(f"{bold_file} does not contain {row.response_key}.")
 
             dataset = bold_hdf[row.response_key]
 
             if dataset.ndim != 2:
-                raise ValueError(f"{bold_file}:{row.response_key} has shape {dataset.shape}; expected time x voxels.")
+                raise ValueError(
+                    f"{bold_file}:{row.response_key} has shape {dataset.shape}; "
+                    "expected time x voxels."
+                )
 
             if dataset.shape[1] != len(valid_voxels):
-                raise ValueError(f"{subject}: BOLD contains {dataset.shape[1]} voxels, but the valid-voxel mask expects {len(valid_voxels)}.")
+                raise ValueError(
+                    f"{subject}: BOLD contains {dataset.shape[1]} voxels, but the "
+                    f"valid-voxel mask expects {len(valid_voxels)}."
+                )
 
             start = int(row.onset)
             length = int(row.length)
             stop = start + length
 
             if stop > dataset.shape[0]:
-                raise ValueError(f"{subject}/{row.story}: requested TRs [{start}:{stop}], but {row.response_key} contains only {dataset.shape[0]} TRs.")
+                raise ValueError(
+                    f"{subject}/{row.story}: requested TRs [{start}:{stop}], but "
+                    f"{row.response_key} contains only {dataset.shape[0]} TRs."
+                )
 
             response = dataset[start:stop, valid_voxels]
 
             if not np.isfinite(response).all():
-                raise ValueError(f"{subject}/{row.story}: non-finite values remain after valid-voxel masking.")
+                raise ValueError(
+                    f"{subject}/{row.story}: non-finite values remain after "
+                    "valid-voxel masking."
+                )
 
             if response.shape[0] != length:
-                raise ValueError(f"{subject}/{row.story}: expected {length} TRs, obtained {response.shape[0]}.")
+                raise ValueError(
+                    f"{subject}/{row.story}: expected {length} TRs, obtained "
+                    f"{response.shape[0]}."
+                )
 
             print(f"{subject}: {row.story} {response.shape} -> ({length}, {n_rois})")
 
             parcel_ts = (voxel_to_parcel @ response.T).T
 
             if not np.isfinite(parcel_ts).all():
-                raise ValueError(f"{subject}/{row.story}: non-finite parcel values produced.")
+                raise ValueError(
+                    f"{subject}/{row.story}: non-finite parcel values produced."
+                )
 
             if parcel_ts.shape != (length, n_rois,):
-                raise ValueError(f"Unexpected parcel shape for {subject}/{row.story}: {parcel_ts.shape}")
+                raise ValueError(
+                    f"Unexpected parcel shape for {subject}/{row.story}: "
+                    f"{parcel_ts.shape}"
+                )
 
             output_path = Path(row.parcel_ts)
 
-            output_path.parent.mkdir(parents=True, exist_ok=True,)
+            output_path.parent.mkdir(parents = True, exist_ok = True,)
 
             np.save(output_path, parcel_ts.astype(np.float32),)
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--manifest", required=True,)
-    parser.add_argument("--n_rois", type=int, required=True,)
-    parser.add_argument("--yeo_networks", type=int, required=True,)
-    parser.add_argument("--atlas_dir", required=True,)
-    parser.add_argument("--common_support_output", required=True,)
-    parser.add_argument("--coverage_output", required=True,)
+    parser.add_argument("--manifest", 
+                        required = True)
+    parser.add_argument("--n_rois", 
+                        type = int, 
+                        required = True)
+    parser.add_argument("--yeo_networks", 
+                        type = int, 
+                        required = True)
+    parser.add_argument("--atlas_dir", 
+                        required = True)
+    parser.add_argument("--common_support_output", 
+                        required = True)
+    parser.add_argument("--coverage_output", 
+                        required = True)
     args = parser.parse_args()
 
-    manifest = pd.read_csv(args.manifest, sep="\t",)
+    manifest = pd.read_csv(args.manifest, sep = "\t",)
 
-    required_columns = {"subject", "story", "bold_file", "mapper_file", "response_key", "onset", "length", "parcel_ts",}
+    required_columns = {
+        "subject", 
+        "story", 
+        "bold_file", 
+        "mapper_file", 
+        "response_key", 
+        "onset", 
+        "length", 
+        "parcel_ts"
+    }
 
     missing_columns = required_columns - set(manifest.columns)
 
     if missing_columns:
         raise ValueError(f"Manifest is missing columns: {sorted(missing_columns)}")
 
-    print(f"Computing fsaverage support shared across {manifest['subject'].nunique()} subjects")
+    print(
+        f"Computing fsaverage support shared across {manifest['subject'].nunique()} "
+        "subjects"
+    )
 
     common_support, valid_voxel_masks, voxel_qc = compute_common_support(manifest)
 
-    print(f"Common fsaverage support: {common_support.sum()} / {len(common_support)} ({100 * common_support.mean():.2f}%)")
+    print(
+        f"Common fsaverage support: {common_support.sum()} / {len(common_support)} "
+        f"({100 * common_support.mean():.2f}%)"
+    )
 
     common_support_output = Path(args.common_support_output)
-    common_support_output.parent.mkdir(parents=True, exist_ok=True,)
+    common_support_output.parent.mkdir(parents = True, exist_ok = True,)
 
     np.save(common_support_output, common_support,)
 
-    voxel_qc_output = common_support_output.parent / "valid_voxel_counts.tsv"
+    voxel_qc_output = common_support_output.parent/"valid_voxel_counts.tsv"
 
     voxel_qc.to_csv(
-        voxel_qc_output,
-        sep="\t",
-        index=False,
+        voxel_qc_output, 
+        sep = "\t", 
+        index = False, 
     )
 
     print("Native-voxel QC:")
-    print(voxel_qc.to_string(index=False))
+    print(voxel_qc.to_string(index = False))
 
     vertex_labels, parcel_names = load_schaefer_fsaverage(
-        n_rois=args.n_rois,
-        yeo_networks=args.yeo_networks,
-        atlas_dir=args.atlas_dir,
+        n_rois = args.n_rois, 
+        yeo_networks = args.yeo_networks, 
+        atlas_dir = args.atlas_dir, 
     )
 
     if len(vertex_labels) != len(common_support):
-        raise ValueError(f"Schaefer fsaverage vertex count ({len(vertex_labels)}) does not match mapper vertex count ({len(common_support)}).")
+        raise ValueError(
+            f"Schaefer fsaverage vertex count ({len(vertex_labels)}) does not match "
+            f"mapper vertex count ({len(common_support)})."
+        )
 
     parcel_averager, coverage = build_parcel_averager(
-        vertex_labels=vertex_labels,
-        common_support=common_support,
-        n_rois=args.n_rois,
+        vertex_labels = vertex_labels, 
+        common_support = common_support, 
+        n_rois = args.n_rois, 
     )
 
     coverage.insert(1, "parcel_name", parcel_names,)
 
     coverage_output = Path(args.coverage_output)
 
-    coverage_output.parent.mkdir(parents=True, exist_ok=True,)
+    coverage_output.parent.mkdir(parents = True, exist_ok = True,)
 
     coverage.to_csv(
-        coverage_output,
-        sep="\t",
-        index=False,
+        coverage_output, 
+        sep = "\t", 
+        index = False, 
     )
 
     print("Schaefer common-support coverage:")
     print(coverage["coverage"].describe())
 
-    for subject, subject_df in (manifest.groupby("subject", sort=False,)):
+    for subject, subject_df in (manifest.groupby("subject", sort = False,)):
         extract_subject(
-            subject_df=subject_df,
-            parcel_averager=parcel_averager,
-            n_rois=args.n_rois,
-            valid_voxels=valid_voxel_masks[subject],
+            subject_df = subject_df, 
+            parcel_averager = parcel_averager, 
+            n_rois = args.n_rois, 
+            valid_voxels = valid_voxel_masks[subject], 
         )
 
 if __name__ == "__main__":

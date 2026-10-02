@@ -1,3 +1,5 @@
+# edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
+# last AI edit: 2026-10-02, see docs/changelog/developers/ for details
 import argparse
 import math
 from pathlib import Path
@@ -5,7 +7,6 @@ import re
 import warnings
 
 import pandas as pd
-
 import nibabel as nib
 
 IMAGE_EXTENSIONS = {".bmp", ".jpeg", ".jpg", ".png", ".tif", ".tiff", ".webp",}
@@ -35,13 +36,13 @@ def stimulus_id_from_image(image):
     return Path(str(image)).stem
 
 def read_run_table(path, encoding):
-    return pd.read_csv(path, sep=None, engine="python", encoding=encoding)
+    return pd.read_csv(path, sep = None, engine = "python", encoding = encoding)
 
 def write_lines(values, output_path):
     output_path = Path(output_path)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.parent.mkdir(parents = True, exist_ok = True)
 
-    with output_path.open("w", encoding="utf-8") as f:
+    with output_path.open("w", encoding = "utf-8") as f:
         for value in sorted(set(values)):
             f.write(f"{value}\n")
 
@@ -49,10 +50,14 @@ def collect_available_image_stimuli(visual_stimuli_dir):
     visual_stimuli_dir = Path(visual_stimuli_dir)
 
     if not visual_stimuli_dir.exists():
-        raise FileNotFoundError(f"Visual stimuli directory does not exist: {visual_stimuli_dir}")
+        raise FileNotFoundError(
+            f"Visual stimuli directory does not exist: {visual_stimuli_dir}"
+        )
 
     if not visual_stimuli_dir.is_dir():
-        raise NotADirectoryError(f"Visual stimuli path is not a directory: {visual_stimuli_dir}")
+        raise NotADirectoryError(
+            f"Visual stimuli path is not a directory: {visual_stimuli_dir}"
+        )
 
     image_paths = [
         path
@@ -62,7 +67,9 @@ def collect_available_image_stimuli(visual_stimuli_dir):
     ]
 
     if not image_paths:
-        raise ValueError(f"No supported image files were found in: {visual_stimuli_dir}")
+        raise ValueError(
+            f"No supported image files were found in: {visual_stimuli_dir}"
+        )
 
     stimulus_to_path = {}
 
@@ -70,7 +77,10 @@ def collect_available_image_stimuli(visual_stimuli_dir):
         stimulus_id = image_path.stem
 
         if stimulus_id in stimulus_to_path:
-            raise ValueError(f"Duplicate stimulus ID {stimulus_id} in visual stimuli directory: {stimulus_to_path[stimulus_id]} and {image_path}")
+            raise ValueError(
+                f"Duplicate stimulus ID {stimulus_id} in visual stimuli directory: "
+                f"{stimulus_to_path[stimulus_id]} and {image_path}"
+            )
 
         stimulus_to_path[stimulus_id] = image_path
 
@@ -80,85 +90,114 @@ def is_valid_nifti(path):
     try:
         img = nib.load(path)
 
-        # Access metadata.
+        # access metadata
         _ = img.shape
         _ = img.affine
 
-        # Force the complete compressed NIfTI payload to be read.
+        # force the complete compressed NIfTI payload to be read
         _ = img.dataobj.get_unscaled()
 
         return True
 
     except Exception as exc:
         warnings.warn(
-            f"Skipping unreadable or corrupted NIfTI file {path}: {exc}",
-            RuntimeWarning,
+            f"Skipping unreadable or corrupted NIfTI file {path}: {exc}", 
+            RuntimeWarning, 
         )
+
         return False
 
 def write_run_manifests(out, output_run_manifest_dir, output_run_manifest_index):
     output_run_manifest_dir = Path(output_run_manifest_dir)
     output_run_manifest_index = Path(output_run_manifest_index)
 
-    output_run_manifest_dir.mkdir(parents=True, exist_ok=True)
-    output_run_manifest_index.parent.mkdir(parents=True, exist_ok=True)
+    output_run_manifest_dir.mkdir(parents = True, exist_ok = True)
+    output_run_manifest_index.parent.mkdir(parents = True, exist_ok = True)
 
     index_rows = []
 
-    for run_key, run_df in out.groupby("run_key", sort=False):
-        run_manifest = output_run_manifest_dir / f"{run_key}.tsv"
-        run_df.to_csv(run_manifest, sep="\t", index=False)
+    for run_key, run_df in out.groupby("run_key", sort = False):
+        run_manifest = output_run_manifest_dir/f"{run_key}.tsv"
+        run_df.to_csv(run_manifest, sep = "\t", index = False)
 
         unique_source_bolds = sorted(run_df["source_bold"].unique().tolist())
         unique_run_tables = sorted(run_df["run_table"].unique().tolist())
 
         if len(unique_source_bolds) != 1:
-            raise ValueError(f"Run manifest {run_key} has multiple source BOLD files: {unique_source_bolds}")
+            raise ValueError(
+                f"Run manifest {run_key} has multiple source BOLD files: "
+                f"{unique_source_bolds}"
+            )
 
         if len(unique_run_tables) != 1:
-            raise ValueError(f"Run manifest {run_key} has multiple run tables: {unique_run_tables}")
+            raise ValueError(
+                f"Run manifest {run_key} has multiple run tables: {unique_run_tables}"
+            )
 
         index_rows.append(
             {
-                "run_key": run_key,
-                "source_bold": unique_source_bolds[0],
-                "run_table": unique_run_tables[0],
-                "run_manifest": str(run_manifest),
-                "n_events": len(run_df),
+                "run_key": run_key, 
+                "source_bold": unique_source_bolds[0], 
+                "run_table": unique_run_tables[0], 
+                "run_manifest": str(run_manifest), 
+                "n_events": len(run_df), 
             }
         )
 
     pd.DataFrame(index_rows).to_csv(
-        output_run_manifest_index,
-        sep="\t",
-        index=False,
+        output_run_manifest_index, 
+        sep = "\t", 
+        index = False, 
     )
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--bold_files", nargs="+", required=True)
-    parser.add_argument("--run_tables", nargs="+", required=True)
-    parser.add_argument("--visual_stimuli_dir", required=True)
-    parser.add_argument("--output_excluded_stimuli", required=True, help="Output text file containing every image stimulus present in All_images_480 but absent from the final mind manifest")
-    parser.add_argument("--output_manifest", required=True)
-    parser.add_argument("--output_run_manifest_dir", required=True)
-    parser.add_argument("--output_run_manifest_index", required=True)
-    parser.add_argument("--output_root", required=True)
-    parser.add_argument("--tr", required=True, type=float)
-    parser.add_argument("--event_duration_s", required=True, type=float)
-    parser.add_argument("--onset_shift_s", default=0.0, type=float)
-    parser.add_argument("--run_table_encoding", default="gbk")
-    parser.add_argument("--minimum_subjects_per_stimulus", required=True, type=int)
+    parser.add_argument("--bold_files", 
+                        nargs = "+", 
+                        required = True)
+    parser.add_argument("--run_tables", 
+                        nargs = "+", 
+                        required = True)
+    parser.add_argument("--visual_stimuli_dir", 
+                        required = True)
+    parser.add_argument("--output_excluded_stimuli", 
+                        required = True, 
+                        help = "Output text file containing every image stimulus present in All_images_480 but absent from the final mind manifest")
+    parser.add_argument("--output_manifest", 
+                        required = True)
+    parser.add_argument("--output_run_manifest_dir", 
+                        required = True)
+    parser.add_argument("--output_run_manifest_index", 
+                        required = True)
+    parser.add_argument("--output_root", 
+                        required = True)
+    parser.add_argument("--tr", 
+                        required = True, 
+                        type = float)
+    parser.add_argument("--event_duration_s", 
+                        required = True, 
+                        type = float)
+    parser.add_argument("--onset_shift_s", 
+                        default = 0.0, 
+                        type = float)
+    parser.add_argument("--run_table_encoding", 
+                        default = "gbk")
+    parser.add_argument("--minimum_subjects_per_stimulus", 
+                        required = True, 
+                        type = int)
     args = parser.parse_args()
 
     if len(args.bold_files) != len(args.run_tables):
-        raise ValueError(f"The number of BOLD files and run tables must be identical. Got {len(args.bold_files)} BOLD files and {len(args.run_tables)} run tables")
+        raise ValueError(
+            "The number of BOLD files and run tables must be identical. Got "
+            f"{len(args.bold_files)} BOLD files and {len(args.run_tables)} run tables"
+        )
 
     available_image_stimuli = collect_available_image_stimuli(
         args.visual_stimuli_dir
     )
 
-    n_vols = int(math.ceil(args.event_duration_s / args.tr))
+    n_vols = int(math.ceil(args.event_duration_s/args.tr))
     rows = []
     skipped_corrupted = 0
 
@@ -177,18 +216,20 @@ def main():
         df = read_run_table(run_table, args.run_table_encoding)
 
         required_columns = {
-            "Index",
-            "Onset",
-            "Blank",
-            "Unmatch",
-            "Image",
-            "Caption",
+            "Index", 
+            "Onset", 
+            "Blank", 
+            "Unmatch", 
+            "Image", 
+            "Caption", 
         }
 
         missing_columns = required_columns - set(df.columns)
 
         if missing_columns:
-            raise ValueError(f"Run table {run_table} is missing columns: {sorted(missing_columns)}")
+            raise ValueError(
+                f"Run table {run_table} is missing columns: {sorted(missing_columns)}"
+            )
 
         df["Image"] = df["Image"].astype(str)
 
@@ -210,50 +251,55 @@ def main():
             crop_start_s = onset_s + float(args.onset_shift_s)
 
             if crop_start_s < 0:
-                raise ValueError(f"Negative crop start for {run_key}, event {event_index}, image {image}: {crop_start_s}")
+                raise ValueError(
+                    f"Negative crop start for {run_key}, event {event_index}, image "
+                    f"{image}: {crop_start_s}"
+                )
 
-            start_vol = int(round(crop_start_s / args.tr))
+            start_vol = int(round(crop_start_s/args.tr))
             crop_end_s = crop_start_s + float(args.event_duration_s)
             end_vol = start_vol + n_vols
 
             output_bold = (
                 Path(args.output_root)
-                / "single_stimulus_bold"
-                / f"sub-{subject}"
-                / f"ses-{session}"
-                / f"run-{run}"
-                / f"{stimulus_id}_event-{event_index}.nii.gz"
+                /"single_stimulus_bold"
+                /f"sub-{subject}"
+                /f"ses-{session}"
+                /f"run-{run}"
+                /f"{stimulus_id}_event-{event_index}.nii.gz"
             )
 
             if output_bold in seen_outputs:
-                raise ValueError(f"Duplicate output path inside {run_key}: {output_bold}")
+                raise ValueError(
+                    f"Duplicate output path inside {run_key}: {output_bold}"
+                )
 
             seen_outputs.add(output_bold)
 
             rows.append(
                 {
-                    "run_key": run_key,
-                    "subject": subject,
-                    "session": session,
-                    "run": run,
-                    "event_index": event_index,
-                    "image": image,
-                    "stimulus_id": stimulus_id,
-                    "caption": str(row["Caption"]),
-                    "blank": int(row["Blank"]),
-                    "unmatch": int(row["Unmatch"]),
-                    "onset_s": onset_s,
-                    "onset_shift_s": float(args.onset_shift_s),
-                    "crop_start_s": crop_start_s,
-                    "event_duration_s": float(args.event_duration_s),
-                    "crop_end_s": crop_end_s,
-                    "tr": float(args.tr),
-                    "start_vol": start_vol,
-                    "end_vol": end_vol,
-                    "n_vols": n_vols,
-                    "source_bold": str(Path(bold).resolve()),
-                    "run_table": str(Path(run_table).resolve()),
-                    "output_bold": str(output_bold),
+                    "run_key": run_key, 
+                    "subject": subject, 
+                    "session": session, 
+                    "run": run, 
+                    "event_index": event_index, 
+                    "image": image, 
+                    "stimulus_id": stimulus_id, 
+                    "caption": str(row["Caption"]), 
+                    "blank": int(row["Blank"]), 
+                    "unmatch": int(row["Unmatch"]), 
+                    "onset_s": onset_s, 
+                    "onset_shift_s": float(args.onset_shift_s), 
+                    "crop_start_s": crop_start_s, 
+                    "event_duration_s": float(args.event_duration_s), 
+                    "crop_end_s": crop_end_s, 
+                    "tr": float(args.tr), 
+                    "start_vol": start_vol, 
+                    "end_vol": end_vol, 
+                    "n_vols": n_vols, 
+                    "source_bold": str(Path(bold).resolve()), 
+                    "run_table": str(Path(run_table).resolve()), 
+                    "output_bold": str(output_bold), 
                 }
             )
 
@@ -261,23 +307,32 @@ def main():
 
     if out.empty:
         write_lines(
-            available_image_stimuli,
-            args.output_excluded_stimuli,
+            available_image_stimuli, 
+            args.output_excluded_stimuli, 
         )
 
-        raise ValueError("Global manifest is empty. No valid events were found after excluding unreadable or corrupted BOLD files")
+        raise ValueError(
+            "Global manifest is empty. No valid events were found after excluding "
+            "unreadable or corrupted BOLD files"
+        )
 
-    # Every valid presentation enters the ISC, but a stimulus is kept only if at least
-    # minimum_subjects_per_stimulus different subjects saw it, so its ISC is not purely within-subject.
+    # every valid presentation enters the ISC, but a stimulus is kept only if at least
+    # minimum_subjects_per_stimulus different subjects saw it, so its ISC is not purely within-subject
     subject_counts = out.groupby("stimulus_id")["subject"].nunique()
 
-    valid_stimuli = subject_counts[subject_counts >= args.minimum_subjects_per_stimulus].index
-    single_subject_stimuli = subject_counts[subject_counts < args.minimum_subjects_per_stimulus].index.tolist()
+    valid_stimuli = (
+        subject_counts[subject_counts >= args.minimum_subjects_per_stimulus].index
+    )
+    single_subject_stimuli = subject_counts[
+        subject_counts < args.minimum_subjects_per_stimulus
+    ].index.tolist()
 
     if single_subject_stimuli:
         warnings.warn(
-            f"Removing {len(single_subject_stimuli)} stimuli presented to fewer than {args.minimum_subjects_per_stimulus} different subjects (listed in {args.output_excluded_stimuli})",
-            RuntimeWarning,
+            f"Removing {len(single_subject_stimuli)} stimuli presented to fewer than "
+            f"{args.minimum_subjects_per_stimulus} different subjects (listed in "
+            f"{args.output_excluded_stimuli})", 
+            RuntimeWarning, 
         )
 
     out = out[out["stimulus_id"].isin(valid_stimuli)].copy()
@@ -294,36 +349,47 @@ def main():
     )
 
     if retained_without_source_image:
-        raise ValueError(f"The final mind manifest contains stimulus IDs that are absent from All_images_480: {retained_without_source_image}")
+        raise ValueError(
+            "The final mind manifest contains stimulus IDs that are absent from "
+            f"All_images_480: {retained_without_source_image}"
+        )
 
     excluded_stimuli = sorted(available_image_stimuli - retained_stimuli)
 
     write_lines(
-        excluded_stimuli,
-        args.output_excluded_stimuli,
+        excluded_stimuli, 
+        args.output_excluded_stimuli, 
     )
 
     if out.empty:
-        raise ValueError(f"Global manifest is empty after removing stimuli presented to fewer than {args.minimum_subjects_per_stimulus} different subjects")
+        raise ValueError(
+            "Global manifest is empty after removing stimuli presented to fewer than "
+            f"{args.minimum_subjects_per_stimulus} different subjects"
+        )
 
-    out = out.sort_values(["subject", "session", "run", "event_index"]).reset_index(drop=True)
+    out = out.sort_values(["subject", "session", "run", "event_index"]).reset_index(
+        drop = True
+    )
 
     output_path = Path(args.output_manifest)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.parent.mkdir(parents = True, exist_ok = True)
 
-    out.to_csv(output_path, sep="\t", index=False)
+    out.to_csv(output_path, sep = "\t", index = False)
 
     write_run_manifests(
-        out=out,
-        output_run_manifest_dir=args.output_run_manifest_dir,
-        output_run_manifest_index=args.output_run_manifest_index,
+        out = out, 
+        output_run_manifest_dir = args.output_run_manifest_dir, 
+        output_run_manifest_index = args.output_run_manifest_index, 
     )
 
     print(f"Wrote global manifest with {len(out)} rows to {output_path}")
     print(f"Wrote run manifests to {args.output_run_manifest_dir}")
     print(f"Wrote run manifest index to {args.output_run_manifest_index}")
     print(f"Skipped {skipped_corrupted} unreadable or corrupted BOLD files")
-    print(f"Wrote {len(excluded_stimuli)} excluded stimulus IDs to {args.output_excluded_stimuli}")
+    print(
+        f"Wrote {len(excluded_stimuli)} excluded stimulus IDs to "
+        f"{args.output_excluded_stimuli}"
+    )
     print(f"Retained {len(retained_stimuli)} stimulus IDs in the final mind manifest")
 
 if __name__ == "__main__":
