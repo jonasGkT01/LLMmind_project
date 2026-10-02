@@ -13,6 +13,10 @@ def main():
     parser.add_argument("--parcel_ts", 
                         nargs = "+", 
                         required = True)
+    parser.add_argument("--subjects", 
+                        nargs = "+", 
+                        required = True, 
+                        help = "The subject of each --parcel_ts file, in the same order")
     parser.add_argument("--isc_npy", 
                         required = True)
     parser.add_argument("--n_rois", 
@@ -22,7 +26,12 @@ def main():
 
     print(f"Computing ISC {args.isc_npy} from {len(args.parcel_ts)} parcel files")
 
-    isc_mean = compute_isc_from_files(args.parcel_ts, n_rois = args.n_rois)
+    # average each subject's repeated presentations first
+    isc_mean = compute_isc_from_files(
+        args.parcel_ts, 
+        n_rois = args.n_rois, 
+        subjects = args.subjects, 
+    )
 
     isc_npy = Path(args.isc_npy)
     isc_npy.parent.mkdir(parents = True, exist_ok = True)

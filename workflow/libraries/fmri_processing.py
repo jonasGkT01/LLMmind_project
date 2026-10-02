@@ -32,7 +32,19 @@ def build_parcel_matrix(labels_3d, n_rois):
 def bold_grid_key(img):
     return (img.shape[:3], tuple(np.round(img.affine.ravel(), 6)),)
 
+# sform codes of an image in scanner or unknown coordinates: an MNI atlas does not apply to it
+NATIVE_SFORM_CODES = {0, 1}
+
 def get_resampled_parcel_matrix(img, atlas_img, n_rois, cache):
+    # the atlas is matched to the image by world coordinates only, so the image must already
+    # be in the atlas space
+    if int(img.header["sform_code"]) in NATIVE_SFORM_CODES:
+        raise ValueError(
+            f"The image has sform_code {int(img.header['sform_code'])} (scanner or "
+            "unknown coordinates), so the MNI atlas cannot be applied to it without "
+            "registration"
+        )
+
     key = bold_grid_key(img)
 
     if key not in cache:
@@ -121,7 +133,28 @@ def compute_leave_one_out_isc(data):
 
     return isc.mean(axis = 0).astype(np.float32)
 
-def compute_isc_from_files(paths, n_rois, truncate_to_shortest = False):
+def average_repeats_by_subject(arrays, subjects):
+    # one (time x parcel) array per subject: the time-point-wise mean of that subject's
+    # repeats, so the leave-one-out ISC never compares a subject with itself
+    if len(arrays) != len(subjects):
+        raise ValueError(f"Got {len(arrays)} arrays but {len(subjects)} subjects")
+
+    repeats_by_subject = {}
+
+    for array, subject in zip(arrays, subjects):
+        repeats_by_subject.setdefault(str(subject), []).append(array)
+
+    return [
+        np.mean(np.stack(repeats_by_subject[subject], axis = 0), axis = 0)
+        for subject in sorted(repeats_by_subject)
+    ]
+
+def compute_isc_from_files(
+    paths, 
+    n_rois, 
+    subjects = None, 
+    truncate_to_shortest = False, 
+):
     # load the (time x parcel) arrays and check their shapes
     if len(paths) < 2:
         raise ValueError(
@@ -156,6 +189,16 @@ def compute_isc_from_files(paths, n_rois, truncate_to_shortest = False):
         ]
         print(f"Truncating to {shortest} time points: {', '.join(truncated)}")
         arrays = [array[:shortest] for array in arrays]
+
+    # average each subject's repeats first, when the files are repeated presentations
+    if subjects is not None:
+        arrays = average_repeats_by_subject(arrays, subjects)
+
+        if len(arrays) < 2:
+            raise ValueError(
+                f"ISC requires at least two subjects, got {len(arrays)}: "
+                f"{sorted(set(subjects))}"
+            )
 
     return compute_leave_one_out_isc(np.stack(arrays, axis = 0).astype(np.float32))
 

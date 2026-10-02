@@ -245,9 +245,8 @@ def main():
 
         occurrences_by_subject[subject] = occurrences_by_stimulus
 
-    # every presentation enters the image's ISC, but a stimulus is kept only if at least
-    # minimum_subjects_per_stimulus different subjects saw it (not necessarily equally often), so its ISC is not
-    # purely within-subject
+    # a stimulus is kept only if at least minimum_subjects_per_stimulus different subjects saw
+    # it (not necessarily equally often); the ISC averages each subject's presentations first
     observation_counts_by_stimulus = defaultdict(int)
     subject_counts_by_stimulus = defaultdict(int)
 

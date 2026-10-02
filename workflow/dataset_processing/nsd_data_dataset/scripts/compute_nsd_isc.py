@@ -39,11 +39,12 @@ def main():
         "stimulus_id", 
         sort = False
     ):
-        # each presentation is an independent observation: a subject may appear more
-        # than once, and every presentation enters the ISC average
+        # average each subject's repeated presentations first, so the leave-one-out ISC
+        # never compares a subject with its own repeats
         mean_isc_values = compute_isc_from_files(
             stimulus_manifest["parcel_time_series"].tolist(), 
             n_rois = arguments.number_of_regions, 
+            subjects = stimulus_manifest["subject"].astype(str).tolist(), 
         )
 
         group = f"Stimulus {stimulus_identifier}"
@@ -53,8 +54,8 @@ def main():
         np.save(isc_numpy_file, mean_isc_values)
 
         print(
-            f"Computed ISC for {stimulus_identifier} "
-            f"from {len(stimulus_manifest)} observations"
+            f"Computed ISC for {stimulus_identifier} from {len(stimulus_manifest)} "
+            f"presentations of {stimulus_manifest['subject'].nunique()} subjects"
         )
 
 if __name__ == "__main__":

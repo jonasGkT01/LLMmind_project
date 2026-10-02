@@ -169,8 +169,6 @@ def main():
                         required = True)
     parser.add_argument("--output_run_manifest_index", 
                         required = True)
-    parser.add_argument("--output_root", 
-                        required = True)
     parser.add_argument("--tr", 
                         required = True, 
                         type = float)
@@ -240,7 +238,7 @@ def main():
             & (df["Image"].str.strip() != "")
         ].copy()
 
-        seen_outputs = set()
+        seen_events = set()
 
         for _, row in valid.iterrows():
             image = str(row["Image"]).strip()
@@ -260,21 +258,14 @@ def main():
             crop_end_s = crop_start_s + float(args.event_duration_s)
             end_vol = start_vol + n_vols
 
-            output_bold = (
-                Path(args.output_root)
-                /"single_stimulus_bold"
-                /f"sub-{subject}"
-                /f"ses-{session}"
-                /f"run-{run}"
-                /f"{stimulus_id}_event-{event_index}.nii.gz"
-            )
-
-            if output_bold in seen_outputs:
+            # one parcel file per event: its name is built from the run, stimulus and event
+            if (stimulus_id, event_index) in seen_events:
                 raise ValueError(
-                    f"Duplicate output path inside {run_key}: {output_bold}"
+                    f"Duplicate event inside {run_key}: {stimulus_id}, "
+                    f"event {event_index}"
                 )
 
-            seen_outputs.add(output_bold)
+            seen_events.add((stimulus_id, event_index))
 
             rows.append(
                 {
@@ -299,7 +290,6 @@ def main():
                     "n_vols": n_vols, 
                     "source_bold": str(Path(bold).resolve()), 
                     "run_table": str(Path(run_table).resolve()), 
-                    "output_bold": str(output_bold), 
                 }
             )
 
@@ -316,8 +306,8 @@ def main():
             "unreadable or corrupted BOLD files"
         )
 
-    # every valid presentation enters the ISC, but a stimulus is kept only if at least
-    # minimum_subjects_per_stimulus different subjects saw it, so its ISC is not purely within-subject
+    # a stimulus is kept only if at least minimum_subjects_per_stimulus different subjects saw
+    # it; the ISC averages each subject's presentations first
     subject_counts = out.groupby("stimulus_id")["subject"].nunique()
 
     valid_stimuli = (
