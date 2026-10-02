@@ -121,22 +121,16 @@ def write_narratives_isc_manifest(output_tsv):
     output_tsv.parent.mkdir(parents=True, exist_ok=True)
 
     with open(output_tsv, "w") as f:
-        f.write("task\tparcel_ts\tisc_npy\tisc_nii\n")
+        f.write("task\tparcel_ts\tisc_npy\n")
 
         for task in NARRATIVES_TASK_GROUPS:
             isc_npy = f"{NARRATIVES_PROCESSING_OUTPUT_DIR}/isc/task-{task}_isc_mean.npy"
-            isc_nii = f"{NARRATIVES_PROCESSING_OUTPUT_DIR}/isc/task-{task}_isc_mean.nii.gz"
 
             for parcel_ts in parcel_outputs_for_task(task):
-                f.write(f"{task}\t{parcel_ts}\t{isc_npy}\t{isc_nii}\n")
+                f.write(f"{task}\t{parcel_ts}\t{isc_npy}\n")
 
 NARRATIVES_ISC_NPY_OUTPUTS = [
     f"{NARRATIVES_PROCESSING_OUTPUT_DIR}/isc/task-{task}_isc_mean.npy"
-    for task in NARRATIVES_TASK_GROUPS
-]
-
-NARRATIVES_ISC_NII_OUTPUTS = [
-    f"{NARRATIVES_PROCESSING_OUTPUT_DIR}/isc/task-{task}_isc_mean.nii.gz"
     for task in NARRATIVES_TASK_GROUPS
 ]
 
@@ -147,7 +141,6 @@ NARRATIVES_EXCLUDED_STIMULI = config["narratives"]["excluded_stimuli"]
 rule all_narratives_dataset:
     input:
         NARRATIVES_ISC_NPY_OUTPUTS,
-        NARRATIVES_ISC_NII_OUTPUTS,
         NARRATIVES_ISC_DONE,
         NARRATIVES_STIMULI_READY,
         NARRATIVES_EXCLUDED_STIMULI
@@ -197,21 +190,16 @@ rule compute_narratives_isc:
         manifest=NARRATIVES_ISC_MANIFEST,
         parcel_ts=NARRATIVES_PARCEL_OUTPUTS
     output:
-        isc_npy=NARRATIVES_ISC_NPY_OUTPUTS,
-        isc_nii=NARRATIVES_ISC_NII_OUTPUTS
+        isc_npy = NARRATIVES_ISC_NPY_OUTPUTS
     params:
-        n_rois=config["atlas"]["n_rois"],
-        yeo_networks=config["atlas"]["yeo_networks"],
-        atlas_dir=config["atlas"]["atlas_dir"]
+        n_rois = config["atlas"]["n_rois"]
     conda:
         "envs/narratives_dataset_processing_environment.yaml"
     shell:
         r"""
             python3 workflow/dataset_processing/narratives_dataset/scripts/compute_narratives_isc.py \
                 --manifest {input.manifest:q} \
-                --n_rois {params.n_rois} \
-                --yeo_networks {params.yeo_networks} \
-                --atlas_dir {params.atlas_dir:q}
+                --n_rois {params.n_rois}
         """
 
 rule rename_narratives_stimuli_transcipts:

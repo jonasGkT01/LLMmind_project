@@ -1,3 +1,6 @@
+# edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
+# last AI edit: 2026-10-01, see docs/changelog/developers/ for details
+
 import re
 from pathlib import Path
 from glob import glob
@@ -260,13 +263,10 @@ rule compute_caption_scene_isc:
     input:
         parcels_done=CAPTION_SCENE_PARCELS_DONE
     output:
-        isc_npy=f"{CAPTION_SCENE_ISC_DIR}/task-{{stimulus_id}}_isc_mean.npy",
-        isc_nii=f"{CAPTION_SCENE_ISC_DIR}/task-{{stimulus_id}}_isc_mean.nii.gz"
+        isc_npy = f"{CAPTION_SCENE_ISC_DIR}/task-{{stimulus_id}}_isc_mean.npy"
     params:
-        parcel_ts=caption_scene_parcel_paths,
-        n_rois=config["atlas"]["n_rois"],
-        yeo_networks=config["atlas"]["yeo_networks"],
-        atlas_dir=config["atlas"]["atlas_dir"]
+        parcel_ts = caption_scene_parcel_paths,
+        n_rois = config["atlas"]["n_rois"]
     conda:
         "envs/caption_scene_dataset_processing_environment.yaml"
     shell:
@@ -274,10 +274,7 @@ rule compute_caption_scene_isc:
             python3 workflow/dataset_processing/caption_scene_dataset/scripts/compute_caption_scene_isc.py \
                 --parcel_ts {params.parcel_ts:q} \
                 --isc_npy {output.isc_npy:q} \
-                --isc_nii {output.isc_nii:q} \
-                --n_rois {params.n_rois} \
-                --yeo_networks {params.yeo_networks} \
-                --atlas_dir {params.atlas_dir:q}
+                --n_rois {params.n_rois}
         """
 
 rule write_caption_scene_stimuli_transcripts:
