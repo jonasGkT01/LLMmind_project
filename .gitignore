@@ -3,5 +3,3 @@ resources/
 results/
 workflow/envs/LLMmind_project/
 __pycache__/
-# temporary: the old base environment, kept until the full rerun works; delete it and this entry then
-workflow/envs/LLMmind_project.backup_snakemake_9.21/
