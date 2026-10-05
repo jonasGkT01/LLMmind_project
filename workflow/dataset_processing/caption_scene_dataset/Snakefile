@@ -1,5 +1,5 @@
 # edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
-# last AI edit: 2026-10-02, see docs/changelog/developers/ for details
+# last AI edit: 2026-10-05, see docs/changelog/developers/ for details
 
 import re
 from pathlib import Path
@@ -159,6 +159,8 @@ rule finish_caption_scene_isc:
     output:
         isc_done = touch(CAPTION_SCENE_ISC_DONE)
 
+MAKE_CAPTION_SCENE_MANIFEST_SCRIPT = "workflow/dataset_processing/caption_scene_dataset/scripts/make_caption_scene_manifest.py"
+
 checkpoint make_caption_scene_manifest:
     input:
         bold_files = CAPTION_SCENE_BOLD_FILES, 
@@ -175,11 +177,12 @@ checkpoint make_caption_scene_manifest:
         onset_shift_s = config["caption_scene"]["onset_shift_s"], 
         run_table_encoding = config["caption_scene"].get("run_table_encoding", "gbk"), 
         minimum_subjects_per_stimulus = MINIMUM_SUBJECTS_PER_STIMULUS, 
+        code = code_version(MAKE_CAPTION_SCENE_MANIFEST_SCRIPT)
     conda:
         "envs/caption_scene_dataset_processing_environment.yaml"
     shell:
         r"""
-            python workflow/dataset_processing/caption_scene_dataset/scripts/make_caption_scene_manifest.py \
+            python {MAKE_CAPTION_SCENE_MANIFEST_SCRIPT:q} \
                 --bold_files {input.bold_files:q} \
                 --run_tables {input.run_tables:q} \
                 --visual_stimuli_dir {input.visual_stimuli_dir:q} \
@@ -336,6 +339,8 @@ rule write_caption_scene_isc_manifest:
         manifest = CAPTION_SCENE_MANIFEST
     output:
         isc_manifest = CAPTION_SCENE_ISC_MANIFEST
+    params:
+        code = code_version(read_manifest, caption_scene_parcel_path)
     run:
         events = read_manifest(input.manifest)
         isc_manifest = pd.DataFrame(

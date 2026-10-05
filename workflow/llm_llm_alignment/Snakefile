@@ -1,5 +1,5 @@
 # edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
-# last AI edit: 2026-10-02, see docs/changelog/developers/ for details
+# last AI edit: 2026-10-05, see docs/changelog/developers/ for details
 rule all_llm_llm_alignment:
     input:
         llm_llm_alignment_scores = [
@@ -97,6 +97,8 @@ rule compute_llm_llm_hypergeometric_p_value:
                 --number_of_neighbours {params.number_of_neighbours} > {output.hypergeometric_p_value:q}
         """
 
+AGGREGATE_ALL_LLM_LLM_P_VALUE_OUTPUTS_SCRIPT = "workflow/llm_llm_alignment/scripts/aggregate_all_llm_llm_p_value_outputs.py"
+
 rule aggregate_all_llm_llm_p_value_outputs:
     # no multiple-testing correction here: these results stay out of the LLM-brain BH family
     input:
@@ -116,7 +118,8 @@ rule aggregate_all_llm_llm_p_value_outputs:
     output:
         all_model_model_alignment_scores_tsv = "results/all_model_model_alignment_scores.tsv"
     params:
-        model_order = MODEL_KEYS
+        model_order = MODEL_KEYS, 
+        code = code_version(AGGREGATE_ALL_LLM_LLM_P_VALUE_OUTPUTS_SCRIPT)
     threads:
         4
     conda:
@@ -133,7 +136,7 @@ rule aggregate_all_llm_llm_p_value_outputs:
                 --model_order {params.model_order:q} \
                 --all_model_model_alignment_scores_tsv {output.all_model_model_alignment_scores_tsv:q} \
                 > "$args_file"
-            python3 workflow/llm_llm_alignment/scripts/aggregate_all_llm_llm_p_value_outputs.py \
+            python3 {AGGREGATE_ALL_LLM_LLM_P_VALUE_OUTPUTS_SCRIPT:q} \
                 @"$args_file" \
                 --threads {threads}
             rm "$args_file"

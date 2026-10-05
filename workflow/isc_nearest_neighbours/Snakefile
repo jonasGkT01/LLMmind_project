@@ -1,5 +1,5 @@
 # edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
-# last AI edit: 2026-10-02, see docs/changelog/developers/ for details
+# last AI edit: 2026-10-05, see docs/changelog/developers/ for details
 import pandas as pd
 from pathlib import Path
 
@@ -126,6 +126,8 @@ rule compute_isc_reliability:
                 --output {output.isc_reliability:q}
         """
 
+AGGREGATE_ISC_RELIABILITY_SCRIPT = "workflow/isc_nearest_neighbours/scripts/aggregate_isc_reliability.py"
+
 rule aggregate_isc_reliability:
     # one row per dataset: ISC reliability and the distribution of the ISC values; a final result
     # (source for the methods text)
@@ -135,12 +137,13 @@ rule aggregate_isc_reliability:
     output:
         all_isc_reliability = "results/mind/all_isc_reliability.tsv"
     params:
-        datasets = DATASETS
+        datasets = DATASETS, 
+        code = code_version(AGGREGATE_ISC_RELIABILITY_SCRIPT)
     conda:
         "envs/isc_nearest_neighbours_environment.yaml"
     shell:
         r"""
-            python3 workflow/isc_nearest_neighbours/scripts/aggregate_isc_reliability.py \
+            python3 {AGGREGATE_ISC_RELIABILITY_SCRIPT:q} \
                 --datasets {params.datasets:q} \
                 --reliability_tsvs {input.reliability_tsvs:q} \
                 --isc_dataframes {input.isc_dataframes:q} \

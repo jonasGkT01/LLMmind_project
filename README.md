@@ -189,7 +189,10 @@ alignment-enrichment plots (model- and concept-level), and Spearman plots.
 ### `libraries/`
 
 Shared Python helper modules (similarity, alignment, nearest-neighbours,
-statistics, plotting) used across all of the above.
+statistics, plotting) used across all of the above. `code_version.py` is used
+by the Snakefiles themselves: `code_version()` hashes the code that writes a
+rule's output, so that the rule reruns when that code changes (see
+[Running the pipeline](#running-the-pipeline)).
 
 ## Datasets
 
@@ -464,6 +467,17 @@ snakemake --use-conda --cores <N> --rerun-triggers mtime \
                plot_alignment_heatmap plot_empirical_p_value_heatmap
 ```
 
+Snakemake reruns a job when its inputs, params or the rule's own code change,
+but it does not see edits to a Python script called from `shell:` or to a
+helper function defined outside a rule's `run:` block. For the rules that write
+manifests (`make_*_manifest`, `write_*_manifest`) and the final summary tables
+(`aggregate_*`), a `code` param, `code_version(...)`, closes this gap: it holds
+a hash of the helper functions, or of the script and the `workflow/libraries/`
+modules it imports, so editing that code reruns the rule and everything
+downstream of it. Comments and blank lines do not count. This relies on the
+`params` rerun trigger, so with `--rerun-triggers mtime` such edits are
+missed again. Other rules, including the plots (see above), are not covered.
+
 The similarity metrics are listed under `similarity_types` in
 `config/config.yaml`: `cosine` (angle between two vectors), `pearson` (linear
 correlation of their values) and `spearman` (correlation of the ranks of their
@@ -500,6 +514,13 @@ need `--cores 4` or more to run at full speed.
   `snakemake --cleanup-metadata <path>` for the affected outputs if you're
   confident the already-downloaded weights don't actually need
   re-fetching.
+- **A rule fails because a manifest has an old layout** (for example
+  `Manifest is missing columns: ['subject']`): the manifest was written by an
+  older version of the code and was not rebuilt. Since 2026-10-05 the
+  manifest rules rerun when their code changes (see
+  [Running the pipeline](#running-the-pipeline)); after a run with
+  `--rerun-triggers mtime`, or for a rule not covered, force it with
+  `--forcerun <rule name>`.
 - **A rule fails with `exit status 126` and `message: None`**: usually
   the command line was longer than Linux allows (`getconf ARG_MAX`, 2 MB
   on frontend and node5), so the program never started ("Argument list
@@ -790,6 +811,6 @@ code.
 *This document was written, in whole or in part, with AI coding assistants via Claude Code (Anthropic).*
 
 - *Models: Claude Sonnet 5 (`claude-sonnet-5`, until 2026-09-22); Claude Opus 5.5 (`claude-opus-5-5`, from 2026-09-23).*
-- *Latest AI edit: 2026-10-02, Claude Opus 5.5: documented the ISC reliability table and the decision to report NSD and Caption Scene as exploratory (TODO S30).*
+- *Latest AI edit: 2026-10-05, Claude Opus 5.5: documented `code_version()`, which reruns the manifest and summary-table rules when their code changes, after the developer asked that these rules always run (the 2026-10-02 run crashed on a stale Narratives ISC manifest).*
 - *Edit history: see [`docs/changelog/`](docs/changelog/).*
 - *Review status: not yet reviewed by the developer.*

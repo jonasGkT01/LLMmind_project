@@ -1,5 +1,5 @@
 # edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
-# last AI edit: 2026-10-02, see docs/changelog/developers/ for details
+# last AI edit: 2026-10-05, see docs/changelog/developers/ for details
 SPEARMAN_PAIRINGS = [
     {
         "dataset": dataset, 
@@ -53,6 +53,8 @@ rule compute_spearman_alignmentwith_empirical_p_value:
                 --random_seed {params.random_seed}
         """
 
+AGGREGATE_ALL_SPEARMAN_OUTPUTS_SCRIPT = "workflow/spearman_alignment/scripts/aggregate_all_spearman_outputs.py"
+
 rule aggregate_all_spearman_alignment_scores:
     input:
         model_level_scores = [
@@ -61,11 +63,13 @@ rule aggregate_all_spearman_alignment_scores:
         ]
     output:
         all_spearman_alignment_scores_tsv = "results/all_spearman_alignment_scores.tsv"
+    params:
+        code = code_version(AGGREGATE_ALL_SPEARMAN_OUTPUTS_SCRIPT)
     conda:
         "envs/spearman_alignment_environment.yaml"
     shell:
         r"""
-            python3 workflow/spearman_alignment/scripts/aggregate_all_spearman_outputs.py \
+            python3 {AGGREGATE_ALL_SPEARMAN_OUTPUTS_SCRIPT:q} \
                 --model_level_scores {input.model_level_scores:q} \
                 --all_spearman_alignment_scores_tsv {output.all_spearman_alignment_scores_tsv:q}
         """

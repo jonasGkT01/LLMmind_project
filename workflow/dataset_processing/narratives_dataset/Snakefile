@@ -1,5 +1,5 @@
 # edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
-# last AI edit: 2026-10-02, see docs/changelog/developers/ for details
+# last AI edit: 2026-10-05, see docs/changelog/developers/ for details
 
 import json
 
@@ -152,6 +152,8 @@ rule mark_narratives_isc_done:
 rule write_narratives_parcel_manifest:
     output:
         manifest = NARRATIVES_PARCEL_MANIFEST
+    params:
+        code = code_version(write_narratives_parcel_manifest, narratives_parcel_output)
     run:
         write_narratives_parcel_manifest(output.manifest)
 
@@ -160,6 +162,8 @@ rule write_narratives_isc_manifest:
         parcel_manifest = NARRATIVES_PARCEL_MANIFEST
     output:
         manifest = NARRATIVES_ISC_MANIFEST
+    params:
+        code = code_version(write_narratives_isc_manifest, narratives_parcel_output)
     run:
         write_narratives_isc_manifest(output.manifest)
 

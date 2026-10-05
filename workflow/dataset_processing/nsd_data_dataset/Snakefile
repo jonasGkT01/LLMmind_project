@@ -1,5 +1,5 @@
 # edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
-# last AI edit: 2026-10-02, see docs/changelog/developers/ for details
+# last AI edit: 2026-10-05, see docs/changelog/developers/ for details
 
 import pandas as pd
 
@@ -82,6 +82,8 @@ rule all_nsd_data_dataset:
         stimuli_ready = NSD_STIMULI_READY, 
         excluded_stimuli = NSD_EXCLUDED_STIMULI
 
+MAKE_NSD_MANIFEST_SCRIPT = "workflow/dataset_processing/nsd_data_dataset/scripts/make_nsd_manifest.py"
+
 rule make_nsd_manifest:
     output:
         occurrence_manifest = NSD_OCCURRENCE_MANIFEST, 
@@ -95,12 +97,13 @@ rule make_nsd_manifest:
         tr = config["nsd_data"]["tr"], 
         event_duration_s = config["nsd_data"]["event_duration_s"], 
         onset_shift_volumes = config["nsd_data"]["onset_shift_volumes"], 
-        minimum_subjects_per_stimulus = MINIMUM_SUBJECTS_PER_STIMULUS
+        minimum_subjects_per_stimulus = MINIMUM_SUBJECTS_PER_STIMULUS, 
+        code = code_version(MAKE_NSD_MANIFEST_SCRIPT)
     conda:
         "envs/nsd_data_dataset_processing_environment.yaml"
     shell:
         r"""
-            python3 workflow/dataset_processing/nsd_data_dataset/scripts/make_nsd_manifest.py \
+            python3 {MAKE_NSD_MANIFEST_SCRIPT:q} \
                 --dataset_dir {params.dataset_dir:q} \
                 --subjects {params.subjects} \
                 --tr {params.tr} \
@@ -119,6 +122,8 @@ rule write_nsd_parcel_manifest:
         occurrence_manifest = NSD_OCCURRENCE_MANIFEST
     output:
         manifest = NSD_PARCEL_MANIFEST
+    params:
+        code = code_version(write_nsd_parcel_manifest, nsd_parcel_time_series_output)
     run:
         write_nsd_parcel_manifest(input.occurrence_manifest, output.manifest)
 
@@ -157,6 +162,8 @@ rule write_nsd_isc_manifest:
         parcel_manifest = NSD_PARCEL_MANIFEST
     output:
         manifest = NSD_ISC_MANIFEST
+    params:
+        code = code_version(write_nsd_isc_manifest)
     run:
         write_nsd_isc_manifest(input.parcel_manifest, output.manifest)
 

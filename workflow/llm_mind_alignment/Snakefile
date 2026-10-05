@@ -1,5 +1,5 @@
 # edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
-# last AI edit: 2026-10-02, see docs/changelog/developers/ for details
+# last AI edit: 2026-10-05, see docs/changelog/developers/ for details
 rule all_llm_mind_alignment:
     input:
         llm_brain_alignment_scores = [
@@ -98,6 +98,8 @@ rule compute_hypergeometric_p_value:
                 --number_of_neighbours {params.number_of_neighbours} > {output.hypergeometric_p_value:q}
         """
 
+AGGREGATE_ALL_P_VALUE_OUTPUTS_SCRIPT = "workflow/llm_mind_alignment/scripts/aggregate_all_p_value_outputs.py"
+
 rule aggregate_all_p_value_outputs:
     input:
         empirical_p_values = [
@@ -115,13 +117,15 @@ rule aggregate_all_p_value_outputs:
         ))
     output:
         all_model_brain_alignment_scores_tsv = "results/all_model_brain_alignment_scores.tsv"
+    params:
+        code = code_version(AGGREGATE_ALL_P_VALUE_OUTPUTS_SCRIPT)
     threads:
         4
     conda:
         "envs/llm_mind_alignment_environment.yaml"
     shell:
         r"""
-            python3 workflow/llm_mind_alignment/scripts/aggregate_all_p_value_outputs.py \
+            python3 {AGGREGATE_ALL_P_VALUE_OUTPUTS_SCRIPT:q} \
                 --empirical_p_values {input.empirical_p_values:q} \
                 --hypergeometric_p_values {input.hypergeometric_p_values:q} \
                 --relabelled_common_neighbours {input.relabelled_common_neighbours:q} \

@@ -1,8 +1,10 @@
 # edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
-# last AI edit: 2026-10-02, see docs/changelog/developers/ for details
+# last AI edit: 2026-10-05, see docs/changelog/developers/ for details
 configfile: "config/config.yaml"
 
 from itertools import combinations
+
+from libraries.code_version import code_version
 
 shell.prefix(
     'export PYTHONPATH="$PWD/workflow:$PYTHONPATH"; '
