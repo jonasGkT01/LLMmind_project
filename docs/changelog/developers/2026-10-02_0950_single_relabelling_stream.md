@@ -9,7 +9,7 @@
   shuffle 0), and the alignment tests used different permutations from the Spearman null.
 - `workflow/libraries/compute_statistics.py`: deleted `create_relabelling_rng()`, which had no
   other caller.
-- `docs/reference/2026-10-02_0925_statistics.md`, section 2: describes the single stream.
+- `docs/reference/statistics.md`, section 2: describes the single stream.
 
 ## Behaviour
 
@@ -36,5 +36,5 @@ common-neighbour counts equal those computed from permutations drawn in sequence
 
 - *Models: Claude Opus 5.5 (`claude-opus-5-5`).*
 - *Latest AI edit: 2026-10-02, Claude Opus 5.5: written for TODO entry S17 (approved by the developer on 2026-09-30), implemented when the developer asked to include S17 in the full recomputation.*
-- *Files changed: `workflow/libraries/compute_relabelled_alignment.py`, `workflow/libraries/compute_statistics.py`, `docs/reference/2026-10-02_0925_statistics.md`.*
+- *Files changed: `workflow/libraries/compute_relabelled_alignment.py`, `workflow/libraries/compute_statistics.py`, `docs/reference/statistics.md`.*
 - *Review status: not yet reviewed by the developer.*

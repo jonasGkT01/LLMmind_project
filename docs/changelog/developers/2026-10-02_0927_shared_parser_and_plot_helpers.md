@@ -90,7 +90,7 @@
 
 ### Documentation (TODO S16, S20, S15 item 3)
 
-- New `docs/reference/2026-10-02_0925_statistics.md`; README updated (outputs, plot conventions,
+- New `docs/reference/statistics.md`; README updated (outputs, plot conventions,
   enrichment and Spearman paragraphs, redraw command now includes the two heatmap rules,
   documentation list).
 
@@ -127,5 +127,5 @@ README's `--forcerun` command.
 
 - *Models: Claude Opus 5.5 (`claude-opus-5-5`).*
 - *Latest AI edit: 2026-10-02, Claude Opus 5.5: written for TODO entries S2, S3, S4, S13, S15, S16 and S20 (approved by the developer on 2026-09-30), implemented after the developer asked to do the TODO tasks that need no rerun.*
-- *Files changed: `workflow/libraries/{path_metadata,compute_alignment,compute_alignment_enrichment,compute_statistics,manage_model_metadata,visualisation_utils,aggregate_alignment_scores}.py`, the seven scripts in `workflow/visualisation/scripts/`, `workflow/llm_mind_alignment/scripts/aggregate_all_p_value_outputs.py`, `workflow/llm_llm_alignment/scripts/aggregate_all_llm_llm_p_value_outputs.py`, `workflow/isc_nearest_neighbours/scripts/create_isc_{manifest,dataframe}.py`, `README.md`, `docs/reference/2026-10-02_0925_statistics.md`.*
+- *Files changed: `workflow/libraries/{path_metadata,compute_alignment,compute_alignment_enrichment,compute_statistics,manage_model_metadata,visualisation_utils,aggregate_alignment_scores}.py`, the seven scripts in `workflow/visualisation/scripts/`, `workflow/llm_mind_alignment/scripts/aggregate_all_p_value_outputs.py`, `workflow/llm_llm_alignment/scripts/aggregate_all_llm_llm_p_value_outputs.py`, `workflow/isc_nearest_neighbours/scripts/create_isc_{manifest,dataframe}.py`, `README.md`, `docs/reference/statistics.md`.*
 - *Review status: not yet reviewed by the developer.*

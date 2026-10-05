@@ -10,18 +10,21 @@ e.g. `snakemake --forceall`). It assumes the usual command on **node5** (1× RTX
 snakemake --use-conda --cores 4 --resources gpu=1
 ```
 
-**Short answer: about 25 hours (24–30 h) if the models are already in `resources/models/`, and
-about 1.5 h more if they have to be downloaded.**
+**Short answer: about 29 hours (27–34 h) if the models are already in `resources/models/`, and
+about 1.5 h more if they have to be downloaded.** The Caption Scene steps added on 2026-10-02
+(registration to MNI and per-run extraction) have not finished on node5 yet; their figures are
+estimates until the rerun started on 2026-10-05 at 09:49 measures them.
 
 ## 1. Where the numbers come from
 
-- **Job counts**: dry run of the current workflow, `snakemake -n --forceall` (40,964 jobs before
-  checkpoints), plus the jobs added by the caption_scene checkpoint (795 BOLD runs, 1,000
-  stimuli, read from `results/mind/caption_scene/intermediate_files/manifest/`).
-- **Durations**: the start and `Finished jobid` timestamps of every job in the 323 node5 logs in
-  `.snakemake/log/` (263,056 finished jobs in total). For each rule, the table uses the **most
-  recent run** in which that rule ran, so the figures match the current code as closely as
-  possible.
+- **Job counts**: dry run of the workflow, `snakemake -n --forceall` (about 40,900 jobs before
+  checkpoints), plus the jobs added by the caption_scene checkpoint (8 subjects, 1,664 BOLD runs,
+  1,000 stimuli).
+- **Durations**: the start and `Finished jobid` timestamps of every job in the 328 node5 logs in
+  `.snakemake/log/` (up to the running 2026-10-05 log, read at 11:05). For each rule, the table
+  uses the **most recent run** in which that rule ran, so the figures match the current code as
+  closely as possible. Where that run executed only a few of the rule's jobs (the 2026-10-02 and
+  2026-10-05 runs for the model rules), the table keeps the last run that executed them all.
 - Durations are wall-clock seconds per job at 1 s resolution. They include conda activation and
   were measured while up to 4 jobs were running at the same time.
 - "Total" is the job count × the mean duration, i.e. job-hours of work, not elapsed time.
@@ -49,38 +52,53 @@ limited by network speed. `get_embeddings` depends mostly on model size. The slo
 | Rule | Jobs | Median | Max | Total | Measured in |
 |---|---:|---:|---:|---:|---|
 | **NSD** | | | | | |
-| `export_nsd_stimuli` | 1 | 98 s | | 98 s | 2026-09-24 |
-| `make_nsd_manifest` | 1 | 23 s | | 23 s | 2026-09-24 |
+| `export_nsd_stimuli` | 1 | 7.9 min | | 7.9 min | 2026-10-05 |
+| `make_nsd_manifest` | 1 | 6.5 min | | 6.5 min | 2026-10-05 |
 | `write_nsd_parcel_manifest` | 1 | 8 s | | 8 s | 2026-09-24 |
 | `assemble_nsd_bold` (uses all 4 cores) | 1 | 11.4 h | | 11.4 h | 2026-09-24 |
 | `write_nsd_isc_manifest` | 1 | 9 s | | 9 s | 2026-09-24 |
 | `compute_nsd_isc` | 1 | 9.4 min | | 9.4 min | 2026-09-24 |
 | **caption_scene** | | | | | |
-| `make_caption_scene_manifest` (checkpoint) | 1 | 67 min | | 67 min | 2026-09-24 |
-| `split_caption_scene_bold_by_run_manifest` | 795 | 24 s | 34 s | 5.3 h | 2026-09-24 |
-| `extract_caption_scene_parcels` | 1 | 25 min | | 25 min | 2026-09-24 |
+| `make_caption_scene_manifest` (checkpoint) | 1 | 2.3 h | | 2.3 h | 2026-10-02 |
+| `fetch_mni_template` | 1 | not measured | | <1 min (guess) | — |
+| `register_caption_scene_t1w` (8 threads, capped at 4) | 8 | ~2–3 min (estimate) | | ~20 min | estimate from the frontend test |
+| `compute_caption_scene_sampling_coordinates` | 8 | not measured | | <30 min (guess) | — |
+| `extract_caption_scene_run_parcels` | 1,664 | ~30 s (estimate) | | ~14 h | estimate from the frontend test |
+| `extract_caption_scene_parcels` (collects the run flags) | 1 | not measured | | <1 min (guess) | — |
+| `write_caption_scene_isc_manifest` | 1 | not measured | | <1 min (guess) | — |
 | `compute_caption_scene_isc` | 1,000 | 2 s | 7 s | 39 min | 2026-09-24 |
 | `write_caption_scene_stimuli_transcripts` | 1 | 13 s | | 13 s | 2026-09-24 |
 | `finish_caption_scene_isc` | 1 | 2 s | | 2 s | 2026-09-24 |
 | **narratives** | | | | | |
 | `rename_narratives_stimuli_transcipts` | 1 | 1 s | | 1 s | 2026-06-19 |
-| `write_narratives_problematic_stimuli` | 1 | 11 s | | 11 s | 2026-09-23 |
-| `write_narratives_parcel_manifest` | 1 | 6 s | | 6 s | 2026-06-19 |
-| `extract_narratives_parcels` | 1 | 42 min | | 42 min | 2026-06-19 |
-| `write_narratives_isc_manifest` | 1 | 4 s | | 4 s | 2026-06-19 |
+| `write_narratives_problematic_stimuli` | 1 | 22 s | | 22 s | 2026-10-02 |
+| `write_narratives_parcel_manifest` | 1 | 9 s | | 9 s | 2026-10-05 |
+| `extract_narratives_parcels` | 1 | 98 min | | 98 min | 2026-10-02 |
+| `write_narratives_isc_manifest` | 1 | 4 s | | 4 s | 2026-10-05 |
 | `compute_narratives_isc` | 1 | 62 s | | 62 s | 2026-06-19 |
 | `mark_narratives_isc_done` | 1 | <1 s | | <1 s | 2026-06-19 |
 | **nature_stories** | | | | | |
-| `write_nature_stories_excluded_stimuli` | 1 | 4 s | | 4 s | 2026-09-28 |
-| `convert_nature_stories_textgrids`, `verify_nature_stories_stimuli`, `write_nature_stories_parcel_manifest`, `extract_nature_stories_parcels`, `write_nature_stories_isc_manifest`, `compute_nature_stories_isc`, `mark_nature_stories_isc_done` | 1 each | not measured | | <1 h (guess) | never in a node5 log |
-| **ISC nearest neighbours (all 4 datasets)** | | | | | |
+| `write_nature_stories_excluded_stimuli` | 1 | 15 s | | 15 s | 2026-10-02 |
+| `convert_nature_stories_textgrids` | 1 | 11 s | | 11 s | 2026-10-02 |
+| `verify_nature_stories_stimuli` | 1 | not measured | | <1 min (guess) | — |
+| `write_nature_stories_parcel_manifest` | 1 | 5 s | | 5 s | 2026-10-05 |
+| `extract_nature_stories_parcels` | 1 | 32 min | | 32 min | 2026-10-05 |
+| `write_nature_stories_isc_manifest` | 1 | 10 s | | 10 s | 2026-10-05 |
+| `compute_nature_stories_isc` | 1 | 6 s | | 6 s | 2026-10-05 |
+| `mark_nature_stories_isc_done` | 1 | <1 s | | <1 s | 2026-10-05 |
+| **ISC nearest neighbours and reliability (all 4 datasets)** | | | | | |
 | `create_isc_manifest` (checkpoint) | 4 | 2 s | 3 s | 8 s | 2026-09-28 |
 | `create_isc_dataframe` | 4 | 2 s | 4 s | 8 s | 2026-09-28 |
 | `compute_isc_nearest_neighbours` | 4 | 2 s | 2 s | 6 s | 2026-09-28 |
+| `compute_isc_reliability` | 4 | 9 s (1 job) | | ~1 min | 2026-10-05 |
+| `aggregate_isc_reliability` | 1 | not measured | | <1 min (guess) | — |
 
-The narratives figures come from June 2026 and may not match the current scripts exactly. The
-nature_stories rules have no recorded timing. The guess assumes they cost about as much as the
-narratives rules, which do the same steps.
+`compute_narratives_isc` failed in the 2026-10-02 run (see the developer changelog of
+2026-10-05), so its figure still comes from June 2026. The Caption Scene estimates come from the
+frontend tests of 2026-10-02 (registration about 1.5 min per subject with 8 threads; extraction
+about 30 s per run, about 16 CPU-hours in total). The rules marked "guess" only read or write
+small tables. The single-job rules of NSD and nature_stories took longer on 2026-10-02 and
+2026-10-05 than before, probably because they ran next to other disk-heavy jobs.
 
 ### 2c. Model–brain alignment and statistics
 
@@ -118,8 +136,8 @@ narratives rules, which do the same steps.
 
 ## 3. From job-hours to elapsed time
 
-The whole run is about **57 job-hours** of work (about 63 with downloads). It does not simply
-take 56/4 h, for three reasons:
+The whole run is about **69 job-hours** of work (about 75 with downloads). It does not simply
+take 69/4 h, for three reasons:
 
 1. **`assemble_nsd_bold` takes all 4 cores** (`threads: workflow.cores`) for 11.4 h. Nothing else
    runs alongside it. This is the main reason the dataset-processing run of 2026-09-24 averaged
@@ -133,12 +151,12 @@ take 56/4 h, for three reasons:
 |---|---:|
 | Model downloads (only if `resources/models/` is empty; 4 at a time) | ~1.5 h |
 | `assemble_nsd_bold` (alone on all cores) | 11.4 h |
-| Rest of the brain data processing (caption_scene ~3 h, narratives and nature_stories ~1–2 h, mostly in parallel) | ~3 h |
+| Rest of the brain data processing (caption_scene ~6 h: manifest 2.3 h, then ~14 job-h of run extraction 4 at a time; narratives and nature_stories ~2.3 h, in parallel with the caption_scene manifest) | ~6 h |
 | Embeddings (GPU); mostly overlap with the stage above | ~0–1 h extra |
 | Alignment, statistics and plots (~36 job-h at 3.7 in parallel) | ~10 h |
 | Final aggregation steps (one job at a time at the end) | ~1 h |
-| **Total, models already downloaded** | **~26 h (25–31 h)** |
-| **Total, models downloaded too** | **~28 h** |
+| **Total, models already downloaded** | **~29 h (27–34 h)** |
+| **Total, models downloaded too** | **~30.5 h** |
 
 As a check against real runs: the 2026-09-24 run (mostly brain data processing, including
 `assemble_nsd_bold`) took 15.3 h. The 2026-09-29 run (embeddings and all downstream steps,
@@ -147,7 +165,8 @@ relabelled null) took 8.8 h before it got stuck on the hung job.
 
 ## 4. How to update these numbers
 
-Each `.snakemake/log/*.snakemake.log` written on node5 starts with `host: node5`. For every job
+Each `.snakemake/log/*.snakemake.log` written on node5 names the host in its first lines
+(`host: node5`; `Host: node5` in the header of Snakemake 9 logs). For every job
 it prints a `[timestamp]` line followed by `rule <name>:` and `jobid: <n>`, and later a
 `[timestamp]` line followed by `Finished jobid: <n> (Rule: <name>)`. Pairing the two timestamps
 by job id gives each job's duration. `snakemake -n --forceall` prints the job count per rule.
@@ -196,6 +215,28 @@ took 50 min 35 s (19:59:22–20:49:57; was 4 h 10 min) and `aggregate_all_p_valu
 (20:49:57–20:53:13; was 16 min). The final aggregation stage is ~1 h instead of the estimated
 ~1.5 h; the total stays at ~26 h.
 
+### 2026-10-05 11:10 — page regenerated for the current workflow: ~29 h
+
+The file was renamed from `2026-10-01_0926_clean_run_duration.md` to `clean_run_duration.md`
+(living reference pages carry no date in their name), and the tables were brought up to date with
+the workflow and the node5 logs up to 2026-10-05 11:05:
+
+- **Caption Scene (TODO S31, 2026-10-02):** `split_caption_scene_bold_by_run_manifest` (5.3 h)
+  was removed; the new registration and per-run extraction rules add about 15 job-hours, mostly
+  `extract_caption_scene_run_parcels` (1,664 runs, ~30 s each, estimated from the frontend tests).
+  `make_caption_scene_manifest` took 2.3 h on 2026-10-02 (was 67 min). The Caption Scene stage
+  is ~6 h instead of ~3 h.
+- **nature_stories:** measured for the first time (2026-10-02 and 2026-10-05): about 33 min in
+  total, mostly `extract_nature_stories_parcels` (32 min), instead of the "<1 h" guess.
+- **narratives:** `extract_narratives_parcels` took 98 min on 2026-10-02 (was 42 min in June).
+- **New rules:** `compute_isc_reliability` and `aggregate_isc_reliability` (TODO S30); about 1 min
+  in total.
+- **NSD:** `export_nsd_stimuli` and `make_nsd_manifest` took 7.9 and 6.5 min on 2026-10-05 (were
+  98 s and 23 s).
+- The short answer said ~25 h while section 3 said ~26 h since 2026-10-01 16:40; both now say
+  ~29 h (27–34 h), ~30.5 h with downloads.
+
+The Caption Scene figures stay estimates until the rerun started on 2026-10-05 at 09:49 finishes.
 
 ---
 
@@ -204,6 +245,6 @@ took 50 min 35 s (19:59:22–20:49:57; was 4 h 10 min) and `aggregate_all_p_valu
 *This document was written, in whole or in part, with AI coding assistants via Claude Code (Anthropic).*
 
 - *Models: Claude Opus 5.5 (`claude-opus-5-5`).*
-- *Latest AI edit: 2026-10-01, Claude Opus 5.5: replaced the S34 duration estimates with the node5 measurements of the 19:56 run, after the developer reported that the run had completed.*
+- *Latest AI edit: 2026-10-05, Claude Opus 5.5: renamed without the date prefix and regenerated for the current workflow and node5 logs, after the developer asked to regenerate the file and keep living reference pages under one undated name.*
 - *Edit history: see [`docs/changelog/`](../changelog/).*
 - *Review status: not yet reviewed by the developer.*

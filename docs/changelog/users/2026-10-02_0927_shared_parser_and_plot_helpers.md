@@ -14,7 +14,7 @@
   both groups were corrected together, so a brain-model cell could get more stars in the heatmap
   than in the line plots.
 
-**New documentation:** `docs/reference/2026-10-02_0925_statistics.md` explains how the alignment
+**New documentation:** `docs/reference/statistics.md` explains how the alignment
 scores, the shuffled (null) scores, the p-values, the enrichment and the multiple-testing
 correction are computed, and what every point, bar and grey interval in the figures means. It is
 meant as the source for the methods section. It also says clearly that the averaged per-concept

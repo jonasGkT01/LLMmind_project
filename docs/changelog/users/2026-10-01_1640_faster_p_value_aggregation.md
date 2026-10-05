@@ -19,5 +19,5 @@ full speed.
 
 - *Models: Claude Opus 5.5 (`claude-opus-5-5`).*
 - *Latest AI edit: 2026-10-01, Claude Opus 5.5: written for TODO entry S34, approved by the developer on 2026-10-01 and revised after measurement, after the developer asked to start addressing the TODO problems while the pipeline was running.*
-- *Files changed: `workflow/libraries/aggregate_alignment_scores.py`, `workflow/llm_mind_alignment/Snakefile`, `workflow/llm_mind_alignment/scripts/aggregate_all_p_value_outputs.py`, `workflow/llm_llm_alignment/Snakefile`, `workflow/llm_llm_alignment/scripts/aggregate_all_llm_llm_p_value_outputs.py`, `README.md`, `docs/reference/2026-10-01_0926_clean_run_duration.md`.*
+- *Files changed: `workflow/libraries/aggregate_alignment_scores.py`, `workflow/llm_mind_alignment/Snakefile`, `workflow/llm_mind_alignment/scripts/aggregate_all_p_value_outputs.py`, `workflow/llm_llm_alignment/Snakefile`, `workflow/llm_llm_alignment/scripts/aggregate_all_llm_llm_p_value_outputs.py`, `README.md`, `docs/reference/clean_run_duration.md`.*
 - *Review status: not yet reviewed by the developer.*

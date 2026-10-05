@@ -652,7 +652,7 @@ combined summary tables have a `similarity_type` column instead.
   `models:` order of `config/config.yaml`. The p-values are not corrected
   for multiple testing in the TSV. The p-value heatmap corrects them as their
   own Benjamini-Hochberg family, separate from the brain-model family (see
-  the [statistics reference](docs/reference/2026-10-02_0925_statistics.md)).
+  the [statistics reference](docs/reference/statistics.md)).
   The six `*_p_value_across_concepts` statistics in both summary TSVs are
   descriptive summaries of the per-concept p-values, not tests; the
   model-level test is `model_level_empirical_p_value`.
@@ -742,7 +742,7 @@ combined summary tables have a `similarity_type` column instead.
   permutation null (`empirical_null_standard_deviation_spearman_coefficient`);
   the concept-level Spearman plot has none. The statistics behind all plots
   (null distributions, p-values, Benjamini-Hochberg families) are described
-  in the [statistics reference](docs/reference/2026-10-02_0925_statistics.md).
+  in the [statistics reference](docs/reference/statistics.md).
 
 ## Code conventions
 
@@ -787,7 +787,7 @@ code.
 - [`docs/reference/fmri_preprocessing.md`](docs/reference/fmri_preprocessing.md)
   — what each dataset's authors did to the BOLD data before this workflow, and
   what the workflow itself does (a source for the methods section)
-- [`docs/reference/2026-10-02_0925_statistics.md`](docs/reference/2026-10-02_0925_statistics.md)
+- [`docs/reference/statistics.md`](docs/reference/statistics.md)
   — alignment scores, the relabelling and Spearman nulls, the empirical and
   hypergeometric tests, enrichment, the Benjamini-Hochberg families and what
   every figure's points, error bars and grey intervals show (a source for
@@ -796,8 +796,8 @@ code.
   — how each model turns a stimulus into one vector: chunking, pooling
   (including the BOS token) and the CLS token of vision models (a source for
   the methods section)
-- [`docs/reference/2026-10-01_0926_clean_run_duration.md`](docs/reference/2026-10-01_0926_clean_run_duration.md)
-  — how long a clean run takes on node5 (about 25 h), with the per-job and
+- [`docs/reference/clean_run_duration.md`](docs/reference/clean_run_duration.md)
+  — how long a clean run takes on node5 (about 29 h), with the per-job and
   total time of every rule
 - [`docs/changelog/developers/`](docs/changelog/developers/) — technical
   changelog entries for contributors
@@ -811,6 +811,6 @@ code.
 *This document was written, in whole or in part, with AI coding assistants via Claude Code (Anthropic).*
 
 - *Models: Claude Sonnet 5 (`claude-sonnet-5`, until 2026-09-22); Claude Opus 5.5 (`claude-opus-5-5`, from 2026-09-23).*
-- *Latest AI edit: 2026-10-05, Claude Opus 5.5: documented `code_version()`, which reruns the manifest and summary-table rules when their code changes, after the developer asked that these rules always run (the 2026-10-02 run crashed on a stale Narratives ISC manifest).*
+- *Latest AI edit: 2026-10-05, Claude Opus 5.5: links to the reference pages `statistics.md` and `clean_run_duration.md` renamed without the date prefix, and the clean-run estimate updated to about 29 h, after the developer asked to regenerate both pages.*
 - *Edit history: see [`docs/changelog/`](docs/changelog/).*
 - *Review status: not yet reviewed by the developer.*

@@ -37,9 +37,7 @@ permuting the concept labels of one side:
   (`compute_relabelled_alignment.compute_relabelled_common_neighbours_for_all_k()` and the
   Spearman script). Every test only draws `permutation(n)`, so the alignment and Spearman tests of
   a dataset use exactly the same permutations, and all models share them on purpose (a paired
-  design). A replication run only needs a different seed. (Until 2026-10-02, shuffle *i* of the
-  relabelling null used `default_rng(random_seed + i)`; results computed before the full rerun
-  of that date use that scheme.)
+  design). A replication run only needs a different seed.
 
 ## 3. Tests of the alignment score
 
@@ -141,6 +139,25 @@ Conventions:
   q-value. Section 5 lists the families.
 - The concept-level enrichment and Spearman scatterplots draw no null interval, to stay readable.
 
+## 8. Changes
+
+Changes to the methods described above, oldest first. Each entry gives when the change happened,
+what changed and why. The sections above always describe the current code.
+
+### 2026-10-02 09:50 — one random stream for every null (TODO S17)
+
+Until then, shuffle *i* of the relabelling null used `default_rng(random_seed + i)`, while the
+Spearman null drew from one `default_rng(random_seed)` stream. Now every null draws from one
+stream (section 2), so the alignment and Spearman tests of a dataset use the same permutations.
+Results computed before the full rerun of 2026-10-02 use the old scheme.
+
+### 2026-10-05 11:10 — file renamed
+
+Renamed from `2026-10-02_0925_statistics.md` to `statistics.md` (living reference pages carry no
+date in their name); the dated note of section 2 moved to the entry above. The content was
+checked against the current code (function names, columns, `config.yaml` values) and needed no
+other change.
+
 ---
 
 ## AI attribution
@@ -148,6 +165,6 @@ Conventions:
 *This document was written, in whole or in part, with AI coding assistants via Claude Code (Anthropic).*
 
 - *Models: Claude Opus 5.5 (`claude-opus-5-5`).*
-- *Latest AI edit: 2026-10-02, Claude Opus 5.5: random-stream paragraph rewritten for TODO S17 (single stream), after the developer asked to include S17 in the full recomputation.*
+- *Latest AI edit: 2026-10-05, Claude Opus 5.5: renamed without the date prefix and dated note moved to a new "Changes" section, after the developer asked to keep living reference pages under one undated name.*
 - *Edit history: see [`docs/changelog/`](../changelog/).*
 - *Review status: not yet reviewed by the developer.*

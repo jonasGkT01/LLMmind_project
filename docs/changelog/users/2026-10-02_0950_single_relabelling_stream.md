@@ -9,7 +9,7 @@ different seed gives genuinely different shuffles.
 **What changes:** after the full recomputation, the alignment p-values and enrichment values
 differ slightly from the previous run, as expected for a new set of random shuffles. The Spearman
 results stay the same. The methods should say that all tests share one random sequence (see
-`docs/reference/2026-10-02_0925_statistics.md`, section 2).
+`docs/reference/statistics.md`, section 2).
 
 ---
 
@@ -19,5 +19,5 @@ results stay the same. The methods should say that all tests share one random se
 
 - *Models: Claude Opus 5.5 (`claude-opus-5-5`).*
 - *Latest AI edit: 2026-10-02, Claude Opus 5.5: written for TODO entry S17 (approved by the developer on 2026-09-30), implemented when the developer asked to include S17 in the full recomputation.*
-- *Files changed: `workflow/libraries/compute_relabelled_alignment.py`, `workflow/libraries/compute_statistics.py`, `docs/reference/2026-10-02_0925_statistics.md`.*
+- *Files changed: `workflow/libraries/compute_relabelled_alignment.py`, `workflow/libraries/compute_statistics.py`, `docs/reference/statistics.md`.*
 - *Review status: not yet reviewed by the developer.*
