@@ -59,7 +59,8 @@ Kind: `documentation`
 The documentation was reorganised so that each piece of information lives in one place:
 
 - **`README.md`** is now a short overview: what the pipeline does, where the documentation is
-  (a list near the top), how to set it up and run it, and what it produces.
+  (a list near the top), how to set it up and run it, and what it produces. The code-style
+  section was removed.
 - **`docs/guides/running_and_troubleshooting.md`** is new. It has everything about running: partial
   runs, when Snakemake reruns a step by itself and when you must force it, the settings that
   rebuild many results, the software environments, which models are not supported, and the fixes

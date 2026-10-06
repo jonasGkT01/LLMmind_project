@@ -411,29 +411,3 @@ combined summary tables have a `similarity_type` column instead.
   What each figure shows and the conventions shared by all plots (model
   order, colours, asterisks, null intervals, axes) are in section 7 of
   [`statistics.md`](docs/reference/statistics.md).
-
-## Code conventions
-
-All code under `workflow/`, the Snakefiles, `config/config.yaml` and
-`parquet2tsv.sh` follow the same layout rules, which are not enforced by a
-linter. Please follow them by hand when adding or editing code:
-
-- **Python:** 4-space indentation, code lines of at most 88 characters (long
-  strings are split into adjacent literals; comments and `argparse` calls may
-  be longer), one blank line between top-level functions, spaces around `=`
-  (also in keyword arguments and defaults), `+`, `-` and comparisons, no
-  spaces around `*` and `/`, and one space after every comma, including a
-  comma that ends a line. Long calls use a 4-space hanging indent with one
-  argument per line; `argparse` arguments put each keyword on its own line,
-  aligned with the opening parenthesis.
-- **Imports** come in three groups separated by one blank line: standard
-  library, third-party, then the project's own `libraries.*`.
-- **Comments** go on the line above the code, in lowercase and the
-  imperative, with no final full stop. Triple-quoted strings are kept for
-  docstrings only.
-- **Snakefiles:** every input and output is named; `shell:` blocks are `r"""`
-  strings with the command at 12 spaces and each `--flag {value}` on its own
-  line at 16. The main `Snakefile` defines its helpers before the `include:`
-  lines, because the included Snakefiles use them.
-- **Bash:** `#!/usr/bin/env bash`, `set -euo pipefail`, `[[ ... ]]` tests and
-  quoted variables.

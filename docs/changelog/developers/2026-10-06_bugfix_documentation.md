@@ -106,7 +106,7 @@ and audience (64 developer and 63 user files).
 
 - `README.md` cut to an overview (21 KB, 7 KB of which is the unchanged "Input data" section):
   purpose, documentation index (moved near the top), layout, short module and dataset
-  descriptions, models, setup, minimal run commands, outputs, code conventions. "LLMs" in the
+  descriptions, models, setup, minimal run commands, outputs. "LLMs" in the
   opening sentence replaced by "models", with a note that `llm` in names means any model.
 - New `docs/guides/running_and_troubleshooting.md`, the single home for: run variations;
   parallelism and `number_of_workers`; when Snakemake reruns a job, with the full lists of rules
@@ -150,6 +150,10 @@ and audience (64 developer and 63 user files).
   attribution file.
 - `LLMmind/.claude/TODO/LLMmind_project.md`: P43/S43 rewritten (the `fmri_preprocessing.md` half is
   solved), and the S7 link to the old changelog file updated.
+
+- `README.md`: the "Code conventions" section was removed at the developer's request, after the
+  restructuring; the layout rules are kept in `LLMmind/.claude/CLAUDE.md`, section 4, outside this
+  repository.
 
 ### Not changed
 
