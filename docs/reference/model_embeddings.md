@@ -1,10 +1,12 @@
 # Model embeddings: how each stimulus becomes one vector
 
+> *Written with AI assistance (Claude Code). See [`docs/AI_USAGE.md`](../AI_USAGE.md).*
+
 This page describes how `workflow/llm_nearest_neighbours/scripts/get_embeddings.py` turns each
 stimulus into one embedding vector per model. These vectors are the model-side representations
 whose nearest neighbours are compared with the brain's. Use it as the source for the methods
-section. For how to *configure* the chunk length, see `README.md`, section
-"`llm_nearest_neighbours/`".
+section. For how to *configure* the chunk length, see section 3 of
+[`running_and_troubleshooting.md`](../guides/running_and_troubleshooting.md).
 
 ## 1. Stimuli
 
@@ -60,7 +62,8 @@ so it has not been done. The manuscript's methods state that the BOS token is in
 1. The image is converted to RGB and prepared by the model's own image processor
    (`AutoProcessor`: resizing, cropping and normalisation as defined for that checkpoint).
 2. The vector is the **first (CLS) token of the last layer's hidden states**, after the model's
-   final normalisation layer:
+   final normalisation layer (`get_embeddings.py --pool` can override this; the workflow does
+   not pass it):
    - CLIP, CLIP fine-tuned on ImageNet-12k, and the ImageNet-21k ViTs are `timm` checkpoints,
      loaded through the `transformers` timm wrapper with its head removed. The hidden states are
      timm's `forward_features()` output, so the CLIP projection and the classification heads
@@ -75,19 +78,25 @@ normalises the vectors for the chosen similarity (L2 for cosine, centring + L2 f
 + centring + L2 for Spearman), and keeps the largest configured k nearest neighbours of each
 stimulus, excluding the stimulus itself.
 
----
+## 6. Sources
 
-*This page was written by an AI coding assistant.*
+The content comes from the code (`get_embeddings.py`, `compute_similarity.py`,
+`compute_nearest_neighbours.py`, `config/config.yaml`) and from the installed `transformers`
+source (`modeling_timm_wrapper.py`, `modeling_dinov2.py`). The ImageNet-12k fine-tuning of the
+`clip_i21k_ft_*` models was checked on the Hugging Face model card of
+`timm/vit_base_patch16_clip_224.laion2b_ft_in12k` (an 11,821-class subset of ImageNet-22k).
+**Not verified:** the size of the BOS outlier in these specific models was not measured.
 
-- *Tool: Claude Code (Anthropic), VS Code extension.*
-- *Model: Claude Opus 5.5 (`claude-opus-5-5`).*
-- *Date: 2026-09-30.*
-- *Basis: the developer asked for the BOS-token pooling to be written down, like
-  `fmri_preprocessing.md`, after a project review found it. The content comes from the code
-  (`get_embeddings.py`, `compute_similarity.py`, `compute_nearest_neighbours.py`,
-  `config/config.yaml`) and from the installed `transformers` source (`modeling_timm_wrapper.py`,
-  `modeling_dinov2.py`). The ImageNet-12k fine-tuning of the `clip_i21k_ft_*` models was checked
-  on the Hugging Face model card of `timm/vit_base_patch16_clip_224.laion2b_ft_in12k`
-  (an 11,821-class subset of ImageNet-22k).*
-- *Not verified: the size of the BOS outlier in these specific models was not measured.*
-- *Review status: not yet reviewed by the developer at the time of writing.*
+## Changes
+
+Changes to this page, oldest first. The sections above always describe the current code.
+
+### 2026-09-30 — page written
+
+Written to document the BOS-token pooling, after a project review found it.
+
+### 2026-10-06 16:30 — sources moved into the page
+
+The sources and the "not verified" note of the old attribution block became section 6, and the
+block was replaced by the note under the title. The `--pool` option (from `README.md`) is now
+mentioned in section 4, and the chunk-length link points to the new guide.

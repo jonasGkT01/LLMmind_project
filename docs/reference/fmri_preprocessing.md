@@ -1,6 +1,6 @@
 # fMRI preprocessing: what the dataset authors did, and what this workflow does
 
-> *Written with AI assistance (Claude Code). See the [AI attribution](#ai-attribution) note at the end.*
+> *Written with AI assistance (Claude Code). See [`docs/AI_USAGE.md`](../AI_USAGE.md).*
 
 This page describes, for each of the four fMRI datasets, how the BOLD data were processed
 **before** this workflow receives them, and the few steps the workflow **itself** applies before
@@ -31,6 +31,14 @@ Sources:
 - Nature Stories: the dataset's `README.md`, section "Preprocessing".
 - NSD: Allen et al., *Nat. Neurosci.* 25, 116–126 (2022), and the NSD Data Manual. The file
   properties were read from the released files.
+
+The Caption Scene space was also checked on the local files. The rows of section 2 come from the
+code: `make_caption_scene_manifest.py`, `make_nsd_manifest.py`, `assemble_nsd_bold.py`,
+`extract_*_parcels.py`, `libraries/fmri_processing.py`, the dataset Snakefiles and
+`config/config.yaml`. **Not verified:** the Narratives confound list (6 motion + 5 aCompCor +
+cosine 128 s) is taken from a search-engine summary of the paper, since the full text could not be
+fetched. The `-polort 2` detrending and the 6 mm smoothing were read directly from the authors'
+scripts.
 
 ## 2. What this workflow does
 
@@ -63,7 +71,7 @@ steps are listed below.
   cubic interpolation).
 - Nature Stories: native voxels are mapped to fsaverage with the dataset's `mappers`, keeping only
   voxels with finite data and renormalising the rows.
-- Caption Scene (since 2026-10-02): each subject's T1w (`ses-01_run-001`; the four repeated
+- Caption Scene: each subject's T1w (`ses-01_run-001`; the four repeated
   T1w scans share one grid and match the mean BOLD image equally well) is registered to
   MNI152NLin6Asym 1 mm, the space of the Schaefer volume atlas, with ANTs
   `antsRegistrationSyNQuick.sh -t s` (rigid, affine and SyN; seed `random_seed`). The BOLD runs are
@@ -74,8 +82,7 @@ steps are listed below.
   with cubic spline interpolation (as NSD), averaged per parcel, and only then cut into event
   windows; this equals cutting first, since every step acts volume by volume. All 200 parcels lie
   fully inside every subject's field of view. A QC plot per subject (`registration/sub-*_t1w_to_mni_qc.png`)
-  shows the registered T1w with the template's edges. Before 2026-10-02 no normalisation was applied
-  and the MNI atlas was matched to the native grids by world coordinates only (TODO P31).
+  shows the registered T1w with the template's edges.
 
 **4. Parcellation.** Schaefer 2018, 200 parcels, 7 networks: the MNI volume atlas, resampled with
 nearest neighbour onto the MNI BOLD grid (Narratives, NSD), sampled directly on its own 1 mm grid
@@ -95,17 +102,20 @@ error otherwise.
 
 **6. ISC.** For each stimulus and parcel: the Pearson correlation between each subject and the
 mean of all other subjects, averaged over subjects (leave-one-subject-out ISC). It is set to 0 when
-either time series is constant. The 200 values form the stimulus's brain representation.
+either time series is constant, that is, when its range over time is at most about 1e-6 of its
+magnitude (`is_constant_signal()` in `libraries/compute_isc.py`). This is a small tolerance, not an
+exact test, so a real but tiny fluctuation is zeroed too. The 200 values form the stimulus's brain
+representation.
 
 - NSD and Caption Scene show the same image to a subject several times (NSD: up to 3, Caption
-  Scene: about 2). Since 2026-10-02 each subject's presentations are first **averaged time point by
-  time point** (`average_repeats_by_subject()`), so the reference mean never contains the held-out
-  subject's own repeats; before, every presentation counted as a separate observation (TODO P10).
-  Averaging also reduces noise: on 40 NSD stimuli the median ISC went from 0.043 to 0.047, and the
-  parcel patterns correlate 0.83 (median) with the previous ones.
-- Narratives: in `pieman`, 11 of the 75 subjects heard the story twice (86 scans). Since
-  2026-10-02 their two runs are averaged in the same way, after the truncation of step 5; the
-  median ISC went from 0.125 to 0.133 and the parcel pattern correlates 0.999 with the previous one.
+  Scene: about 2). Each subject's presentations are first **averaged time point by time point**
+  (`average_repeats_by_subject()`), so the reference mean never contains the held-out subject's
+  own repeats. Averaging also reduces noise: on 40 NSD stimuli, the median ISC is 0.047 with
+  averaging and 0.043 with every presentation as a separate observation, and the two parcel
+  patterns correlate 0.83 (median).
+- Narratives: in `pieman`, 11 of the 75 subjects heard the story twice (86 scans). Their two runs
+  are averaged in the same way, after the truncation of step 5. The median ISC is 0.133 with
+  averaging and 0.125 without, and the two parcel patterns correlate 0.999.
 
 The average over subjects is the arithmetic mean of r, without a Fisher z-transform. This is on
 purpose:
@@ -120,7 +130,7 @@ purpose:
 
 The methods section should state the same.
 
-**7. Reliability of the ISC vectors** (since 2026-10-02, TODO S30). For every stimulus, the subjects
+**7. Reliability of the ISC vectors.** For every stimulus, the subjects
 are split at random into two halves, the leave-one-out ISC is computed on each half (on exactly the
 data behind the ISC: same files, truncation and repeat averaging), and the Pearson r between the two
 200-parcel vectors is averaged over `isc_reliability_number_of_splits` (= 100) splits, all drawn
@@ -129,8 +139,8 @@ reliability at the full number of subjects. A stimulus needs at least 4 subjects
 `results/mind/{dataset}/isc_reliability.tsv` per stimulus and `results/mind/all_isc_reliability.tsv`
 per dataset.
 
-On the data available on 2026-10-02 (100 splits; NSD with the MNI mapping and the repeat averaging,
-Caption Scene still with the misregistered parcels of before S31, so its values will change):
+Measured on 2026-10-02 (100 splits; NSD with the MNI mapping and the repeat averaging). The Caption
+Scene values were computed before its registration to MNI (step 3) and will change:
 
 | | Narratives | Nature Stories | NSD | Caption Scene |
 |---|---|---|---|---|
@@ -186,25 +196,34 @@ state this.
   window is negligible compared with the stimulus response: for NSD, the in-brain mean drifts by
   about 0.07 % over a whole run. The current approach is kept (decision of 2026-09-30).
 - The short windows themselves (a correlation over 3 or 6 time points) are a separate
-  methodological question, tracked as TODO P30.
+  methodological question; the decision taken on them is in step 7.
 
----
+## Changes
 
-## AI attribution
+Changes to the processing described above, oldest first. The sections above always describe the
+current workflow.
 
-*This document was written, in whole or in part, with AI coding assistants via Claude Code (Anthropic).*
+### 2026-10-02 10:58 — Caption Scene registered to MNI
 
-- *Models: Claude Opus 5.5 (`claude-opus-5-5`).*
-- *Latest AI edit: 2026-10-02, Claude Opus 5.5: step 7, reliability of the ISC vectors, its first measurements and the decision to keep the ISC and report NSD and Caption Scene as exploratory (TODO S30).*
-- *Basis: the developer (Jonas Salvalaggio) asked for a short document separating the dataset
-  authors' preprocessing from the workflow's own processing (TODO P9), with the missing facts
-  checked online. The dataset rows come from the sources listed above. The Caption Scene space and
-  the NSD file properties were checked on the local files. The workflow rows come from the code:
-  `make_caption_scene_manifest.py`, `make_nsd_manifest.py`, `assemble_nsd_bold.py`,
-  `extract_*_parcels.py`, `libraries/fmri_processing.py`, the dataset Snakefiles and
-  `config/config.yaml`.*
-- *Not verified: the Narratives confound list (6 motion + 5 aCompCor + cosine 128 s) is taken
-  from the paper as summarised by a search engine, since the full text could not be fetched. The
-  `-polort 2` detrending and the 6 mm smoothing were read directly from the authors' scripts.*
-- *Edit history: see [`docs/changelog/`](../changelog/).*
-- *Review status: not yet reviewed by the developer.*
+Until then no normalisation was applied to Caption Scene: the MNI atlas was matched to each
+subject's native grid by world coordinates only. Now each subject's T1w is registered to
+MNI152NLin6Asym (step 3).
+
+### 2026-10-02 10:58 — repeated presentations averaged before the ISC
+
+Until then every presentation of an NSD or Caption Scene image counted as a separate observation
+in the ISC. Now each subject's presentations are averaged first (step 6). The Narratives `pieman`
+repeats followed at 11:16.
+
+### 2026-10-02 11:37 — reliability of the ISC vectors
+
+Step 7 added, with its first measurements and the decision to keep the ISC definition.
+
+### 2026-10-06 16:30 — TODO IDs and dated notes moved out of the body
+
+References to TODO entries were removed, the "before 2026-10-02" notes of steps 3 and 6 moved
+to the entries above, and the verification notes of the old attribution block moved to the
+sources of section 1. The tolerance of the constant-signal check (step 6) moved here from
+`README.md`.
+
+

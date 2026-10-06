@@ -1,29 +1,58 @@
 # LLMmind
 
-> *Written with AI assistance (Claude Code). See the [AI attribution](#ai-attribution) note at the end.*
+> *Written with AI assistance (Claude Code). See [`docs/AI_USAGE.md`](docs/AI_USAGE.md).*
 
 A Snakemake pipeline that measures how well the internal representations of
-pretrained language and vision models ("LLMs") align with human brain
-activity, using nearest-neighbour structure in representational space as the
-basis for comparison.
+pretrained language and vision models align with human brain activity, using
+nearest-neighbour structure in representational space as the basis for
+comparison. (Directory and rule names say `llm` for any model, language or
+vision.)
 
 For each (dataset, model, similarity metric, neighbourhood size) combination,
 the pipeline:
 
-1. Extracts per-concept/per-stimulus brain response patterns from fMRI data
-   (inter-subject correlation, or "mind" representations) for each dataset.
+1. Extracts per-stimulus brain representations from fMRI data: for each
+   stimulus, the inter-subject correlation (ISC) of 200 brain parcels.
 2. Extracts model embeddings for the same stimuli from a set of pretrained
-   language/vision models.
+   language and vision models.
 3. Computes nearest-neighbour graphs in both spaces (brain and model) under a
    chosen similarity metric (cosine, Pearson or Spearman).
 4. Scores brain-model alignment as the overlap between the two
    nearest-neighbour graphs, with empirical (permutation-based) and
    hypergeometric significance testing.
-5. Also computes model-model alignment (how similar two models' representational
-   geometries are to each other) and Spearman rank-correlation alignment as a
-   complementary metric.
+5. Also computes model-model alignment (how similar two models'
+   representational geometries are) and Spearman rank-correlation alignment as
+   a complementary metric.
 6. Produces summary tables and plots (heatmaps, line plots, boxplots) across
-   models, datasets, and similarity metrics.
+   models, datasets and similarity metrics.
+
+## Documentation
+
+- [`docs/guides/running_and_troubleshooting.md`](docs/guides/running_and_troubleshooting.md)
+  — how to run parts of the pipeline, when Snakemake reruns a job, the
+  settings that change many results, the software environments, model
+  limitations and what to do when a run fails
+- [`docs/reference/fmri_preprocessing.md`](docs/reference/fmri_preprocessing.md)
+  — what each dataset's authors did to the BOLD data before this workflow, and
+  what the workflow itself does, up to the ISC (a source for the methods
+  section)
+- [`docs/reference/model_embeddings.md`](docs/reference/model_embeddings.md)
+  — how each model turns a stimulus into one vector: chunking, pooling
+  (including the BOS token) and the CLS token of vision models (a source for
+  the methods section)
+- [`docs/reference/statistics.md`](docs/reference/statistics.md)
+  — alignment scores, the relabelling and Spearman nulls, the empirical and
+  hypergeometric tests, enrichment, the Benjamini-Hochberg families, and what
+  every figure shows and how it is laid out (a source for the methods section)
+- [`docs/reference/clean_run_duration.md`](docs/reference/clean_run_duration.md)
+  — how long a clean run takes on node5 (about 29 h), rule by rule
+- [`docs/changelog/developers/`](docs/changelog/developers/) and
+  [`docs/changelog/users/`](docs/changelog/users/) — one file per day with
+  changes, technical and plain-language. Each file name lists the kinds of
+  change made that day (`new_feature`, `bugfix`, `optimisation`, `refactor`,
+  `removal`, `documentation`)
+- [`docs/AI_USAGE.md`](docs/AI_USAGE.md) — how AI coding assistants were used
+  in this project, and the date and model of the latest AI edit of every file
 
 ## Repository layout
 
@@ -34,7 +63,7 @@ workflow/
   libraries/                Shared Python helper modules (similarity, alignment,
                              nearest-neighbours, statistics, plotting utilities)
   dataset_processing/       Per-dataset rules: turn raw fMRI + stimuli into
-                             "mind" representations (one subdirectory per dataset)
+                             brain representations (one subdirectory per dataset)
     caption_scene_dataset/
     narratives_dataset/
     nature_stories_dataset/
@@ -53,104 +82,46 @@ resources/
   datasets/                 Raw dataset inputs (fMRI + stimuli) — not tracked in git
   models/                   Downloaded pretrained model weights — not tracked in git
 results/                    Pipeline outputs — not tracked in git
-docs/changelog/             Developer- and user-facing changelogs
+docs/
+  guides/                   How to run the pipeline and fix failed runs
+  reference/                Methods: fMRI processing, embeddings, statistics; run duration
+  changelog/                Developer- and user-facing changelogs, one file per day
+  AI_USAGE.md               AI assistance policy and per-file AI edit list
 ```
 
-## Subprojects
+## Modules
 
-The pipeline is split into independent Snakemake modules under `workflow/`,
-each included from the top-level `Snakefile` and each corresponding to one
-step of the process described above.
+The pipeline is split into Snakemake modules under `workflow/`, each included
+from the top-level `Snakefile` and each corresponding to one step above.
 
 ### `dataset_processing/<dataset>/`
 
-One subdirectory per dataset (`caption_scene_dataset`, `narratives_dataset`,
-`nature_stories_dataset`, `nsd_data_dataset`). Each turns that dataset's raw
-BOLD + stimuli into per-concept "mind" representations:
+One subdirectory per dataset. Each builds manifests that match scan files to
+stimuli and exclude unusable subjects, runs and stimuli; extracts the mean
+signal of each Schaefer parcel; and computes the leave-one-subject-out ISC per
+stimulus and parcel. It also prepares the matching stimuli (transcripts for
+the language datasets, images for the vision datasets) for the embedding step.
+The details, dataset by dataset, are in
+[`fmri_preprocessing.md`](docs/reference/fmri_preprocessing.md).
 
-- extracts ROI-level (parcel) signal from the BOLD data using the Schaefer
-  atlas
-- computes inter-subject correlation (ISC) per concept/stimulus, producing
-  one representative brain-response vector per concept. ISC is leave-one-out
-  (each subject against the mean of the other subjects) and is averaged per
-  parcel. A parcel whose time series is (near-)constant gets an ISC of 0:
-  its range over time must be at most about 1e-6 of its magnitude
-  (`is_constant_signal()` in `libraries/compute_isc.py`). This is a
-  small tolerance, not an exact test, so a real but tiny fluctuation is
-  zeroed too.
-- cleans/prepares the matching stimuli (transcripts for the language
-  datasets, images for the vision datasets) so they line up 1:1 with the ISC
-  output and can be fed to the model embedding step
-
-Because the four raw datasets are organised very differently, most of the
-module-specific logic is manifest-building: matching scan files to
-stimuli/concepts and excluding unusable subjects/runs/stimuli before the
-shared parcel-extraction/ISC rules run.
-
-Every dataset applies the same final inclusion rule: a stimulus is kept only
-if it was presented to at least `minimum_subjects_per_stimulus` different
-subjects (set at the top of `config.yaml`, default 2). Nature Stories is
-stricter: it requires every subject for every story. Each stimulus that
-is dropped, by this rule or by a dataset-specific check, is written to that
-dataset's `excluded_stimuli` file (path set in `config.yaml`). That file is
-the single list of stimuli left out of the analysis:
-
-- `get_embeddings` does not embed the stimuli it lists;
-- `create_isc_manifest` (`isc_nearest_neighbours/`) does not use their ISC
-  files, even if old ones are still on disk.
-
-NSD's `assemble_nsd_bold` maps each kept presentation to MNI space and
-reduces it straight to parcel time series, without writing full-brain
-volumes to disk.
+Each stimulus that is dropped is written to that dataset's `excluded_stimuli`
+file (path set in `config.yaml`). That file is the single list of stimuli left
+out of the analysis: `get_embeddings` does not embed them, and
+`create_isc_manifest` (`isc_nearest_neighbours/`) does not use their ISC
+files, so the brain and model sides always cover the same stimuli.
 
 ### `isc_nearest_neighbours/`
 
-Takes the per-dataset ISC "mind" representations, computes concept-concept
-similarity (cosine, Pearson or Spearman), and builds the brain-side
-nearest-neighbour graphs.
+Takes the per-dataset ISC vectors, computes stimulus-stimulus similarity and
+builds the brain-side nearest-neighbour graphs.
 
 ### `llm_nearest_neighbours/`
 
-Downloads each configured pretrained model (`download_pretrained_llm`),
-extracts its embeddings for the same stimuli, computes embedding-embedding
-similarity (cosine, Pearson or Spearman), and builds the model-side
-nearest-neighbour graphs.
-
-Text stimuli longer than one chunk are split into overlapping
-token chunks (`--chunk_overlap`, default 256 tokens). The stimulus embedding
-is the mean of the chunk embeddings, weighted by chunk length, so tokens in
-an overlap contribute to two chunks. Every text stimulus goes through this
-path, whatever its length. Chunking stops at the first chunk that reaches
-the end of the text, so a text that fits in one chunk gets exactly one.
-Each embeddings file records `n_tokens` and `n_chunks` per stimulus.
-
-**Chunk length: `max_chunk_length` in `config/config.yaml`.** This one
-top-level key sets the chunk length for every language model. Its value
-decides whether `get_embeddings` passes `--chunk_max_length` to
-`get_embeddings.py` at all:
-
-| `max_chunk_length` | What `get_embeddings.py` receives | Chunk length used |
-|---|---|---|
-| an integer, e.g. `2048` (default) | `--chunk_max_length 2048` | exactly that value, for **every** language model |
-| `null`, `"none"`, `"null"`, `""`, or the key left out | **no** `--chunk_max_length` argument | inferred per model by `get_safe_max_length()`: the smaller of the tokenizer's `model_max_length` and the config's `max_position_embeddings`, ignoring values above 100,000 and falling back to 2048 when none are left |
-
-> **Watch out:** with `null`/`"none"`, the chunk length is **not the same
-> across models**. Gemma 1/2 get 8192 (their `max_position_embeddings`),
-> BLOOM and OpenLLaMA 2048, and Gemma 3/3n/4 fall back to 2048 because
-> their context lengths exceed 100,000. Since chunk length changes the
-> embeddings, models are then compared under different conditions. Longer
-> chunks also need much more GPU memory. At 8192 tokens, gemma2_27b runs out
-> of memory on node5's 24 GB GPU (see [Troubleshooting](#troubleshooting)).
-> Use `null` only if you want each model's native context on purpose.
-
-The setting applies only to `language` models. Vision models never receive
-`--chunk_max_length`, because images are not chunked. The value is
-recorded per stimulus in the `chunk_max_length` column of each embeddings
-file. Changing it reruns every language model's `get_embeddings` job and
-everything downstream.
-
-Image stimuli are embedded by `vision` encoders (ViT, CLIP, DINOv2), which
-take their first (CLS) token (`--pool` overrides this).
+Downloads each configured model (`download_pretrained_llm`), extracts its
+embeddings for the same stimuli (`get_embeddings`, see
+[`model_embeddings.md`](docs/reference/model_embeddings.md)), computes
+embedding-embedding similarity and builds the model-side nearest-neighbour
+graphs.
 
 ### `llm_mind_alignment/`
 
@@ -160,79 +131,49 @@ hypergeometric significance testing.
 
 ### `llm_llm_alignment/`
 
-Scores model-model alignment — how similar two models' representational
-geometries are to each other — with the same tests as `llm_mind_alignment/`:
-a per-concept empirical and hypergeometric p-value, and a model-pair-level
-empirical p-value. The second model of each pair is relabelled against the
-first, as the model is relabelled against the brain there. The rules reuse the
-`llm_mind_alignment/` p-value scripts and the shared `libraries/` modules.
-
-Pairs are formed between *(model, stimulus type)* entries, so on a dataset
-with both text and image stimuli a language model is also compared with a
-vision model (for example `bloom_560m-language` vs `clip_b-vision`).
+Scores model-model alignment with the same tests, reusing the
+`llm_mind_alignment/` p-value scripts. Pairs are formed between
+*(model, stimulus type)* entries, so on a dataset with both text and image
+stimuli a language model is also compared with a vision model.
 
 ### `spearman_alignment/`
 
-A complementary alignment metric using Spearman rank-correlation instead of
-nearest-neighbour overlap, computed at both model- and concept-level, again
-with empirical significance testing. It runs once per similarity type, so with
-`similarity_type=spearman` it is a Spearman correlation between two Spearman
-similarity structures: the first one compares stimuli, the second compares the
-brain and model similarity structures.
+A complementary alignment metric: the Spearman rank correlation between the
+brain's and the model's similarity structures, at model and concept level,
+with empirical significance testing.
 
 ### `visualisation/`
 
-Produces the summary plots described under [Outputs](#outputs): alignment
-heatmaps, p-value heatmaps, per-concept alignment scatterplots, line plots,
-alignment-enrichment plots (model- and concept-level), and Spearman plots.
+Produces the plots listed under [Outputs](#outputs).
 
 ### `libraries/`
 
-Shared Python helper modules (similarity, alignment, nearest-neighbours,
-statistics, plotting) used across all of the above. `code_version.py` is used
-by the Snakefiles themselves: `code_version()` hashes the code that writes a
-rule's output, so that the rule reruns when that code changes (see
-[Running the pipeline](#running-the-pipeline)).
+Shared Python helper modules used across all of the above.
+`code_version.py` is used by the Snakefiles themselves, so that some rules
+rerun when their code changes (see the
+[guide](docs/guides/running_and_troubleshooting.md#2-when-snakemake-reruns-a-job)).
+
+None of the similarity and nearest-neighbour steps builds or stores a full
+stimulus × stimulus similarity matrix: similarity is computed in blocks and
+immediately reduced to each stimulus's top-ranked neighbours, up to the
+largest neighbourhood size configured for that dataset.
 
 ## Datasets
 
-The pipeline currently supports four naturalistic fMRI datasets, configured
-under their own key in `config/config.yaml`:
+Four naturalistic fMRI datasets, each configured under its own key in
+`config/config.yaml`:
 
 - `caption_scene` — image/caption viewing task (language + vision stimuli)
-- `narratives` — spoken story listening (language stimuli, multiple tasks/runs)
+- `narratives` — spoken story listening (language stimuli)
 - `nature_stories` — spoken story listening (language stimuli)
 - `nsd_data` — Natural Scenes Dataset (vision stimuli)
 
-Each dataset entry in `config.yaml` defines its stimuli directories (by
-modality), subject count, exclusion lists, and dataset-specific acquisition
-parameters (TR, event duration, etc.), plus the neighbourhood sizes
-(`number_of_neighbours`) to evaluate for that dataset.
-
-In every dataset, a stimulus is included only if it was presented to at
-least `minimum_subjects_per_stimulus` different subjects. Each subject's repeated presentations of a
-stimulus are first averaged time point by time point (Nature Stories has none), so the ISC compares
-subjects, not presentations. Stimuli that
-fail this or any other dataset-specific check are listed in that dataset's
-`excluded_stimuli` file, which both the ISC side and the model-embedding
-side read, so the two always cover the same stimuli. The value must be at
-least 2 (ISC needs two observations) and at most 8 (the number of subjects
-in `caption_scene` and `nsd_data`). In `narratives` it drops a story only
-from 15 upwards, and `nature_stories` ignores it. Changing it rebuilds that
-dataset's brain inputs *and* its model embeddings. See
-[Running the pipeline](#running-the-pipeline) to preview the effect. For `nsd_data` and
-`caption_scene` this leaves about 1,000 stimuli each (the images shown to
-several subjects), so their `number_of_neighbours` values must stay below
-that. The similarity and
-nearest-neighbour computation steps (`llm_nearest_neighbours/`,
-`isc_nearest_neighbours/`, `llm_llm_alignment/`, `llm_mind_alignment/`,
-`spearman_alignment/`) never build or store a full stimulus × stimulus
-similarity matrix at all: similarity is computed in blocks directly from
-embeddings and immediately reduced to each concept's top-ranked
-neighbours, capped at the largest neighbourhood size configured for that
-dataset (`number_of_neighbours`, below) — the only thing any downstream
-step actually needs. At the current dataset sizes this makes no practical difference to
-the results, only to how much disk and memory computing them uses.
+Each entry defines the stimuli directories (by modality), subject count,
+exclusion lists, acquisition parameters (TR, event duration, etc.) and the
+neighbourhood sizes (`number_of_neighbours`) to evaluate. A stimulus is kept
+only if at least `minimum_subjects_per_stimulus` different subjects saw it
+(default 2), which leaves about 1,000 stimuli each in `nsd_data` and
+`caption_scene`. Nature Stories requires every subject for every story.
 
 ## Input data
 
@@ -339,54 +280,63 @@ If you're sourcing the raw data some other way, just make sure the files
 listed above end up at the same relative paths under
 `resources/datasets/<dataset>/`.
 
+### Input files not produced by the download
+
+`public_datasets` does not produce every input file listed above. The
+files below come from the public datasets but must be extracted, copied or
+corrected by hand:
+
+- **`caption_scene_dataset/V1/stimuli/CSD/`**: extracted from the downloaded
+  archive `V1/stimuli/CSD.rar` of the Caption Scene dataset, with
+  `unrar x CSD.rar` inside `V1/stimuli/`.
+- **`narratives_dataset/scan_exclude.json`**: a copy of
+  `code/scan_exclude.json` from the Narratives DataLad dataset
+  (`https://datasets.datalad.org/labs/hasson/narratives`), where it is
+  tracked in git and needs no `datalad get`.
+- **`nature_stories_dataset/responses/new_run_onsets.json`**: a corrected
+  copy of `responses/run_onsets.json` from the Nature Stories archive (G-Node
+  GIN, DOI `10.12751/g-node.t4wew2`). The dataset README states that each
+  story in `zRresp` was z-scored on its own before concatenation, but with the
+  original boundaries 7 of the 10 training stories are not z-scored. The
+  corrected file shifts six boundaries by 1–2 TRs (the total, 3737 TRs, is
+  unchanged):
+
+  | Story | Original onset, length | Corrected onset, length |
+  |---|---|---|
+  | alternateithicatom | 0, 345 | 0, 343 |
+  | avatar | 345, 366 | 343, 367 |
+  | howtodraw | 711, 353 | 710, 354 |
+  | naked | 2252, 421 | 2252, 422 |
+  | odetostepfather | 2673, 406 | 2674, 404 |
+  | souls | 3079, 355 | 3078, 355 |
+  | undertheinfluence | 3434, 303 | 3433, 304 |
+
+  With these boundaries every story segment of `zRresp` has, voxel by voxel,
+  mean 0 and standard deviation 1 to machine precision (about 1e-14) in all
+  11 subjects, and moving any boundary by one TR breaks this, so the
+  corrected values can be re-derived from the public `*_BOLD.hdf` files.
+
 ## Models
 
-Supported models are declared under `models:` in `config/config.yaml`, each
-with a Hugging Face identifier, modality (`language` or `vision`), optional
-quantization method, and parameter count. Currently configured: the BLOOMZ,
-OpenLLaMA, and Gemma (Gemma, Gemma 2, Gemma 3, Gemma 3n, Gemma 4) language
-model families; CLIP, DINOv2, and ImageNet-21K ViT vision model families.
+Models are declared under `models:` in `config/config.yaml`, each with a
+Hugging Face identifier, modality (`language` or `vision`), optional
+quantization method and parameter count. Currently configured: the BLOOMZ,
+OpenLLaMA and Gemma (Gemma, Gemma 2, Gemma 3, Gemma 3n, Gemma 4) language
+model families; the CLIP, DINOv2 and ImageNet-21K ViT vision model families.
 Models are downloaded on demand by the `llm_nearest_neighbours` module.
 
 A model runs on the stimulus type of a dataset that matches its modality:
-`language` models on text, `vision` models on images. Every output file
-names a model together with its stimulus type, as `<model>-<stimuli_type>`
-(for example `clip_b-vision`). Plots show only the model name, coloured by
-stimulus type (see "Conventions shared by all plots" under "Outputs").
-
-Multimodal models are not supported. Gemma 3n and Gemma 4 can read images,
-but their processor requires a text prompt with an image placeholder token,
-and the pipeline passes images alone. They are therefore configured as
-`modality: "language"` and embedded from text only.
-
-Mixture-of-experts (MoE) models are not supported on node5's 24 GB GPU.
-In Transformers, their experts are stored as fused `nn.Parameter` tensors
-rather than `nn.Linear` layers, and bitsandbytes quantizes only
-`nn.Linear`. The experts therefore stay in bf16 whatever
-`quantization_method` says. Gemma 4 26B A4B (`gemma4_26ba4b`) is commented
-out in `config/config.yaml` for this reason: about 22.8B of its 25B
-parameters are experts (~46 GB in bf16). Loading fails with `ValueError:
-Some modules are dispatched on the CPU or the disk`. Before adding a model,
-check its `config.json` for `num_experts`, `num_local_experts` or
-`enable_moe_block`.
-
-To add a model, add its block to `config/config.yaml` and rerun the
-pipeline. Snakemake runs only the jobs that involve
-the new model: its embeddings, its alignment with the brain and with every
-other model. It then rebuilds the summary tables and plots. To list the rules
-that would run before starting them:
-
-```bash
-snakemake --use-conda --cores <N> -n --quiet rules
-```
+`language` models on text, `vision` models on images. Every output file names
+a model together with its stimulus type, as `<model>-<stimuli_type>` (for
+example `clip_b-vision`). To add a model, add its block to the config and
+rerun; multimodal and mixture-of-experts models are not supported (see the
+[guide](docs/guides/running_and_troubleshooting.md#5-model-limitations)).
 
 ## Setup
 
-The project uses conda environments managed per pipeline stage under
-`workflow/*/envs/*.yaml`, plus a base environment for running Snakemake
-itself at `workflow/envs/LLMmind_project`, specified by
-`workflow/envs/LLMmind_project_environment.yaml` (just Python and the full
-`snakemake` package, which brings in pandas and numpy).
+The project uses a base environment for running Snakemake itself at
+`workflow/envs/LLMmind_project`, specified by
+`workflow/envs/LLMmind_project_environment.yaml` (Python and `snakemake`).
 
 ```bash
 # create the base environment from its spec (first time only)
@@ -397,223 +347,27 @@ conda activate workflow/envs/LLMmind_project
 ```
 
 If you use [direnv](https://direnv.net/), `.envrc` activates this environment
-automatically when you `cd` into the project.
-
-Individual rules declare their own `conda:` environment
-(`workflow/*/envs/*.yaml`), which Snakemake creates automatically when run
-with `--use-conda`.
-
-### Pinned versions
-
-Every package listed in an environment file is pinned to an exact version
-(`- numpy=2.5.3`; pip packages as `netneurotools==0.3.0`, and `nsdcode` at a
-fixed git commit), so a rebuilt environment gets the same versions. Packages
-that are not listed (dependencies of dependencies) are not pinned and can
-still move. The versions were chosen on 2026-10-01 as the latest available
-release of each package, with Python 3.14.7 in every environment. The
-base environment pins `snakemake=9.27.0`, which requires `pandas <3`, so it
-has pandas 2.x while the rule environments use pandas 3.
-`llm_nearest_neighbours` also lists `cuda-cudart-dev`: it provides `cuda.h`,
-which triton needs to compile a small CUDA helper the first time PyTorch runs
-a triton kernel on the GPU (the Gemma models do). Without it, a freshly built
-environment crashes there.
-
-To upgrade a package:
-
-1. Find the latest version on the environment's channels, e.g.
-   `mamba search -c conda-forge <package>` (`-c bioconda` for snakemake).
-2. For a new major or minor release, read its release notes and search the
-   code for the APIs it changes.
-3. Edit the pin. If another package caps it (e.g. `pandas <3`), use the
-   highest version the cap allows, and write the cap in a comment next to
-   the pin.
-4. Changing an environment file makes Snakemake rebuild that environment and
-   rerun every job that uses it. Before that, run one representative job in
-   the new environment and compare its outputs with the current results.
+automatically when you `cd` into the project. Every rule declares its own
+pinned `conda:` environment (`workflow/*/envs/*.yaml`), which Snakemake
+creates automatically with `--use-conda`.
 
 ## Running the pipeline
 
 From the project root, with the base environment active:
 
 ```bash
-snakemake --use-conda --cores <N>
-```
-
-Useful variations:
-
-```bash
 # dry run to see what would be executed
 snakemake --use-conda --cores <N> -n
 
-# build a specific target only, e.g. one dataset's alignment scores
-snakemake --use-conda --cores <N> results/all_model_brain_alignment_scores.tsv
-
-# preview what a config change would rebuild, without editing config.yaml;
-# the rerun triggers leave out conda-env changes, so only the setting's own effect is listed
-snakemake --use-conda --cores <N> -n --quiet rules \
-    --rerun-triggers mtime params input code \
-    --config minimum_subjects_per_stimulus=3
-
-# run only some of the similarity metrics (here: skip Spearman) for this run,
-# without editing config.yaml
-snakemake --use-conda --cores <N> --config 'similarity_types=["cosine","pearson"]'
-
-# redraw every plot after the plotting code changed: the scripts run from shell
-# rules and are not declared inputs, so Snakemake does not notice edits to them
-# (or to the workflow/libraries/ modules they import) on its own
-snakemake --use-conda --cores <N> --rerun-triggers mtime \
-    --forcerun plot_brain_model_alignment_lineplot plot_concept_alignment_scatterplot \
-               plot_brain_model_alignment_enrichment_lineplot \
-               plot_concept_alignment_enrichment_scatterplot plot_spearman_alignment \
-               plot_alignment_heatmap plot_empirical_p_value_heatmap
+# run everything
+snakemake --use-conda --cores <N>
 ```
 
-Snakemake reruns a job when its inputs, params or the rule's own code change,
-but it does not see edits to a Python script called from `shell:` or to a
-helper function defined outside a rule's `run:` block. For the rules that write
-manifests (`make_*_manifest`, `write_*_manifest`) and the final summary tables
-(`aggregate_*`), a `code` param, `code_version(...)`, closes this gap: it holds
-a hash of the helper functions, or of the script and the `workflow/libraries/`
-modules it imports, so editing that code reruns the rule and everything
-downstream of it. Comments and blank lines do not count. This relies on the
-`params` rerun trigger, so with `--rerun-triggers mtime` such edits are
-missed again. Other rules, including the plots (see above), are not covered.
-
-The similarity metrics are listed under `similarity_types` in
-`config/config.yaml`: `cosine` (angle between two vectors), `pearson` (linear
-correlation of their values) and `spearman` (correlation of the ranks of their
-values, so only the order of the values counts). Every analysis and plot is
-produced once per listed metric.
-
-Pipeline behavior (datasets, models, similarity metrics, neighbourhood sizes,
-number of permutations for significance testing) is controlled entirely
-through `config/config.yaml` — no code changes are needed to add a model or
-adjust a dataset's parameters.
-
-No rule declares `threads:`, so Snakemake counts every job as one core and
-`--cores <N>` runs up to `<N>` jobs at once. A few steps also parallelize
-internally, with `number_of_workers` worker processes or threads
-(`config/config.yaml`, default 4): NSD's functional-to-MNI registration
-(`assemble_nsd_bold`), the Caption Scene T1w-to-MNI registration
-(`register_caption_scene_t1w`, one job per subject, about 2 min each) and the
-two summary-table steps (`aggregate_all_p_value_outputs` and
-`aggregate_all_llm_llm_p_value_outputs`). Because Snakemake does not reserve
-cores for these workers, these steps never wait for free cores, but while one
-runs alongside other jobs the run briefly uses more CPUs than `--cores`.
-
-### Troubleshooting
-
-- **`ProtectedOutputException` / write-protected files under
-  `resources/models/`**: pretrained models are downloaded via
-  `huggingface_hub`, which can leave downloaded files (and sometimes their
-  containing directory) read-only. If Snakemake refuses to (re)build a
-  model directory because of this, run `chmod -R u+w resources/models/`
-  and retry. If Snakemake also reports that a model's software
-  environment definition has changed since it was last downloaded, either
-  launch with `--rerun-triggers mtime` to ignore that check, or run
-  `snakemake --cleanup-metadata <path>` for the affected outputs if you're
-  confident the already-downloaded weights don't actually need
-  re-fetching.
-- **A rule fails because a manifest has an old layout** (for example
-  `Manifest is missing columns: ['subject']`): the manifest was written by an
-  older version of the code and was not rebuilt. Since 2026-10-05 the
-  manifest rules rerun when their code changes (see
-  [Running the pipeline](#running-the-pipeline)); after a run with
-  `--rerun-triggers mtime`, or for a rule not covered, force it with
-  `--forcerun <rule name>`.
-- **A rule fails with `exit status 126` and `message: None`**: usually
-  the command line was longer than Linux allows (`getconf ARG_MAX`, 2 MB
-  on frontend and node5), so the program never started ("Argument list
-  too long"). This happens when a rule passes thousands of input paths.
-  Pass them through an argument file instead, as
-  `aggregate_all_llm_llm_p_value_outputs` does: write them one per line
-  with the `printf '%s\n'` builtin, call the script with `@file`, and give
-  its `argparse.ArgumentParser` `fromfile_prefix_chars = "@"`.
-- **`get_embeddings` crashes on a large language model (GPU out of
-  memory)**: the attention memory grows with the square of the chunk
-  length. With 8192-token chunks, gemma2_27b (4-bit) needs more than the
-  24 GB of node5's GPU: Gemma 2 must use eager attention, and one fp32
-  attention matrix is about 8.6 GB per layer. Keep `max_chunk_length` at
-  2048 (see [`llm_nearest_neighbours/`](#llm_nearest_neighbours)). Don't
-  switch such a model from 4-bit to 8-bit: that shrinks only the weights,
-  and 27B parameters at 8-bit (~27 GB) don't fit on the GPU at all.
-  If loading fails with `ValueError: Some modules are dispatched on the CPU
-  or the disk`, the quantized model doesn't fit even before any text is
-  read. For mixture-of-experts models this is expected (see
-  [Models](#models)).
-- **A long rerun after adding a similarity metric**: the nearest-neighbour
-  rules (`compute_llm_nearest_neighbours`, `compute_isc_nearest_neighbours`)
-  write one file per metric in a single job. Adding a metric to
-  `similarity_types` therefore reruns them and rewrites the existing metrics'
-  files as well, and everything downstream of those files reruns too, even
-  with `--rerun-triggers mtime`. Preview the size with `-n --quiet rules`
-  first. Adding `spearman` (2026-09-28) plans about 11,900 jobs.
-- **Disk space for `nsd_data`**: similarity computation never writes a full
-  stimulus × stimulus matrix (see [Datasets](#datasets) above), so
-  per-model disk use is now driven by the dataset's largest configured
-  neighbourhood size rather than a fixed ~88GB regardless of it. If you
-  have result directories from before 2026-09-22 containing
-  `*_similarity.parquet` files or neighbour files with a `_<k>NN` suffix,
-  those are stale — the pipeline no longer produces or reads either, and
-  they're safe to delete. Likewise,
-  `results/mind/nsd_data/single_stimulus_bold_mni/` (full-brain MNI volumes
-  per NSD presentation, written before 2026-09-23) is no longer produced or
-  read and can be deleted. Since 2026-10-02 the same holds for
-  `results/mind/caption_scene/intermediate_files/single_stimulus_bold/` (about
-  121 GB of cropped Caption Scene volumes, now warped and cut in memory) and
-  for the old copy of `csd_events_manifest.tsv` in
-  `results/mind/caption_scene/intermediate_files/manifest/` (the manifest now
-  lives in `results/mind/caption_scene/manifests/`).
-- **Results don't change after editing a dataset's inclusion rules**: the
-  manifest scripts are called from `shell:` rules, so Snakemake doesn't
-  notice when their code changes. After changing them, force the manifest
-  step and let everything downstream rebuild, e.g.
-  `snakemake --use-conda --cores <N> --forcerun make_nsd_manifest make_caption_scene_manifest`.
-  If you skip this step, `create_isc_manifest` can stop with
-  `FileNotFoundError: N of M eligible stimuli have no ISC file`. That error
-  means the dataset's `excluded_stimuli` file is older than its ISC outputs,
-  and the same forced rerun fixes it.
-  The same applies to the embedding and ISC code, including the shared
-  `libraries/` modules. After the 2026-09-23 chunking and constant-signal
-  fixes, for example, rerun
-  `--forcerun get_embeddings compute_narratives_isc compute_nature_stories_isc`.
-- **`MissingOutputException` in `compute_narratives_isc` after lowering
-  `minimum_subjects_per_stimulus`**: this only happens once the value is
-  15 or more. The Narratives parcel and ISC manifests are `run:` rules
-  without params, so Snakemake doesn't rebuild them when a story comes back
-  into the analysis. Add `--forcerun write_narratives_parcel_manifest`.
-  Raising the value doesn't need this: the stale manifests only cost extra
-  compute.
-- **A rule fails with only `CalledProcessError … returned non-zero exit
-  status 1`**: the Snakemake log doesn't include the script's own error
-  message. Copy the rule's `shell:` command from the log and re-run it
-  inside the conda env the log names:
-  `source /opt/conda/miniconda3/bin/activate .snakemake/conda/<hash>_`, then
-  `export PYTHONPATH="$PWD/workflow:$PYTHONPATH"`. That prints the full
-  Python traceback. For a quicker test, lower `--number_of_relabellings`
-  and point the output at a scratch path. After fixing the problem, restart
-  with `--rerun-incomplete`, so that the half-written outputs left by the
-  crash are rebuilt. Rule envs don't pin library versions, so a rebuilt env
-  can pull in a new major version. pandas 3, for example, broke
-  `groupby(...).agg(list)` on the categorical neighbour columns (fixed
-  2026-09-23).
-- **`plot_spearman_alignment` stops with a missing
-  `empirical_null_standard_deviation_spearman_coefficient` column**: the
-  model-level Spearman TSVs predate the null SD column added on 2026-09-24
-  (drawn as the grey null interval). Rebuild them
-  once with
-  `snakemake --use-conda --cores <N> --forcerun compute_spearman_alignmentwith_empirical_p_value`.
-- **Nothing under `results/spearman_alignment/`**: since 2026-09-25 the
-  Spearman tables sit in `results/spearman_alignment_scores/` and the plots
-  in `results/pictures/` (see [Outputs](#outputs)). Point any script that
-  still reads the old folder there.
-- **Plot folders directly under `results/`** (for example
-  `results/alignment_heatmaps/`): these are left over from before plots moved
-  to `results/pictures/` on 2026-09-25. Move them into `results/pictures/`
-  to keep the existing plots without redrawing them, or delete them.
-- **"Requested k neighbours, but only n candidates"**: a dataset's
-  `number_of_neighbours` must be smaller than its number of included
-  stimuli (about 1,000 for `nsd_data` and `caption_scene`).
+All pipeline behaviour (datasets, models, similarity metrics, neighbourhood
+sizes, number of permutations) is set in `config/config.yaml`; no code changes
+are needed to add a model or adjust a dataset. Partial runs, rerun behaviour,
+the settings that rebuild many results and the fixes for common failures are
+in [`running_and_troubleshooting.md`](docs/guides/running_and_troubleshooting.md).
 
 ## Outputs
 
@@ -622,195 +376,64 @@ similarity metric (`cosine`, `pearson` or `spearman`) in their name; the
 combined summary tables have a `similarity_type` column instead.
 
 - `results/alignment_scores/` — per-(dataset, model, similarity, k) alignment
-  scores and significance tests. Brain-model and model-model results both get
-  a per-concept empirical and hypergeometric p-value plus a model-level
-  (model-pair-level) empirical p-value, built with the same random-shuffling
-  method. The shuffled scores are kept as one compact all-k file per
+  scores and significance tests, brain-model and model-model: a per-concept
+  empirical and hypergeometric p-value plus a model-level (model-pair-level)
+  empirical p-value. The shuffled scores are kept as one compact all-k file per
   configuration in `relabelled_common_neighbours/`: the shuffled number of
-  common neighbours for every relabelling, concept and k (the alignment score
-  is that number divided by k). Consumers read the k they need from it.
+  common neighbours for every relabelling, concept and k.
 - `results/spearman_alignment_scores/` — per-(dataset, model, similarity)
   Spearman alignment with its empirical p-value, one `_model_level` and one
   `_concept_level` TSV per configuration.
-- `results/all_model_brain_alignment_scores.tsv`, `results/all_spearman_alignment_scores.tsv`
-  — combined summary tables across all configurations
-- `results/mind/all_isc_reliability.tsv` — one row per dataset: how reliable the per-stimulus
-  ISC vectors (the brain representations) are, as the median and interquartile range of their
-  split-half reliability (`config.yaml`: `isc_reliability_number_of_splits` random splits of the
-  subjects) and its Spearman-Brown correction, plus the median |ISC| and the share of |ISC| ≥ 0.9.
-  The per-stimulus values are in `results/mind/{dataset}/isc_reliability.tsv`. See
-  [`fmri_preprocessing.md`](docs/reference/fmri_preprocessing.md), step 7. The 3- and 6-volume
-  brain representations of NSD and Caption Scene are far less reliable than those of the story
-  datasets, so their brain-model results are reported as exploratory, together with this table
-  (decision of 2026-10-02).
-- `results/all_model_model_alignment_scores.tsv` — the model-model
-  counterpart of `all_model_brain_alignment_scores.tsv`, in the same long format and with
-  the same statistics. The `model`/`stimuli_type` pair is replaced by one
-  column per side: `dataset | similarity_type | number_of_neighbours |
-  model_1 | stimuli_type_1 | model_2 | stimuli_type_2 | statistic | value`.
-  Each pair appears once, with `model_1` earlier than `model_2` in the
-  `models:` order of `config/config.yaml`. The p-values are not corrected
-  for multiple testing in the TSV. The p-value heatmap corrects them as their
-  own Benjamini-Hochberg family, separate from the brain-model family (see
-  the [statistics reference](docs/reference/statistics.md)).
-  The six `*_p_value_across_concepts` statistics in both summary TSVs are
-  descriptive summaries of the per-concept p-values, not tests; the
-  model-level test is `model_level_empirical_p_value`.
+- `results/all_model_brain_alignment_scores.tsv`,
+  `results/all_model_model_alignment_scores.tsv`,
+  `results/all_spearman_alignment_scores.tsv` — combined summary tables
+  across all configurations, in long format. In the model-model table the
+  `model`/`stimuli_type` pair becomes `model_1 | stimuli_type_1 | model_2 |
+  stimuli_type_2`, each pair once, with `model_1` earlier than `model_2` in the
+  `models:` order of the config. The p-values are not corrected for multiple
+  testing. The model-level test is `model_level_empirical_p_value`; the six
+  `*_p_value_across_concepts` statistics are descriptive summaries of the
+  per-concept p-values, not tests (see
+  [`statistics.md`](docs/reference/statistics.md)).
+- `results/mind/all_isc_reliability.tsv` — one row per dataset: the
+  split-half reliability of the ISC vectors (per stimulus in
+  `results/mind/{dataset}/isc_reliability.tsv`). The NSD and Caption Scene
+  brain-model results are reported as exploratory, together with this table
+  (see [`fmri_preprocessing.md`](docs/reference/fmri_preprocessing.md),
+  step 7).
 - `results/pictures/` — every plot and heatmap, one subfolder per plot type:
   `alignment_heatmaps/`, `alignment_p_value_heatmaps/`,
   `alignment_lineplots/`, `concept_alignment_scatterplots/`,
   `alignment_enrichment_lineplots/`,
   `concept_alignment_enrichment_scatterplots/`,
-  `spearman_alignment_lineplots/`,
-  `concept_spearman_alignment_scatterplots/`. In the
-  concept-level alignment and Spearman boxplots, a model whose per-concept
-  scores show no spread renders as a flat, easy-to-miss box; those are
-  marked with a black diamond rather than left looking like missing data.
-  The model-level line plots and concept-level scatterplots for a given
-  dataset/similarity/k share the same y-axis range (scores on `[0, 1]`, with
-  empty space above 1 for the legend), so the two can be compared directly
-  side by side. Both draw the hypergeometric null expectation k/(n−1)
-  (k neighbours, n concepts) as a grey dashed line, so a model or concept
-  above it aligns better than chance.
-
-  Conventions shared by all plots:
-
-  - Titles read `<level> <quantity>` (for example "Model-level brain-model
-    alignment enrichment"), with `dataset: …, similarity: …, neighbours: …`
-    on the second line. Y-axis labels read `<quantity> ± <error>`, or just
-    `<quantity>` when the plot has no error bars. Both come from constants
-    in `libraries/visualisation_utils.py`.
-  - The legend sits inside the plot, in its top-left corner. The top quarter
-    of every plot's y-range is left empty so the legend never hides data.
-    The heatmaps are the exception: their only legend (the stimulus-type
-    colours) sits in the figure's bottom-left corner.
-  - Models appear in the same order in every plot: model family
-    (alphabetical), then number of parameters (each model's `parameters_millions` in
-    `config/config.yaml`), then model name, then stimulus type. The order of
-    the `models:` block in the config does not matter. In the heatmaps the
-    brain comes after all models. The rule is `model_sort_key()` in
-    `libraries/manage_model_metadata.py`.
-  - Every non-heatmap plot draws dashed vertical lines between model
-    families.
-  - Brain-model plots (not heatmaps) mark each model's model-level
-    significance with two rows of asterisks just below the x-axis, above
-    the model name: black for the empirical p-value, blue below it for the
-    Benjamini-Hochberg q-value (`*` < 0.05, `**` < 0.01, `***` < 0.001).
-    The p-value heatmap writes the q-value asterisks in each cell; its
-    brain cells use the same family as the brain-model plots, so the
-    asterisks agree, and its model-model cells form a family of their own.
-  - The heatmaps leave the diagonal (each model or the brain with itself)
-    blank: those cells are 1 by definition, not computed scores.
-  - Error bars only show the uncertainty of the plotted value (the standard
-    error in the model-level alignment line plot). The spread of a null
-    distribution is drawn as a grey "Null ± 1 SD" interval on the reference
-    line, where the null is centred, not around the observed point.
-  - Model names show the model only (for example `clip_b`, not
-    `clip_b-vision`) and are coloured by stimulus
-    type: dark orange (`#A84800`) for language, dark green (`#007A5A`) for
-    vision. The brain stays black. This applies to both axes of the heatmaps.
-    In the model-level line plots, the points also take the colour, as
-    circles (language) or squares (vision). Boxes are not coloured. The
-    colours are set in `STIMULI_TYPE_COLOURS` in
-    `libraries/visualisation_utils.py`.
-  - Concept-level plots colour each concept the same way for every model in
-    the plot. Concept names are never listed in the legend.
-  - Colour-vision deficiency: the stimulus-type pair was checked with a
-    colour-blindness simulation (protan, deutan, tritan) and passes, with
-    ≥ 5:1 contrast on white. The heatmaps use `viridis`. Red is avoided for
-    the q-value asterisks and the degenerate-box marker. The per-concept
-    colours are the exception: with 11 to 1,000 concepts, no palette keeps
-    them distinguishable for colourblind readers.
-
-  The enrichment plots divide the observed alignment score by the expected
-  one, taken as the mean relabelled score of that model (over every
-  relabelling and concept). A dashed line marks enrichment = 1. The
-  model-level plot draws, at each model, a grey interval of 1 ± the SD of
-  that model's relabelling null in the same units; the observed points have
-  no error bars. The concept-level plot shows no null interval, to stay
-  readable. The
-  concept-level plot uses the same expected score as the model-level one,
-  so the model-level enrichment is the mean of the concept-level ones.
-  Both plots for a given dataset/similarity/k share one y-axis range,
-  computed from both (`enrichment_ylim()` in
-  `libraries/compute_alignment_enrichment.py`), which fits every concept,
-  every model-level value and every null interval. The y-axis is linear from 0 to 1 and log10
-  above 1 (matplotlib `symlog`, set by `set_enrichment_y_scale()`), and
-  [0, 1] is as tall as one decade. This way a few very high concepts don't
-  squash the rest, and every point is still drawn. The model-level Spearman
-  plot likewise draws a grey interval of 0 ± the SD of each model's
-  permutation null (`empirical_null_standard_deviation_spearman_coefficient`);
-  the concept-level Spearman plot has none. The statistics behind all plots
-  (null distributions, p-values, Benjamini-Hochberg families) are described
-  in the [statistics reference](docs/reference/statistics.md).
+  `spearman_alignment_lineplots/`, `concept_spearman_alignment_scatterplots/`.
+  The "scatterplots" are concept-level boxplots with one point per concept.
+  What each figure shows and the conventions shared by all plots (model
+  order, colours, asterisks, null intervals, axes) are in section 7 of
+  [`statistics.md`](docs/reference/statistics.md).
 
 ## Code conventions
 
-All code under `workflow/`, the Snakefiles, `config/config.yaml` and `parquet2tsv.sh` follow the
-layout rules in section 4 of `LLMmind/.claude/CLAUDE.md` (applied to the whole project on
-2026-10-02). The main points:
+All code under `workflow/`, the Snakefiles, `config/config.yaml` and
+`parquet2tsv.sh` follow the same layout rules, which are not enforced by a
+linter. Please follow them by hand when adding or editing code:
 
-- **Python:** 4-space indentation, code lines of at most 88 characters (long strings are split
-  into adjacent literals; comments and `argparse` calls may be longer), one blank line between
-  top-level functions, spaces around `=` (also in keyword arguments and defaults), `+`, `-` and
-  comparisons, no spaces around `*` and `/`, and one space after every comma, including a comma
-  that ends a line. Long calls use a 4-space hanging indent with one argument per line;
-  `argparse` arguments put each keyword on its own line, aligned with the opening parenthesis.
-- **Imports** come in three groups separated by one blank line: standard library, third-party,
-  then the project's own `libraries.*`.
-- **Comments** go on the line above the code, in lowercase and the imperative, with no final
-  full stop. Triple-quoted strings are kept for docstrings only.
-- **Snakefiles:** every input and output is named; `shell:` blocks are `r"""` strings with the
-  command at 12 spaces and each `--flag {value}` on its own line at 16. The main `Snakefile`
-  defines its helpers before the `include:` lines, because the included Snakefiles use them.
-- **Bash:** `#!/usr/bin/env bash`, `set -euo pipefail`, `[[ ... ]]` tests and quoted variables.
-
-Example import block:
-
-```python
-import argparse
-from pathlib import Path
-
-import nibabel as nib
-from nilearn import datasets, image
-import numpy as np
-import pandas as pd
-
-from libraries.compute_isc import compute_leave_one_out_isc
-```
-
-These rules are not enforced by a linter. Please follow them by hand when adding or editing
-code.
-
-## Documentation
-
-- [`docs/reference/fmri_preprocessing.md`](docs/reference/fmri_preprocessing.md)
-  — what each dataset's authors did to the BOLD data before this workflow, and
-  what the workflow itself does (a source for the methods section)
-- [`docs/reference/statistics.md`](docs/reference/statistics.md)
-  — alignment scores, the relabelling and Spearman nulls, the empirical and
-  hypergeometric tests, enrichment, the Benjamini-Hochberg families and what
-  every figure's points, error bars and grey intervals show (a source for
-  the methods section)
-- [`docs/reference/model_embeddings.md`](docs/reference/model_embeddings.md)
-  — how each model turns a stimulus into one vector: chunking, pooling
-  (including the BOS token) and the CLS token of vision models (a source for
-  the methods section)
-- [`docs/reference/clean_run_duration.md`](docs/reference/clean_run_duration.md)
-  — how long a clean run takes on node5 (about 29 h), with the per-job and
-  total time of every rule
-- [`docs/changelog/developers/`](docs/changelog/developers/) — technical
-  changelog entries for contributors
-- [`docs/changelog/users/`](docs/changelog/users/) — plain-language changelog
-  entries describing what changed for anyone running the pipeline
-
----
-
-## AI attribution
-
-*This document was written, in whole or in part, with AI coding assistants via Claude Code (Anthropic).*
-
-- *Models: Claude Sonnet 5 (`claude-sonnet-5`, until 2026-09-22); Claude Opus 5.5 (`claude-opus-5-5`, from 2026-09-23).*
-- *Latest AI edit: 2026-10-06, Claude Opus 5.5: parallelism paragraph rewritten after the developer asked to remove every `threads:` directive (internal workers now come from `number_of_workers` in the config).*
-- *Edit history: see [`docs/changelog/`](docs/changelog/).*
-- *Review status: not yet reviewed by the developer.*
+- **Python:** 4-space indentation, code lines of at most 88 characters (long
+  strings are split into adjacent literals; comments and `argparse` calls may
+  be longer), one blank line between top-level functions, spaces around `=`
+  (also in keyword arguments and defaults), `+`, `-` and comparisons, no
+  spaces around `*` and `/`, and one space after every comma, including a
+  comma that ends a line. Long calls use a 4-space hanging indent with one
+  argument per line; `argparse` arguments put each keyword on its own line,
+  aligned with the opening parenthesis.
+- **Imports** come in three groups separated by one blank line: standard
+  library, third-party, then the project's own `libraries.*`.
+- **Comments** go on the line above the code, in lowercase and the
+  imperative, with no final full stop. Triple-quoted strings are kept for
+  docstrings only.
+- **Snakefiles:** every input and output is named; `shell:` blocks are `r"""`
+  strings with the command at 12 spaces and each `--flag {value}` on its own
+  line at 16. The main `Snakefile` defines its helpers before the `include:`
+  lines, because the included Snakefiles use them.
+- **Bash:** `#!/usr/bin/env bash`, `set -euo pipefail`, `[[ ... ]]` tests and
+  quoted variables.

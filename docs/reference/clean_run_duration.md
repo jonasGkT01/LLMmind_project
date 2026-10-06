@@ -1,6 +1,6 @@
 # Clean run duration: how long a full run takes, rule by rule
 
-> *Written with AI assistance (Claude Code). See the [AI attribution](#ai-attribution) note at the end.*
+> *Written with AI assistance (Claude Code). See [`docs/AI_USAGE.md`](../AI_USAGE.md).*
 
 This page estimates how long a **clean run** of the whole workflow takes (every output rebuilt,
 e.g. `snakemake --forceall`). It assumes the usual command on **node5** (1× RTX A5000 24 GB,
@@ -11,9 +11,8 @@ snakemake --use-conda --cores 4 --resources gpu=1
 ```
 
 **Short answer: about 29 hours (27–34 h) if the models are already in `resources/models/`, and
-about 1.5 h more if they have to be downloaded.** The Caption Scene steps added on 2026-10-02
-(registration to MNI and per-run extraction) have not finished on node5 yet; their figures are
-estimates until the rerun started on 2026-10-05 at 09:49 measures them.
+about 1.5 h more if they have to be downloaded.** The Caption Scene registration to MNI and
+per-run extraction have not been measured on node5 yet; their figures are estimates (section 2b).
 
 ## 1. Where the numbers come from
 
@@ -21,7 +20,7 @@ estimates until the rerun started on 2026-10-05 at 09:49 measures them.
   checkpoints), plus the jobs added by the caption_scene checkpoint (8 subjects, 1,664 BOLD runs,
   1,000 stimuli).
 - **Durations**: the start and `Finished jobid` timestamps of every job in the 328 node5 logs in
-  `.snakemake/log/` (up to the running 2026-10-05 log, read at 11:05). For each rule, the table
+  `.snakemake/log/` (up to 2026-10-05 11:05). For each rule, the table
   uses the **most recent run** in which that rule ran, so the figures match the current code as
   closely as possible. Where that run executed only a few of the rule's jobs (the 2026-10-02 and
   2026-10-05 runs for the model rules), the table keeps the last run that executed them all.
@@ -108,7 +107,7 @@ small tables. The single-job rules of NSD and nature_stories took longer on 2026
 | `relabel_llm_similarity_and_compute_relabelled_llm_alignment_score` | 300 | 16 s | 24 s | 53 min | 2026-09-29 |
 | `compute_empirical_p_value` | 768 | 4 s | 7 s | 41 min | 2026-09-30 |
 | `compute_hypergeometric_p_value` | 768 | 1 s | 11 s | 20 min | 2026-09-29 |
-| `aggregate_all_p_value_outputs` | 1 | 3.3 min | | 3.3 min | 2026-10-01 (16 min before S34) |
+| `aggregate_all_p_value_outputs` | 1 | 3.3 min | | 3.3 min | 2026-10-01 |
 | `compute_spearman_alignmentwith_empirical_p_value` | 300 | 1.8 min | 2.2 min | 5.2 h | 2026-09-29 |
 | `aggregate_all_spearman_alignment_scores` | 1 | 2 s | | 2 s | 2026-09-29 |
 
@@ -120,7 +119,7 @@ small tables. The single-job rules of NSD and nature_stories took longer on 2026
 | `relabel_llm_similarity_and_compute_relabelled_llm_llm_alignment_score` | 4,038 | 13 s | 17 s | 9.8 h | 2026-09-30 |
 | `compute_llm_llm_empirical_p_value` | 11,184 | 3 s | 7 s | 9.6 h | 2026-09-30 |
 | `compute_llm_llm_hypergeometric_p_value` | 11,184 | 1 s | 4 s | 4.7 h | 2026-09-30 |
-| `aggregate_all_llm_llm_p_value_outputs` | 1 | 51 min | | 51 min | 2026-10-01 (4 h 10 min before S34) |
+| `aggregate_all_llm_llm_p_value_outputs` | 1 | 51 min | | 51 min | 2026-10-01 |
 
 ### 2e. Plots
 
@@ -139,11 +138,10 @@ small tables. The single-job rules of NSD and nature_stories took longer on 2026
 The whole run is about **69 job-hours** of work (about 75 with downloads). It does not simply
 take 69/4 h, for three reasons:
 
-1. **`assemble_nsd_bold` runs 4 worker processes** (`number_of_workers`) for 11.4 h. Since
-   2026-10-06 Snakemake counts it as one core, so up to 3 other jobs run alongside it and share
-   the CPUs; until then it reserved all 4 cores (`threads: workflow.cores`) and nothing else ran,
-   which is why the dataset-processing run of 2026-09-24 averaged only 1.5 jobs in parallel. Its
-   duration while sharing the CPUs has not been measured yet.
+1. **`assemble_nsd_bold` runs 4 worker processes** (`number_of_workers`) for 11.4 h.
+   Snakemake counts it as one core, so up to 3 other jobs run alongside it and share the CPUs.
+   The 11.4 h were measured while it ran alone on all 4 cores; its duration while sharing the
+   CPUs has not been measured yet.
 2. **`get_embeddings` runs one job at a time** (`resources: gpu=1`). Its 3.2 h mostly overlap with
    the CPU jobs.
 3. **The many short alignment and statistics jobs** (about 40,000 jobs of 1–15 s each) averaged
@@ -190,7 +188,7 @@ estimate.
 
 The restart at 09:20 failed in `aggregate_all_llm_llm_p_value_outputs` itself, with exit status
 126: its 26,000 input paths made a 4 MB command line, above Linux's 2 MB limit. The rule now
-passes them through an argument file (TODO entry S33), so it can run. No duration changed.
+passes them through an argument file, so it can run. No duration changed.
 
 ### 2026-10-01 13:55 — `aggregate_all_llm_llm_p_value_outputs` measured: 4 h 10 min
 
@@ -199,19 +197,19 @@ The first complete run of the rule, on node5 (09:45:33–13:55:48, log
 guessed above. It handled the 11,184 results one at a time on one core, about 1.4 s each, most of
 it reading the 40-million-row relabelled files of Caption Scene and NSD.
 
-### 2026-10-01 16:40 — both aggregation rules made faster (TODO entry S34)
+### 2026-10-01 16:40 — both aggregation rules made faster
 
 Both `aggregate_all_p_value_outputs` and `aggregate_all_llm_llm_p_value_outputs` now skip a
 redundant duplicate check and process the results with 4 worker processes (`threads: 4`). On the
 frontend, under heavy load from other users, the LLM-brain summary went from 23 min to 6 min,
 and a 180-result LLM-LLM sample from 4.5 min to 2.4 min, with identical output. The new node5
 durations are estimates until the next run measures them: ~5 min (was 16 min) and ~1 h, 1–2 h
-(was 4 h 10 min). With the measured 4 h 10 min replacing the ~15 min guess and then S34, the
+(was 4 h 10 min). With the measured 4 h 10 min replacing the ~15 min guess and then the speed-up, the
 whole run is ~26 h instead of ~25 h; the final aggregation stage is ~1.5 h instead of ~0.5 h.
 
-### 2026-10-01 20:53 — S34 aggregation durations measured on node5
+### 2026-10-01 20:53 — faster aggregation durations measured on node5
 
-The first run with the S34 code (log `.snakemake/log/2026-10-01T195630.133465.snakemake.log`)
+The first run with the faster code (log `.snakemake/log/2026-10-01T195630.133465.snakemake.log`)
 replaced the estimates of the entry above with measurements: `aggregate_all_llm_llm_p_value_outputs`
 took 50 min 35 s (19:59:22–20:49:57; was 4 h 10 min) and `aggregate_all_p_value_outputs` 3 min 16 s
 (20:49:57–20:53:13; was 16 min). The final aggregation stage is ~1 h instead of the estimated
@@ -223,7 +221,7 @@ The file was renamed from `2026-10-01_0926_clean_run_duration.md` to `clean_run_
 (living reference pages carry no date in their name), and the tables were brought up to date with
 the workflow and the node5 logs up to 2026-10-05 11:05:
 
-- **Caption Scene (TODO S31, 2026-10-02):** `split_caption_scene_bold_by_run_manifest` (5.3 h)
+- **Caption Scene (registration to MNI, 2026-10-02):** `split_caption_scene_bold_by_run_manifest` (5.3 h)
   was removed; the new registration and per-run extraction rules add about 15 job-hours, mostly
   `extract_caption_scene_run_parcels` (1,664 runs, ~30 s each, estimated from the frontend tests).
   `make_caption_scene_manifest` took 2.3 h on 2026-10-02 (was 67 min). The Caption Scene stage
@@ -231,7 +229,7 @@ the workflow and the node5 logs up to 2026-10-05 11:05:
 - **nature_stories:** measured for the first time (2026-10-02 and 2026-10-05): about 33 min in
   total, mostly `extract_nature_stories_parcels` (32 min), instead of the "<1 h" guess.
 - **narratives:** `extract_narratives_parcels` took 98 min on 2026-10-02 (was 42 min in June).
-- **New rules:** `compute_isc_reliability` and `aggregate_isc_reliability` (TODO S30); about 1 min
+- **New rules:** `compute_isc_reliability` and `aggregate_isc_reliability`; about 1 min
   in total.
 - **NSD:** `export_nsd_stimuli` and `make_nsd_manifest` took 7.9 and 6.5 min on 2026-10-05 (were
   98 s and 23 s).
@@ -247,15 +245,13 @@ run of 2026-10-05 stalled: three hung jobs held 3 of the 4 cores and `assemble_n
 for all 4). The internal worker count now comes from `number_of_workers` (4) in the config:
 `assemble_nsd_bold` keeps 4 workers but no longer runs alone, and `register_caption_scene_t1w`
 uses 4 threads instead of 8 (it was already capped at 4 by `--cores 4`). The durations are
-unchanged until the next run measures them with other jobs sharing the CPUs.
+unchanged until the next run measures them with other jobs sharing the CPUs. Before this change,
+`assemble_nsd_bold` reserved all 4 cores (`threads: workflow.cores`) and nothing else ran next to
+it, which is why the dataset-processing run of 2026-09-24 averaged only 1.5 jobs in parallel.
 
----
+### 2026-10-06 16:30 — TODO IDs and dated notes moved out of the body
 
-## AI attribution
-
-*This document was written, in whole or in part, with AI coding assistants via Claude Code (Anthropic).*
-
-- *Models: Claude Opus 5.5 (`claude-opus-5-5`).*
-- *Latest AI edit: 2026-10-06, Claude Opus 5.5: `assemble_nsd_bold` and `register_caption_scene_t1w` rows and section 3 updated after the developer asked to remove every `threads:` directive.*
-- *Edit history: see [`docs/changelog/`](../changelog/).*
-- *Review status: not yet reviewed by the developer.*
+TODO references were removed from the tables and from this section, the run-specific notes of the
+short answer, section 1 and section 3 were rewritten to describe the current state (the
+`assemble_nsd_bold` history moved to the entry above), and the AI attribution block was replaced
+by the note under the title.

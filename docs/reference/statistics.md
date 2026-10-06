@@ -1,6 +1,6 @@
 # Statistics: alignment scores, null distributions, tests and figures
 
-> *Written with AI assistance (Claude Code). See the [AI attribution](#ai-attribution) note at the end.*
+> *Written with AI assistance (Claude Code). See [`docs/AI_USAGE.md`](../AI_USAGE.md).*
 
 This page describes how the workflow measures brain-model and model-model alignment, how it tests
 it, and what the figures show. It is written from the code (`workflow/libraries/` and the
@@ -112,6 +112,10 @@ full similarity structure instead of the neighbour sets:
 - **null SD:** the SD of the *N* relabelled model-level coefficients
   (`empirical_null_standard_deviation_spearman_coefficient`).
 
+It runs once per similarity type, so with the `spearman` similarity it is a Spearman correlation
+between two Spearman similarity structures: the first compares stimuli, the second compares the
+brain's and the model's similarity structures.
+
 ## 7. What the figures show
 
 | Figure | Point or box | Error bar | Grey reference |
@@ -139,12 +143,47 @@ Conventions:
   q-value. Section 5 lists the families.
 - The concept-level enrichment and Spearman scatterplots draw no null interval, to stay readable.
 
+Layout, shared by all plots (constants and helpers in `libraries/visualisation_utils.py`):
+
+- **Names.** The "scatterplots" in rule, script and folder names are concept-level boxplots with
+  one point per concept; the name is historical.
+- **Titles and labels.** Titles read `<level> <quantity>` (for example "Model-level brain-model
+  alignment enrichment"), with `dataset: …, similarity: …, neighbours: …` on the second line.
+  Y-axis labels read `<quantity> ± <error>`, or just `<quantity>` when the plot has no error bars.
+- **Legend.** Inside the plot, in its top-left corner; the top quarter of the y-range is left
+  empty so the legend never hides data. The heatmaps are the exception: their only legend (the
+  stimulus-type colours) sits in the figure's bottom-left corner. Concept names are never listed.
+- **Model order.** The same in every plot: model family (alphabetical), then number of parameters
+  (`parameters_millions` in `config/config.yaml`), then model name, then stimulus type
+  (`model_sort_key()` in `libraries/manage_model_metadata.py`). The order of the `models:` block
+  does not matter. In the heatmaps the brain comes after all models. Every non-heatmap plot draws
+  dashed vertical lines between model families.
+- **Colours.** Model names show the model only (`clip_b`, not `clip_b-vision`), coloured by
+  stimulus type: dark orange (`#A84800`) for language, dark green (`#007A5A`) for vision, black
+  for the brain (`STIMULI_TYPE_COLOURS`), on both axes of the heatmaps. In the model-level line
+  plots the points take the same colour, as circles (language) or squares (vision). Boxes are not
+  coloured. Concept-level plots give each concept the same colour for every model in the plot.
+- **Colour-vision deficiency.** The stimulus-type pair passes a colour-blindness simulation
+  (protan, deutan, tritan) with ≥ 5:1 contrast on white, the heatmaps use `viridis`, and red is
+  avoided for the q-value asterisks and the degenerate-box marker. The per-concept colours are
+  the exception: with 11 to 1,000 concepts, no palette keeps them distinguishable.
+- **Degenerate boxes.** In the concept-level alignment and Spearman plots, a model whose
+  per-concept values show no spread would render as a flat, easy-to-miss box; it is marked with a
+  black diamond instead.
+- **Shared y-axes.** The model-level alignment line plot and the concept-level alignment plot of
+  one dataset/similarity/*k* share the y-range `[0, 1]` (plus legend space), so they can be
+  compared side by side. The two enrichment plots share one range too, computed from both
+  (`enrichment_ylim()` in `libraries/compute_alignment_enrichment.py`) so that every concept,
+  model-level value and null interval fits. Their y-axis is linear from 0 to 1 and log10 above 1
+  (matplotlib `symlog`, `set_enrichment_y_scale()`), with [0, 1] as tall as one decade, so a few
+  very high concepts don't squash the rest.
+
 ## 8. Changes
 
 Changes to the methods described above, oldest first. Each entry gives when the change happened,
 what changed and why. The sections above always describe the current code.
 
-### 2026-10-02 09:50 — one random stream for every null (TODO S17)
+### 2026-10-02 09:50 — one random stream for every null
 
 Until then, shuffle *i* of the relabelling null used `default_rng(random_seed + i)`, while the
 Spearman null drew from one `default_rng(random_seed)` stream. Now every null draws from one
@@ -158,13 +197,10 @@ date in their name); the dated note of section 2 moved to the entry above. The c
 checked against the current code (function names, columns, `config.yaml` values) and needed no
 other change.
 
----
+### 2026-10-06 16:30 — plot layout conventions moved here; TODO ID and attribution block removed
 
-## AI attribution
-
-*This document was written, in whole or in part, with AI coding assistants via Claude Code (Anthropic).*
-
-- *Models: Claude Opus 5.5 (`claude-opus-5-5`).*
-- *Latest AI edit: 2026-10-05, Claude Opus 5.5: renamed without the date prefix and dated note moved to a new "Changes" section, after the developer asked to keep living reference pages under one undated name.*
-- *Edit history: see [`docs/changelog/`](../changelog/).*
-- *Review status: not yet reviewed by the developer.*
+The plot layout conventions (titles, legends, model order, colours, degenerate boxes, shared
+y-axes) moved here from the "Outputs" section of `README.md`, which now links to this page,
+together with the note on Spearman alignment under the `spearman` similarity (section 6). The
+TODO reference in the entry of 2026-10-02 was removed, and the AI attribution block at the end was
+replaced by the note under the title.
