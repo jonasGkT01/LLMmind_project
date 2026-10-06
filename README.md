@@ -72,10 +72,10 @@ BOLD + stimuli into per-concept "mind" representations:
   atlas
 - computes inter-subject correlation (ISC) per concept/stimulus, producing
   one representative brain-response vector per concept. ISC is leave-one-out
-  (each observation against the mean of the others) and is averaged per
+  (each subject against the mean of the other subjects) and is averaged per
   parcel. A parcel whose time series is (near-)constant gets an ISC of 0:
   its range over time must be at most about 1e-6 of its magnitude
-  (`is_constant_signal()` in `libraries/fmri_processing.py`). This is a
+  (`is_constant_signal()` in `libraries/compute_isc.py`). This is a
   small tolerance, not an exact test, so a real but tiny fluctuation is
   zeroed too.
 - cleans/prepares the matching stimuli (transcripts for the language
@@ -210,8 +210,9 @@ parameters (TR, event duration, etc.), plus the neighbourhood sizes
 (`number_of_neighbours`) to evaluate for that dataset.
 
 In every dataset, a stimulus is included only if it was presented to at
-least `minimum_subjects_per_stimulus` different subjects; every presentation (including repeats by the
-same subject) then counts as one fMRI observation in its ISC. Stimuli that
+least `minimum_subjects_per_stimulus` different subjects. Each subject's repeated presentations of a
+stimulus are first averaged time point by time point (Nature Stories has none), so the ISC compares
+subjects, not presentations. Stimuli that
 fail this or any other dataset-specific check are listed in that dataset's
 `excluded_stimuli` file, which both the ISC side and the model-embedding
 side read, so the two always cover the same stimuli. The value must be at
@@ -776,7 +777,7 @@ from nilearn import datasets, image
 import numpy as np
 import pandas as pd
 
-from libraries.fmri_processing import compute_leave_one_out_isc
+from libraries.compute_isc import compute_leave_one_out_isc
 ```
 
 These rules are not enforced by a linter. Please follow them by hand when adding or editing
@@ -811,6 +812,6 @@ code.
 *This document was written, in whole or in part, with AI coding assistants via Claude Code (Anthropic).*
 
 - *Models: Claude Sonnet 5 (`claude-sonnet-5`, until 2026-09-22); Claude Opus 5.5 (`claude-opus-5-5`, from 2026-09-23).*
-- *Latest AI edit: 2026-10-05, Claude Opus 5.5: links to the reference pages `statistics.md` and `clean_run_duration.md` renamed without the date prefix, and the clean-run estimate updated to about 29 h, after the developer asked to regenerate both pages.*
+- *Latest AI edit: 2026-10-05, Claude Opus 5.5: ISC described as comparing subjects (repeats averaged first) and two module references corrected to `libraries/compute_isc.py`, after the developer approved TODO S39 while reviewing the open TODO entries.*
 - *Edit history: see [`docs/changelog/`](docs/changelog/).*
 - *Review status: not yet reviewed by the developer.*
