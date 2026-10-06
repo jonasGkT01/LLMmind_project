@@ -490,17 +490,16 @@ number of permutations for significance testing) is controlled entirely
 through `config/config.yaml` — no code changes are needed to add a model or
 adjust a dataset's parameters.
 
-Most rules are single-threaded and get their parallelism from Snakemake
-running independent jobs concurrently, but a few instead parallelize
-internally across whatever `--cores <N>` is given — notably NSD's
-functional-to-MNI registration step (`assemble_nsd_bold`), which maps
-stimulus presentations to MNI space and extracts their parcel time series
-using up to `<N>` worker processes at once. For that step, a higher `--cores` value directly speeds it up.
-The Caption Scene T1w-to-MNI registration (`register_caption_scene_t1w`, one job per subject,
-about 2 min each) uses 8 threads (`threads: 8`).
-The two summary-table steps (`aggregate_all_p_value_outputs` and
-`aggregate_all_llm_llm_p_value_outputs`) each use 4 worker processes (`threads: 4`), so they
-need `--cores 4` or more to run at full speed.
+No rule declares `threads:`, so Snakemake counts every job as one core and
+`--cores <N>` runs up to `<N>` jobs at once. A few steps also parallelize
+internally, with `number_of_workers` worker processes or threads
+(`config/config.yaml`, default 4): NSD's functional-to-MNI registration
+(`assemble_nsd_bold`), the Caption Scene T1w-to-MNI registration
+(`register_caption_scene_t1w`, one job per subject, about 2 min each) and the
+two summary-table steps (`aggregate_all_p_value_outputs` and
+`aggregate_all_llm_llm_p_value_outputs`). Because Snakemake does not reserve
+cores for these workers, these steps never wait for free cores, but while one
+runs alongside other jobs the run briefly uses more CPUs than `--cores`.
 
 ### Troubleshooting
 
@@ -812,6 +811,6 @@ code.
 *This document was written, in whole or in part, with AI coding assistants via Claude Code (Anthropic).*
 
 - *Models: Claude Sonnet 5 (`claude-sonnet-5`, until 2026-09-22); Claude Opus 5.5 (`claude-opus-5-5`, from 2026-09-23).*
-- *Latest AI edit: 2026-10-05, Claude Opus 5.5: ISC described as comparing subjects (repeats averaged first) and two module references corrected to `libraries/compute_isc.py`, after the developer approved TODO S39 while reviewing the open TODO entries.*
+- *Latest AI edit: 2026-10-06, Claude Opus 5.5: parallelism paragraph rewritten after the developer asked to remove every `threads:` directive (internal workers now come from `number_of_workers` in the config).*
 - *Edit history: see [`docs/changelog/`](docs/changelog/).*
 - *Review status: not yet reviewed by the developer.*

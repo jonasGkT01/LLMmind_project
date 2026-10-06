@@ -55,13 +55,13 @@ limited by network speed. `get_embeddings` depends mostly on model size. The slo
 | `export_nsd_stimuli` | 1 | 7.9 min | | 7.9 min | 2026-10-05 |
 | `make_nsd_manifest` | 1 | 6.5 min | | 6.5 min | 2026-10-05 |
 | `write_nsd_parcel_manifest` | 1 | 8 s | | 8 s | 2026-09-24 |
-| `assemble_nsd_bold` (uses all 4 cores) | 1 | 11.4 h | | 11.4 h | 2026-09-24 |
+| `assemble_nsd_bold` (4 worker processes) | 1 | 11.4 h | | 11.4 h | 2026-09-24 |
 | `write_nsd_isc_manifest` | 1 | 9 s | | 9 s | 2026-09-24 |
 | `compute_nsd_isc` | 1 | 9.4 min | | 9.4 min | 2026-09-24 |
 | **caption_scene** | | | | | |
 | `make_caption_scene_manifest` (checkpoint) | 1 | 2.3 h | | 2.3 h | 2026-10-02 |
 | `fetch_mni_template` | 1 | not measured | | <1 min (guess) | — |
-| `register_caption_scene_t1w` (8 threads, capped at 4) | 8 | ~2–3 min (estimate) | | ~20 min | estimate from the frontend test |
+| `register_caption_scene_t1w` (4 threads) | 8 | ~2–3 min (estimate) | | ~20 min | estimate from the frontend test |
 | `compute_caption_scene_sampling_coordinates` | 8 | not measured | | <30 min (guess) | — |
 | `extract_caption_scene_run_parcels` | 1,664 | ~30 s (estimate) | | ~14 h | estimate from the frontend test |
 | `extract_caption_scene_parcels` (collects the run flags) | 1 | not measured | | <1 min (guess) | — |
@@ -139,18 +139,20 @@ small tables. The single-job rules of NSD and nature_stories took longer on 2026
 The whole run is about **69 job-hours** of work (about 75 with downloads). It does not simply
 take 69/4 h, for three reasons:
 
-1. **`assemble_nsd_bold` takes all 4 cores** (`threads: workflow.cores`) for 11.4 h. Nothing else
-   runs alongside it. This is the main reason the dataset-processing run of 2026-09-24 averaged
-   only 1.5 jobs in parallel.
+1. **`assemble_nsd_bold` runs 4 worker processes** (`number_of_workers`) for 11.4 h. Since
+   2026-10-06 Snakemake counts it as one core, so up to 3 other jobs run alongside it and share
+   the CPUs; until then it reserved all 4 cores (`threads: workflow.cores`) and nothing else ran,
+   which is why the dataset-processing run of 2026-09-24 averaged only 1.5 jobs in parallel. Its
+   duration while sharing the CPUs has not been measured yet.
 2. **`get_embeddings` runs one job at a time** (`resources: gpu=1`). Its 3.2 h mostly overlap with
-   the CPU jobs, as long as Snakemake does not schedule them during `assemble_nsd_bold`.
+   the CPU jobs.
 3. **The many short alignment and statistics jobs** (about 40,000 jobs of 1–15 s each) averaged
    3.7 jobs in parallel in the runs of 2026-09-28 and 2026-09-29.
 
 | Stage | Elapsed time |
 |---|---:|
 | Model downloads (only if `resources/models/` is empty; 4 at a time) | ~1.5 h |
-| `assemble_nsd_bold` (alone on all cores) | 11.4 h |
+| `assemble_nsd_bold` (measured alone on all cores) | 11.4 h |
 | Rest of the brain data processing (caption_scene ~6 h: manifest 2.3 h, then ~14 job-h of run extraction 4 at a time; narratives and nature_stories ~2.3 h, in parallel with the caption_scene manifest) | ~6 h |
 | Embeddings (GPU); mostly overlap with the stage above | ~0–1 h extra |
 | Alignment, statistics and plots (~36 job-h at 3.7 in parallel) | ~10 h |
@@ -238,6 +240,15 @@ the workflow and the node5 logs up to 2026-10-05 11:05:
 
 The Caption Scene figures stay estimates until the rerun started on 2026-10-05 at 09:49 finishes.
 
+### 2026-10-06 10:30 — no rule reserves cores any more
+
+The `threads:` directives were removed from every rule (developer request, 2026-10-06, after the
+run of 2026-10-05 stalled: three hung jobs held 3 of the 4 cores and `assemble_nsd_bold` waited
+for all 4). The internal worker count now comes from `number_of_workers` (4) in the config:
+`assemble_nsd_bold` keeps 4 workers but no longer runs alone, and `register_caption_scene_t1w`
+uses 4 threads instead of 8 (it was already capped at 4 by `--cores 4`). The durations are
+unchanged until the next run measures them with other jobs sharing the CPUs.
+
 ---
 
 ## AI attribution
@@ -245,6 +256,6 @@ The Caption Scene figures stay estimates until the rerun started on 2026-10-05 a
 *This document was written, in whole or in part, with AI coding assistants via Claude Code (Anthropic).*
 
 - *Models: Claude Opus 5.5 (`claude-opus-5-5`).*
-- *Latest AI edit: 2026-10-05, Claude Opus 5.5: renamed without the date prefix and regenerated for the current workflow and node5 logs, after the developer asked to regenerate the file and keep living reference pages under one undated name.*
+- *Latest AI edit: 2026-10-06, Claude Opus 5.5: `assemble_nsd_bold` and `register_caption_scene_t1w` rows and section 3 updated after the developer asked to remove every `threads:` directive.*
 - *Edit history: see [`docs/changelog/`](../changelog/).*
 - *Review status: not yet reviewed by the developer.*

@@ -1,5 +1,10 @@
 # edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
-# last AI edit: 2026-10-02, see docs/changelog/developers/ for details
+# last AI edit: 2026-10-06, see docs/changelog/developers/ for details
+
+# worker processes or threads used inside the jobs that parallelise internally (NSD parcel extraction,
+# Caption Scene T1w registration, p-value aggregation). Snakemake counts each job as one core, so
+# these jobs never wait for free cores; they may use more CPUs than --cores while they run
+number_of_workers: 4
 
 # configuration for relabelled similarity computation
 number_of_relabellings: 10000

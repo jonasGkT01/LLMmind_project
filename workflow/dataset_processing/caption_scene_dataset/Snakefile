@@ -1,5 +1,5 @@
 # edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
-# last AI edit: 2026-10-05, see docs/changelog/developers/ for details
+# last AI edit: 2026-10-06, see docs/changelog/developers/ for details
 
 import re
 from pathlib import Path
@@ -223,9 +223,8 @@ rule register_caption_scene_t1w:
         qc = f"{CAPTION_SCENE_REGISTRATION_DIR}/sub-{{subject}}_t1w_to_mni_qc.png"
     params:
         prefix = f"{CAPTION_SCENE_REGISTRATION_DIR}/sub-{{subject}}_", 
-        random_seed = RANDOM_SEED
-    threads:
-        8
+        random_seed = RANDOM_SEED,
+        number_of_workers = config["number_of_workers"]
     conda:
         "envs/caption_scene_dataset_processing_environment.yaml"
     shell:
@@ -236,7 +235,7 @@ rule register_caption_scene_t1w:
                 -m {input.t1w:q} \
                 -o {params.prefix:q} \
                 -t s \
-                -n {threads} \
+                -n {params.number_of_workers} \
                 -e {params.random_seed}
 
             MPLBACKEND=Agg python3 workflow/dataset_processing/caption_scene_dataset/scripts/plot_caption_scene_registration_qc.py \

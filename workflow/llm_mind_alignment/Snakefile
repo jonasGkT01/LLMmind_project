@@ -1,5 +1,5 @@
 # edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
-# last AI edit: 2026-10-05, see docs/changelog/developers/ for details
+# last AI edit: 2026-10-06, see docs/changelog/developers/ for details
 rule all_llm_mind_alignment:
     input:
         llm_brain_alignment_scores = [
@@ -118,9 +118,8 @@ rule aggregate_all_p_value_outputs:
     output:
         all_model_brain_alignment_scores_tsv = "results/all_model_brain_alignment_scores.tsv"
     params:
-        code = code_version(AGGREGATE_ALL_P_VALUE_OUTPUTS_SCRIPT)
-    threads:
-        4
+        code = code_version(AGGREGATE_ALL_P_VALUE_OUTPUTS_SCRIPT),
+        number_of_workers = config["number_of_workers"]
     conda:
         "envs/llm_mind_alignment_environment.yaml"
     shell:
@@ -130,5 +129,5 @@ rule aggregate_all_p_value_outputs:
                 --hypergeometric_p_values {input.hypergeometric_p_values:q} \
                 --relabelled_common_neighbours {input.relabelled_common_neighbours:q} \
                 --all_model_brain_alignment_scores_tsv {output.all_model_brain_alignment_scores_tsv:q} \
-                --threads {threads}
+                --threads {params.number_of_workers}
         """

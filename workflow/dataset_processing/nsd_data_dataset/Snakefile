@@ -1,5 +1,5 @@
 # edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
-# last AI edit: 2026-10-05, see docs/changelog/developers/ for details
+# last AI edit: 2026-10-06, see docs/changelog/developers/ for details
 
 import pandas as pd
 
@@ -140,9 +140,8 @@ rule assemble_nsd_bold:
         interpolation = config["nsd_data"]["map_interpolation"], 
         number_of_regions = config["atlas"]["n_rois"], 
         number_of_yeo_networks = config["atlas"]["yeo_networks"], 
-        atlas_dir = config["atlas"]["atlas_dir"]
-    threads:
-        workflow.cores
+        atlas_dir = config["atlas"]["atlas_dir"],
+        number_of_workers = config["number_of_workers"]
     conda:
         "envs/nsd_data_dataset_processing_environment.yaml"
     shell:
@@ -154,7 +153,7 @@ rule assemble_nsd_bold:
                 --number_of_regions {params.number_of_regions} \
                 --number_of_yeo_networks {params.number_of_yeo_networks} \
                 --atlas_dir {params.atlas_dir:q} \
-                --jobs {threads}
+                --jobs {params.number_of_workers}
         """
 
 rule write_nsd_isc_manifest:

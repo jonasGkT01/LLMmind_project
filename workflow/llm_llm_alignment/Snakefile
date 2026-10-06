@@ -1,5 +1,5 @@
 # edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
-# last AI edit: 2026-10-05, see docs/changelog/developers/ for details
+# last AI edit: 2026-10-06, see docs/changelog/developers/ for details
 rule all_llm_llm_alignment:
     input:
         llm_llm_alignment_scores = [
@@ -119,9 +119,8 @@ rule aggregate_all_llm_llm_p_value_outputs:
         all_model_model_alignment_scores_tsv = "results/all_model_model_alignment_scores.tsv"
     params:
         model_order = MODEL_KEYS, 
-        code = code_version(AGGREGATE_ALL_LLM_LLM_P_VALUE_OUTPUTS_SCRIPT)
-    threads:
-        4
+        code = code_version(AGGREGATE_ALL_LLM_LLM_P_VALUE_OUTPUTS_SCRIPT),
+        number_of_workers = config["number_of_workers"]
     conda:
         "envs/llm_llm_alignment_environment.yaml"
     shell:
@@ -138,6 +137,6 @@ rule aggregate_all_llm_llm_p_value_outputs:
                 > "$args_file"
             python3 {AGGREGATE_ALL_LLM_LLM_P_VALUE_OUTPUTS_SCRIPT:q} \
                 @"$args_file" \
-                --threads {threads}
+                --threads {params.number_of_workers}
             rm "$args_file"
         """
