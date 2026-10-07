@@ -177,7 +177,9 @@ Layout, shared by all plots (constants and helpers in `libraries/visualisation_u
   (`enrichment_ylim()` in `libraries/compute_alignment_enrichment.py`) so that every concept,
   model-level value and its error bar fits. Their y-axis is linear from 0 to 1 and log10 above 1
   (matplotlib `symlog`, `set_enrichment_y_scale()`), with [0, 1] as tall as one decade, so a few
-  very high concepts don't squash the rest.
+  very high concepts don't squash the rest. Because the range must fit the highest concepts, the
+  model-level null-SD error bars (about 0.05) are often shorter than the markers; the shared range
+  is kept on purpose, so the two plots stay comparable.
 
 ## 8. Changes
 
@@ -213,4 +215,6 @@ null SD as the error bar of its point, instead of as a grey interval "Null ± 1 
 reference line (enrichment = 1, ρ = 0), which they had done since 2026-10-02. The y-labels read
 "± null SD", the y-ranges fit value + null SD, and section 7 explains that the bar is the spread
 of the null, not a confidence interval.
+The developer chose to keep the shared y-range of the two enrichment
+plots, even though the bars are often shorter than the markers there.
 
