@@ -7,6 +7,7 @@ Changes made on this day, in order:
 - Clean-run duration re-measured on the node5 runs of 2026-10-05 and 2026-10-06 (documentation)
 - Post-rerun checks: no ISC NIfTI volumes; the conda cleanup deleted the environments in use (removal, documentation)
 - Conda environments rebuilt and stale environments deleted (removal, documentation)
+- Merged branch of the pinned environments deleted (removal)
 
 ---
 
@@ -119,4 +120,21 @@ Kind: removal, documentation
   in the GPU environment `import torch, transformers, triton, bitsandbytes` works on the frontend
   and prints torch 2.13.0, CUDA 12.9, transformers 5.18.0, triton 3.7.1, bitsandbytes 0.50.2. No
   GPU job was run (no node5 access from the frontend).
+
+---
+
+## 16:00 — Merged branch of the pinned environments deleted
+
+Kind: removal
+
+The user deleted the local branch `s22-pinned-envs` (`4917f34`, fully merged into `main` on
+2026-10-02) by hand. With it, TODO P22/S22 (pinned conda environments) is complete and was removed;
+the optional lock export per environment (`conda env export --no-builds`) was dropped by the user.
+
+### Context
+
+- Request: the user asked to check TODO P22, then to drop the optional lock export.
+- Files changed: this changelog, the user changelog of the day, `.claude/TODO/LLMmind_project.md`.
+- Verification: `.git/refs/heads/s22-pinned-envs` no longer exists, there is no `packed-refs`, and
+  the other branch refs (e.g. `s7-isc-nifti`) are still present.
 

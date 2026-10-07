@@ -7,6 +7,7 @@ Changes made on this day, in order:
 - New estimate of how long a full run takes: about 32 h (documentation)
 - The software environments will be rebuilt at the next run (removal, documentation)
 - Software environments rebuilt, old ones removed (removal, documentation)
+- Old development branch removed (removal)
 
 ---
 
@@ -56,4 +57,13 @@ If you ever need to clean up or rebuild the environments yourself, follow sectio
 [running guide](../../guides/running_and_troubleshooting.md). On a machine without a GPU, start
 the rebuild command with `CONDA_OVERRIDE_CUDA=12.9`, otherwise the GPU environment gets a version
 of PyTorch that cannot use the GPU.
+
+---
+
+## 16:00 — Old development branch removed
+
+Kind: removal
+
+The git branch `s22-pinned-envs`, which introduced the fixed software versions and was merged into
+`main` on 2 October, has been deleted. Nothing changes for running the project.
 
