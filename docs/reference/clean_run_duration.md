@@ -10,166 +10,184 @@ e.g. `snakemake --forceall`). It assumes the usual command on **node5** (1× RTX
 snakemake --use-conda --cores 4 --resources gpu=1
 ```
 
-**Short answer: about 29 hours (27–34 h) if the models are already in `resources/models/`, and
-about 1.5 h more if they have to be downloaded.** The Caption Scene registration to MNI and
-per-run extraction have not been measured on node5 yet; their figures are estimates (section 2b).
+**Short answer: about 32 hours (30–35 h) if the models are already in `resources/models/`, and
+about 1.5 h more if they have to be downloaded.** Almost every figure is measured on node5; the
+critical path is `assemble_nsd_bold` (18.6 h) running next to the Caption Scene per-run
+extraction (about 50 job-hours). The estimate does not include the time lost when a job hangs
+after writing its output, which stalls the run until it is killed.
 
 ## 1. Where the numbers come from
 
 - **Job counts**: dry run of the workflow, `snakemake -n --forceall` (about 40,900 jobs before
-  checkpoints), plus the jobs added by the caption_scene checkpoint (8 subjects, 1,664 BOLD runs,
-  1,000 stimuli).
-- **Durations**: the start and `Finished jobid` timestamps of every job in the 328 node5 logs in
-  `.snakemake/log/` (up to 2026-10-05 11:05). For each rule, the table
-  uses the **most recent run** in which that rule ran, so the figures match the current code as
-  closely as possible. Where that run executed only a few of the rule's jobs (the 2026-10-02 and
-  2026-10-05 runs for the model rules), the table keeps the last run that executed them all.
+  checkpoints), plus the jobs added by the caption_scene checkpoint (8 subjects, 795 runs with
+  retained events, 1,000 stimuli).
+- **Durations**: the start and `Finished jobid` timestamps of every job in the two node5 runs
+  that together rebuilt the whole workflow:
+  - `.snakemake/log/2026-10-05T094911.730005.snakemake.log` (2026-10-05 09:49 – 2026-10-06 09:52):
+    embeddings, the model–model analyses, narratives, nature_stories, the NSD and Caption Scene
+    manifests, and the model–brain analyses of narratives and nature_stories;
+  - `.snakemake/log/2026-10-06T101126.178941.snakemake.log` (2026-10-06 10:11 – 2026-10-07 06:25):
+    `assemble_nsd_bold`, the Caption Scene registration and extraction, the model–brain analyses
+    of NSD and Caption Scene, all aggregations and the plots.
+
+  Rules that neither run executed (model downloads and a few small narratives and nature_stories
+  preparation rules) keep the figures of the latest earlier run that executed them, given in the
+  "Measured in" column. Where the two runs executed most but not all of a rule's jobs (for
+  example 92 of 100 `get_embeddings` jobs), "Total" is scaled to the full job count.
 - Durations are wall-clock seconds per job at 1 s resolution. They include conda activation and
-  were measured while up to 4 jobs were running at the same time.
+  were measured while up to 4 jobs (and the 4 worker processes of `assemble_nsd_bold`) were
+  running at the same time.
 - "Total" is the job count × the mean duration, i.e. job-hours of work, not elapsed time.
   Section 3 turns job-hours into elapsed time.
 
 ## 2. Per-rule durations
 
 Times are given in seconds (s), minutes (min) or hours (h). "Median" and "max" are per job.
+"10-05" and "10-06" stand for the two runs of section 1.
 
 ### 2a. Model downloads and embeddings
 
 | Rule | Jobs | Median | Max | Total | Measured in |
 |---|---:|---:|---:|---:|---|
-| `download_pretrained_llm` | 38 | 8.6 min | 17 min | ~5.8 h | 2026-09-29 (4 jobs) |
-| `get_embeddings` (GPU, one at a time) | 100 | 56 s | 12.9 min | ~3.2 h | 2026-09-29 |
-| `compute_llm_nearest_neighbours` | 100 | 2 s | 7 s | 5 min | 2026-09-29 |
+| `download_pretrained_llm` | 38 | 8.6 min | 17 min | ~5.8 h | 2026-09-29 |
+| `get_embeddings` (GPU, one at a time) | 100 | 81 s | 27.8 min | ~4.4 h | 10-05 (92 jobs) |
+| `compute_llm_nearest_neighbours` | 100 | 2 s | 6 s | 4 min | 10-05 (95 jobs) |
 
 `download_pretrained_llm` runs only for models that are missing from `resources/models/`. It is
-limited by network speed. `get_embeddings` depends mostly on model size. The slowest jobs are the
-4-bit 27–31B models: `gemma2_27b` (8.8–12.9 min), `gemma3_27b` (5.9–9.9 min) and `gemma4_31b`
-(8.3–9.7 min). The 8-bit 9–13B models take 3.5–6 min, and models up to 7B take less than 1 min.
+limited by network speed (the 10-05 run downloaded only 5 small models, 45 s each).
+`get_embeddings` depends mostly on model size and on the length of the stimuli. The slowest jobs
+are the 4-bit 27–31B models: `gemma2_27b` (13–28 min, longest on nature_stories),
+`gemma4_31b` (7.5–15 min) and `gemma3_27b` (8.7–11 min). The 8-bit 9–13B models take 4–7.5 min,
+and the smaller models take at most about 2 min.
 
 ### 2b. Brain data processing
 
 | Rule | Jobs | Median | Max | Total | Measured in |
 |---|---:|---:|---:|---:|---|
 | **NSD** | | | | | |
-| `export_nsd_stimuli` | 1 | 7.9 min | | 7.9 min | 2026-10-05 |
-| `make_nsd_manifest` | 1 | 6.5 min | | 6.5 min | 2026-10-05 |
-| `write_nsd_parcel_manifest` | 1 | 8 s | | 8 s | 2026-09-24 |
-| `assemble_nsd_bold` (4 worker processes) | 1 | 11.4 h | | 11.4 h | 2026-09-24 |
-| `write_nsd_isc_manifest` | 1 | 9 s | | 9 s | 2026-09-24 |
-| `compute_nsd_isc` | 1 | 9.4 min | | 9.4 min | 2026-09-24 |
+| `export_nsd_stimuli` | 1 | 7.9 min | | 7.9 min | 10-05 |
+| `make_nsd_manifest` | 1 | 6.5 min | | 6.5 min | 10-05 |
+| `write_nsd_parcel_manifest` | 1 | 24 s | | 24 s | 10-05 |
+| `assemble_nsd_bold` (4 worker processes) | 1 | 18.6 h | | 18.6 h | 10-06 |
+| `write_nsd_isc_manifest` | 1 | 11 s | | 11 s | 10-05 |
+| `compute_nsd_isc` | 1 | 4.0 min | | 4.0 min | 10-06 |
 | **caption_scene** | | | | | |
-| `make_caption_scene_manifest` (checkpoint) | 1 | 2.3 h | | 2.3 h | 2026-10-02 |
-| `fetch_mni_template` | 1 | not measured | | <1 min (guess) | — |
-| `register_caption_scene_t1w` (4 threads) | 8 | ~2–3 min (estimate) | | ~20 min | estimate from the frontend test |
-| `compute_caption_scene_sampling_coordinates` | 8 | not measured | | <30 min (guess) | — |
-| `extract_caption_scene_run_parcels` | 1,664 | ~30 s (estimate) | | ~14 h | estimate from the frontend test |
-| `extract_caption_scene_parcels` (collects the run flags) | 1 | not measured | | <1 min (guess) | — |
-| `write_caption_scene_isc_manifest` | 1 | not measured | | <1 min (guess) | — |
-| `compute_caption_scene_isc` | 1,000 | 2 s | 7 s | 39 min | 2026-09-24 |
-| `write_caption_scene_stimuli_transcripts` | 1 | 13 s | | 13 s | 2026-09-24 |
-| `finish_caption_scene_isc` | 1 | 2 s | | 2 s | 2026-09-24 |
+| `make_caption_scene_manifest` (checkpoint) | 1 | 2.2 h | | 2.2 h | 10-05 |
+| `fetch_mni_template` | 1 | 12 s | | 12 s | 10-05 |
+| `register_caption_scene_t1w` (4 threads) | 8 | 3.2 min | 3.6 min | 26 min | 10-06 |
+| `compute_caption_scene_sampling_coordinates` | 8 | 32 s | 39 s | 4 min | 10-06 |
+| `extract_caption_scene_run_parcels` | 795 | 3.7 min | 5.5 min | 49.9 h | 10-06 |
+| `extract_caption_scene_parcels` (collects the run flags) | 1 | <1 s | | <1 s | 10-06 |
+| `write_caption_scene_isc_manifest` | 1 | 43 s | | 43 s | 10-05 |
+| `compute_caption_scene_isc` | 1,000 | 1 s | 3 s | 15 min | 10-06 |
+| `write_caption_scene_stimuli_transcripts` | 1 | 6 s | | 6 s | 10-05 |
+| `finish_caption_scene_isc` | 1 | 1 s | | 1 s | 10-06 |
 | **narratives** | | | | | |
 | `rename_narratives_stimuli_transcipts` | 1 | 1 s | | 1 s | 2026-06-19 |
 | `write_narratives_problematic_stimuli` | 1 | 22 s | | 22 s | 2026-10-02 |
-| `write_narratives_parcel_manifest` | 1 | 9 s | | 9 s | 2026-10-05 |
-| `extract_narratives_parcels` | 1 | 98 min | | 98 min | 2026-10-02 |
-| `write_narratives_isc_manifest` | 1 | 4 s | | 4 s | 2026-10-05 |
-| `compute_narratives_isc` | 1 | 62 s | | 62 s | 2026-06-19 |
-| `mark_narratives_isc_done` | 1 | <1 s | | <1 s | 2026-06-19 |
+| `write_narratives_parcel_manifest` | 1 | 9 s | | 9 s | 10-05 |
+| `extract_narratives_parcels` | 1 | 89 min | | 89 min | 10-05 |
+| `write_narratives_isc_manifest` | 1 | 4 s | | 4 s | 10-05 |
+| `compute_narratives_isc` | 1 | 32 s | | 32 s | 10-05 |
+| `mark_narratives_isc_done` | 1 | <1 s | | <1 s | 10-05 |
 | **nature_stories** | | | | | |
 | `write_nature_stories_excluded_stimuli` | 1 | 15 s | | 15 s | 2026-10-02 |
 | `convert_nature_stories_textgrids` | 1 | 11 s | | 11 s | 2026-10-02 |
 | `verify_nature_stories_stimuli` | 1 | not measured | | <1 min (guess) | — |
-| `write_nature_stories_parcel_manifest` | 1 | 5 s | | 5 s | 2026-10-05 |
-| `extract_nature_stories_parcels` | 1 | 32 min | | 32 min | 2026-10-05 |
-| `write_nature_stories_isc_manifest` | 1 | 10 s | | 10 s | 2026-10-05 |
-| `compute_nature_stories_isc` | 1 | 6 s | | 6 s | 2026-10-05 |
-| `mark_nature_stories_isc_done` | 1 | <1 s | | <1 s | 2026-10-05 |
+| `write_nature_stories_parcel_manifest` | 1 | 5 s | | 5 s | 10-05 |
+| `extract_nature_stories_parcels` | 1 | 32 min | | 32 min | 10-05 |
+| `write_nature_stories_isc_manifest` | 1 | 10 s | | 10 s | 10-05 |
+| `compute_nature_stories_isc` | 1 | 6 s | | 6 s | 10-05 |
+| `mark_nature_stories_isc_done` | 1 | <1 s | | <1 s | 10-05 |
 | **ISC nearest neighbours and reliability (all 4 datasets)** | | | | | |
-| `create_isc_manifest` (checkpoint) | 4 | 2 s | 3 s | 8 s | 2026-09-28 |
-| `create_isc_dataframe` | 4 | 2 s | 4 s | 8 s | 2026-09-28 |
-| `compute_isc_nearest_neighbours` | 4 | 2 s | 2 s | 6 s | 2026-09-28 |
-| `compute_isc_reliability` | 4 | 9 s (1 job) | | ~1 min | 2026-10-05 |
-| `aggregate_isc_reliability` | 1 | not measured | | <1 min (guess) | — |
+| `create_isc_manifest` (checkpoint) | 4 | 1 s | 8 s | 11 s | 10-05, 10-06 |
+| `create_isc_dataframe` | 4 | 1 s | 4 s | 7 s | 10-05, 10-06 |
+| `compute_isc_nearest_neighbours` | 4 | 2 s | 3 s | 9 s | 10-05, 10-06 |
+| `compute_isc_reliability` | 4 | 1.6 min | 2.2 min | 6 min | 10-05, 10-06 |
+| `aggregate_isc_reliability` | 1 | 2 s | | 2 s | 10-06 |
 
-`compute_narratives_isc` failed in the 2026-10-02 run (see the developer changelog of
-2026-10-05), so its figure still comes from June 2026. The Caption Scene estimates come from the
-frontend tests of 2026-10-02 (registration about 1.5 min per subject with 8 threads; extraction
-about 30 s per run, about 16 CPU-hours in total). The rules marked "guess" only read or write
-small tables. The single-job rules of NSD and nature_stories took longer on 2026-10-02 and
-2026-10-05 than before, probably because they ran next to other disk-heavy jobs.
+`assemble_nsd_bold` took 11.4 h when it ran alone on all 4 cores (2026-09-24) and 18.6 h on
+10-06, when no rule reserved cores any more and 3 `extract_caption_scene_run_parcels` jobs ran
+next to it the whole time. Both rules read large BOLD files, so they slow each other down. The
+rules marked "guess" only read or write small tables.
 
 ### 2c. Model–brain alignment and statistics
 
 | Rule | Jobs | Median | Max | Total | Measured in |
 |---|---:|---:|---:|---:|---|
-| `compute_llm_mind_alignment_score` | 768 | 1 s | 13 s | 18 min | 2026-09-29 |
-| `relabel_llm_similarity_and_compute_relabelled_llm_alignment_score` | 300 | 16 s | 24 s | 53 min | 2026-09-29 |
-| `compute_empirical_p_value` | 768 | 4 s | 7 s | 41 min | 2026-09-30 |
-| `compute_hypergeometric_p_value` | 768 | 1 s | 11 s | 20 min | 2026-09-29 |
-| `aggregate_all_p_value_outputs` | 1 | 3.3 min | | 3.3 min | 2026-10-01 |
-| `compute_spearman_alignmentwith_empirical_p_value` | 300 | 1.8 min | 2.2 min | 5.2 h | 2026-09-29 |
-| `aggregate_all_spearman_alignment_scores` | 1 | 2 s | | 2 s | 2026-09-29 |
+| `compute_llm_mind_alignment_score` | 768 | 2 s | 7 s | 27 min | 10-05, 10-06 |
+| `relabel_llm_similarity_and_compute_relabelled_llm_alignment_score` | 300 | 13 s | 2.3 min | 52 min | 10-05, 10-06 |
+| `compute_empirical_p_value` | 768 | 4 s | 35 s | 45 min | 10-05, 10-06 |
+| `compute_hypergeometric_p_value` | 768 | 2 s | 6 s | 20 min | 10-05, 10-06 |
+| `aggregate_all_p_value_outputs` | 1 | 4.1 min | | 4.1 min | 10-06 |
+| `compute_spearman_alignmentwith_empirical_p_value` | 300 | 1.7 min | 3.9 min | 6.1 h | 10-05, 10-06 |
+| `aggregate_all_spearman_alignment_scores` | 1 | 3 s | | 3 s | 10-06 |
+
+The NSD and Caption Scene jobs (1,000 stimuli) take most of this time: their Spearman jobs take
+about 2 min each, against a few seconds for narratives and nature_stories.
 
 ### 2d. Model–model alignment and statistics
 
 | Rule | Jobs | Median | Max | Total | Measured in |
 |---|---:|---:|---:|---:|---|
-| `compute_llm_llm_alignment_score` | 11,184 | 1 s | 8 s | 3.7 h | 2026-09-29 |
-| `relabel_llm_similarity_and_compute_relabelled_llm_llm_alignment_score` | 4,038 | 13 s | 17 s | 9.8 h | 2026-09-30 |
-| `compute_llm_llm_empirical_p_value` | 11,184 | 3 s | 7 s | 9.6 h | 2026-09-30 |
-| `compute_llm_llm_hypergeometric_p_value` | 11,184 | 1 s | 4 s | 4.7 h | 2026-09-30 |
-| `aggregate_all_llm_llm_p_value_outputs` | 1 | 51 min | | 51 min | 2026-10-01 |
+| `compute_llm_llm_alignment_score` | 11,184 | 2 s | 1.6 min | 4.9 h | 10-05 |
+| `relabel_llm_similarity_and_compute_relabelled_llm_llm_alignment_score` | 4,038 | 13 s | 2.3 min | 10.6 h | 10-05 |
+| `compute_llm_llm_empirical_p_value` | 11,184 | 3 s | 11 s | 9.8 h | 10-05 |
+| `compute_llm_llm_hypergeometric_p_value` | 11,184 | 1 s | 13 s | 4.1 h | 10-05, 10-06 |
+| `aggregate_all_llm_llm_p_value_outputs` | 1 | 2.1 h | | 2.1 h | 10-06 |
+
+`aggregate_all_llm_llm_p_value_outputs` took 51 min on 2026-10-01, when it ran on its own; on
+10-06 it ran next to the Caption Scene extraction and `assemble_nsd_bold`.
 
 ### 2e. Plots
 
 | Rule | Jobs | Median | Max | Total | Measured in |
 |---|---:|---:|---:|---:|---|
-| `plot_concept_alignment_scatterplot` | 30 | 2 s | 3 s | 1 min | 2026-09-30 |
-| `plot_concept_alignment_enrichment_scatterplot` | 30 | 9 s | 22 s | 6 min | 2026-09-30 |
-| `plot_brain_model_alignment_lineplot` | 30 | 2 s | 2 s | 1 min | 2026-09-30 |
-| `plot_brain_model_alignment_enrichment_lineplot` | 30 | 9 s | 23 s | 6 min | 2026-09-30 |
-| `plot_alignment_heatmap` | 30 | 4.5 s | 10 s | 3 min | 2026-09-29 |
-| `plot_empirical_p_value_heatmap` | 30 | 7 s | 13 s | 4 min | 2026-09-29 |
-| `plot_spearman_alignment` | 12 | 4 s | 10 s | 1 min | 2026-09-29 |
+| `plot_concept_alignment_scatterplot` | 30 | 2 s | 3 s | 1 min | 10-06 |
+| `plot_concept_alignment_enrichment_scatterplot` | 30 | 10 s | 27 s | 7 min | 10-06 |
+| `plot_brain_model_alignment_lineplot` | 30 | 2 s | 3 s | 1 min | 10-06 |
+| `plot_brain_model_alignment_enrichment_lineplot` | 30 | 10 s | 26 s | 7 min | 10-06 |
+| `plot_alignment_heatmap` | 30 | 4 s | 21 s | 5 min | 10-05, 10-06 |
+| `plot_empirical_p_value_heatmap` | 30 | 4 s | 8 s | 2 min | 10-06 |
+| `plot_spearman_alignment` | 12 | 4 s | 7 s | 1 min | 10-05, 10-06 |
 
 ## 3. From job-hours to elapsed time
 
-The whole run is about **69 job-hours** of work (about 75 with downloads). It does not simply
-take 69/4 h, for three reasons:
+The whole run is about **119 job-hours** of work (about 125 with downloads): 18.6 h of
+`assemble_nsd_bold` and about 100 job-hours of everything else, half of it the Caption Scene
+per-run extraction. With 4 job slots, it cannot take less than about 30 h:
 
-1. **`assemble_nsd_bold` runs 4 worker processes** (`number_of_workers`) for 11.4 h.
-   Snakemake counts it as one core, so up to 3 other jobs run alongside it and share the CPUs.
-   The 11.4 h were measured while it ran alone on all 4 cores; its duration while sharing the
-   CPUs has not been measured yet.
-2. **`get_embeddings` runs one job at a time** (`resources: gpu=1`). Its 3.2 h mostly overlap with
-   the CPU jobs.
-3. **The many short alignment and statistics jobs** (about 40,000 jobs of 1–15 s each) averaged
-   3.7 jobs in parallel in the runs of 2026-09-28 and 2026-09-29.
+1. **`assemble_nsd_bold` runs 4 worker processes** for 18.6 h but counts as one job, so 3 other
+   jobs run next to it. It can start a few minutes into the run, after the NSD manifests.
+2. **The other jobs keep 3 slots busy while it runs** (about 56 job-hours, most of it the
+   Caption Scene extraction, which can start once its manifest is written after about 2.5 h),
+   and all 4 slots afterwards: the 10-06 run averaged 4.0 jobs in parallel, and the first 4.7 h
+   of the 10-05 run 3.8.
+3. **`get_embeddings` runs one job at a time** (`resources: gpu=1`). Its 4.4 h overlap with the
+   CPU jobs.
 
 | Stage | Elapsed time |
 |---|---:|
 | Model downloads (only if `resources/models/` is empty; 4 at a time) | ~1.5 h |
-| `assemble_nsd_bold` (measured alone on all cores) | 11.4 h |
-| Rest of the brain data processing (caption_scene ~6 h: manifest 2.3 h, then ~14 job-h of run extraction 4 at a time; narratives and nature_stories ~2.3 h, in parallel with the caption_scene manifest) | ~6 h |
-| Embeddings (GPU); mostly overlap with the stage above | ~0–1 h extra |
-| Alignment, statistics and plots (~36 job-h at 3.7 in parallel) | ~10 h |
-| Final aggregation steps (one job at a time at the end) | ~1 h |
-| **Total, models already downloaded** | **~29 h (27–34 h)** |
-| **Total, models downloaded too** | **~30.5 h** |
+| `assemble_nsd_bold`, with 3 other jobs next to it (Caption Scene extraction, embeddings, narratives, nature_stories, part of the model–model statistics) | 18.6 h |
+| Remaining alignment, statistics and plots (~44 job-h at ~3.8 in parallel) | ~12 h |
+| Final aggregation steps (one job at a time at the end) | ~0.5–2 h |
+| **Total, models already downloaded** | **~32 h (30–35 h)** |
+| **Total, models downloaded too** | **~33.5 h** |
 
-As a check against real runs: the 2026-09-24 run (mostly brain data processing, including
-`assemble_nsd_bold`) took 15.3 h. The 2026-09-29 run (embeddings and all downstream steps,
-26,153 jobs) took 7.9 h. The 2026-09-30 run (27,294 jobs, including the new model–model
-relabelled null) took 8.8 h before it got stuck on the hung job.
+As a check against real runs: the 10-05 run did 38.5 job-hours in 15.3 h (from 17:17, three hung
+jobs held cores, so it averaged only 1.9 jobs in parallel after the embeddings), and the 10-06 run
+did 80.1 job-hours in 20.2 h (4,195 jobs, completed). Run as two parts they took 35.5 h, the
+upper end of the range.
 
 ## 4. How to update these numbers
 
 Each `.snakemake/log/*.snakemake.log` written on node5 names the host in its first lines
 (`host: node5`; `Host: node5` in the header of Snakemake 9 logs). For every job
-it prints a `[timestamp]` line followed by `rule <name>:` and `jobid: <n>`, and later a
-`[timestamp]` line followed by `Finished jobid: <n> (Rule: <name>)`. Pairing the two timestamps
-by job id gives each job's duration. `snakemake -n --forceall` prints the job count per rule.
+it prints a `[timestamp]` line followed by `rule <name>:` (or `localrule`, `checkpoint`) and
+`jobid: <n>`, and later a `[timestamp]` line followed by `Finished jobid: <n> (Rule: <name>)`.
+Pairing the two timestamps by job id gives each job's duration; a job with no `Finished` line
+failed or hung. `snakemake -n --forceall` prints the job count per rule.
 
 ## 5. Changes
 
@@ -255,3 +273,24 @@ TODO references were removed from the tables and from this section, the run-spec
 short answer, section 1 and section 3 were rewritten to describe the current state (the
 `assemble_nsd_bold` history moved to the entry above), and the AI attribution block was replaced
 by the note under the title.
+
+### 2026-10-07 09:10 — measured on two node5 runs that rebuilt everything: ~32 h
+
+The tables now come from the runs of 2026-10-05 09:49 and 2026-10-06 10:11, which together
+executed every job of the workflow (the second one completed: 4,195 jobs in 20.2 h). The total
+went from ~29 h (27–34 h) to ~32 h (30–35 h), and from about 69 to about 119 job-hours:
+
+- **Caption Scene per-run extraction measured:** `extract_caption_scene_run_parcels` takes
+  3.7 min per run, not the ~30 s estimated from the frontend tests, and runs for the 795 runs
+  with retained events, not for all 1,664 BOLD runs: 49.9 job-hours instead of ~14. The
+  registration (3.2 min per subject), sampling coordinates, MNI template and collecting rules
+  were measured for the first time.
+- **`assemble_nsd_bold` sharing the CPUs:** 18.6 h with 3 extraction jobs next to it, against
+  11.4 h alone; it is now the critical path, with the Caption Scene extraction alongside it.
+- **Model-side rules:** `get_embeddings` 4.4 h (was 3.2 h; `gemma2_27b` on nature_stories took
+  28 min), `compute_llm_llm_alignment_score` 4.9 h (was 3.7 h), the relabelled LLM-LLM null
+  10.6 h (was 9.8 h); `aggregate_all_llm_llm_p_value_outputs` 2.1 h next to other jobs (51 min
+  alone).
+- **Section 3** now builds the elapsed time around `assemble_nsd_bold` with 3 jobs next to it,
+  instead of the earlier sum of stages.
+

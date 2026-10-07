@@ -48,7 +48,7 @@ snakemake --use-conda --cores <N> --rerun-triggers mtime \
                plot_alignment_heatmap plot_empirical_p_value_heatmap
 ```
 
-A clean run of everything takes about 29 h on node5; see
+A clean run of everything takes about 32 h on node5; see
 [`clean_run_duration.md`](../reference/clean_run_duration.md).
 
 **Parallelism.** No rule declares `threads:`, so Snakemake counts every job as one core and
@@ -164,6 +164,28 @@ To upgrade a package:
    uses it. Before that, run one representative job in the new environment and compare its
    outputs with the current results.
 
+**Removing old environments.** Every edit of an environment file creates a new environment under
+`.snakemake/conda/` (a folder named after a hash, plus a `.yaml` and a `.env_setup_done` file of
+the same name) and leaves the old one on disk. To remove the old ones:
+
+1. List the environments in use: `snakemake --list-conda-envs` (third column, `location`).
+2. Delete every other hash-named folder in `.snakemake/conda/`, with its `.yaml` and
+   `.env_setup_done` files, naming each one explicitly.
+
+Do not use `snakemake --conda-cleanup-envs` for this: its help text says it removes unused
+environments, but in Snakemake 9.27 it deletes the environments the workflow **uses** and keeps
+the old ones. If that happens, rebuild them without running any job:
+
+```bash
+CONDA_OVERRIDE_CUDA=12.9 snakemake --use-conda --conda-create-envs-only --cores 1
+```
+
+`CONDA_OVERRIDE_CUDA=12.9` matters on a machine without a GPU, such as the frontend: without it
+conda installs the CPU build of PyTorch in `llm_nearest_neighbours` (no triton, no GPU), under the
+same environment folder, so Snakemake does not notice. Check with
+`.snakemake/conda/<hash>_/bin/python -c 'import torch; print(torch.version.cuda)'`, which must
+print `12.9`.
+
 ## 5. Model limitations
 
 **Multimodal models are not supported.** Gemma 3n and Gemma 4 can read images, but their
@@ -265,3 +287,20 @@ the way: the troubleshooting entries still said that the manifest rules don't re
 code changes, which has not been true since the `code_version()` rerun trigger of 2026-10-05; the
 list of rules it covers and does not cover is now in section 2. The stale-output notes were
 gathered under "Leftover outputs from older versions", without their dates.
+
+### 2026-10-07 09:10 — clean-run duration updated
+
+The clean-run duration quoted in section 1 went from about 29 h to about 32 h, after the node5
+runs of 2026-10-05 and 2026-10-06 measured the Caption Scene per-run extraction.
+
+### 2026-10-07 13:55 — warning about `--conda-cleanup-envs`
+
+Section 4 now warns against `snakemake --conda-cleanup-envs`, which in Snakemake 9.27 deletes the
+environments in use instead of the unused ones (it did so on 2026-10-07).
+
+### 2026-10-07 14:45 — how to remove old environments
+
+Section 4 now describes how to remove old environments by hand, and how to rebuild the ones in
+use (with `CONDA_OVERRIDE_CUDA=12.9`, without which a rebuild on the frontend got the CPU build of
+PyTorch); it replaces the warning added earlier the same day.
+

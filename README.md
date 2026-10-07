@@ -45,7 +45,7 @@ the pipeline:
   hypergeometric tests, enrichment, the Benjamini-Hochberg families, and what
   every figure shows and how it is laid out (a source for the methods section)
 - [`docs/reference/clean_run_duration.md`](docs/reference/clean_run_duration.md)
-  — how long a clean run takes on node5 (about 29 h), rule by rule
+  — how long a clean run takes on node5 (about 32 h), rule by rule
 - [`docs/changelog/developers/`](docs/changelog/developers/) and
   [`docs/changelog/users/`](docs/changelog/users/) — one file per day with
   changes, technical and plain-language. Each file name lists the kinds of
