@@ -8,6 +8,7 @@ Changes made on this day, in order:
 - The software environments will be rebuilt at the next run (removal, documentation)
 - Software environments rebuilt, old ones removed (removal, documentation)
 - Old development branch removed (removal)
+- Model-level enrichment and Spearman plots: the null spread is now the error bar of each point (new_feature, removal, documentation)
 
 ---
 
@@ -66,4 +67,19 @@ Kind: removal
 
 The git branch `s22-pinned-envs`, which introduced the fixed software versions and was merged into
 `main` on 2 October, has been deleted. Nothing changes for running the project.
+
+---
+
+## 16:20 — The null spread is now the error bar of each model-level point
+
+Kind: new_feature, removal, documentation
+
+In the model-level enrichment and Spearman plots, each model's point now has an error bar equal
+to the standard deviation of its null distribution ("± null SD" in the y-axis label). Before, this
+spread was drawn as a grey interval on the dashed reference line. The bar shows how much the value
+varies by chance; it is not a confidence interval, and significance is still given by the
+asterisks. The [statistics page](../../reference/statistics.md), section 7, explains it.
+
+In the enrichment plots the bars are usually smaller than the points, because the axis must also
+fit the highest concept-level values. The plots are updated at the next run of the plotting rules.
 

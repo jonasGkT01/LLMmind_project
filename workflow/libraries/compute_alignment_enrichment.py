@@ -1,5 +1,5 @@
 # edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
-# last AI edit: 2026-10-02, see docs/changelog/developers/ for details
+# last AI edit: 2026-10-07, see docs/changelog/developers/ for details
 from pathlib import Path
 
 from matplotlib.ticker import FixedLocator, FuncFormatter
@@ -72,9 +72,10 @@ def compute_model_alignment_enrichment(
       deviation = SD across relabellings of the mean relabelled score / expected
 
     The null standard deviation is the spread of the null distribution in
-    enrichment units. It is centred on enrichment = 1, not on the observed
-    value, and is drawn there as an interval; significance is carried by the
-    model-level p-values and q-values.
+    enrichment units. The null is centred on enrichment = 1, not on the
+    observed value, so the error bar it gives each model-level point is not a
+    confidence interval; significance is carried by the model-level p-values
+    and q-values.
     """
     observed_df, metadata, _ = read_alignment_scores(
         observed_path, 
@@ -212,14 +213,16 @@ ENRICHMENT_Y_PADDING = 0.15
 def enrichment_ylim(concept_df, model_df):
     # shared by the concept- and model-level enrichment plots of one (dataset, similarity, k), so
     # both scripts derive the same limits from the same inputs. The top always leaves the
-    # enrichment = 1 reference line and the model-level null intervals (1 ± null SD) visible.
+    # enrichment = 1 reference line and the model-level error bars (enrichment + null SD) visible.
     # Padding and legend headroom are fractions of the axis height, so they are applied to axis
     # positions, not values
     upper_values = np.concatenate(
         [
             concept_df["enrichment"].to_numpy(dtype = float), 
-            model_df["enrichment"].to_numpy(dtype = float), 
-            1.0 + model_df["null_standard_deviation"].to_numpy(dtype = float), 
+            (model_df["enrichment"] + model_df["null_standard_deviation"]).to_numpy(
+                dtype = float
+            ), 
+            [1.0], 
         ]
     )
     top = float(np.nanmax(upper_values))

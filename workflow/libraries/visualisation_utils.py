@@ -1,5 +1,5 @@
 # edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
-# last AI edit: 2026-10-02, see docs/changelog/developers/ for details
+# last AI edit: 2026-10-07, see docs/changelog/developers/ for details
 import colorsys
 import hashlib
 
@@ -133,6 +133,7 @@ SPEARMAN_COEFFICIENT_LABEL = "Spearman's rank correlation coefficient"
 EMPIRICAL_P_VALUE_LABEL = "-log10(empirical p-value)"
 
 STANDARD_ERROR = "SE"
+NULL_STANDARD_DEVIATION = "null SD"
 
 def plot_title(level, quantity, dataset, similarity_type, number_of_neighbours = None):
     parameters = [f"dataset: {dataset}", f"similarity: {similarity_type}",]
@@ -278,27 +279,12 @@ def plot_model_points(ax, values, errors, stimuli_types,):
             label = f"{stimuli_type.capitalize()} stimuli", 
         )
 
-# the reference expected under the null: a dashed line, and for each model an interval of
-# one null SD around it
+# the reference expected under the null: a dashed line
 NULL_COLOUR = "grey"
 NULL_LINE_STYLE = {"linestyle": "--", "linewidth": 1.2, "color": NULL_COLOUR}
 
 def add_null_line(ax, y, label):
     ax.axhline(y, label = label, **NULL_LINE_STYLE)
-
-def add_null_interval(ax, reference, null_standard_deviations):
-    # the null distribution where it lives: reference ± that model's null SD at each model
-    ax.errorbar(
-        np.arange(len(null_standard_deviations)), 
-        np.full(len(null_standard_deviations), reference), 
-        yerr = null_standard_deviations, 
-        fmt = "none", 
-        ecolor = NULL_COLOUR, 
-        elinewidth = 2, 
-        capsize = 4, 
-        zorder = 1, 
-        label = "Null ± 1 SD", 
-    )
 
 def plot_concept_distributions(ax, labels, concept_df, value_column):
     # one jittered point per concept and a boxplot per model, at the position of its label;

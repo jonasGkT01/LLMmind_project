@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
-# last AI edit: 2026-10-02, see docs/changelog/developers/ for details
+# last AI edit: 2026-10-07, see docs/changelog/developers/ for details
 import argparse
 
 import numpy as np
@@ -14,13 +14,13 @@ from libraries.manage_model_metadata import (
 )
 from libraries.validate_data import validate_required_columns
 from libraries.visualisation_utils import (
-    add_null_interval, 
     add_null_line, 
     BRAIN_MODEL_SPEARMAN_ALIGNMENT, 
     CONCEPT_LEVEL, 
     create_model_figure, 
     legend_headroom_top, 
     MODEL_LEVEL, 
+    NULL_STANDARD_DEVIATION, 
     plot_concept_distributions, 
     plot_model_points, 
     plot_title, 
@@ -28,6 +28,7 @@ from libraries.visualisation_utils import (
     SPEARMAN_COEFFICIENT_LABEL, 
     stimuli_type_legend_handles, 
     style_model_axes, 
+    y_axis_label, 
 )
 
 NULL_STANDARD_DEVIATION_COLUMN = (
@@ -187,12 +188,11 @@ def main():
         dtype = float
     )
 
-    # plot the model coefficients, with each model's null interval on the rho = 0 line
+    # plot the model coefficients, with each model's null SD as its error bar
     fig, ax = create_model_figure(len(labels))
 
-    plot_model_points(ax, model_coefficients, None, stimuli_types)
+    plot_model_points(ax, model_coefficients, null_standard_deviations, stimuli_types)
     add_null_line(ax, 0.0, NULL_LINE_LABEL)
-    add_null_interval(ax, 0.0, null_standard_deviations)
     style_model_axes(
         ax, 
         models, 
@@ -203,14 +203,12 @@ def main():
             args.dataset, 
             args.similarity_type, 
         ), 
-        SPEARMAN_COEFFICIENT_LABEL, 
+        y_axis_label(SPEARMAN_COEFFICIENT_LABEL, NULL_STANDARD_DEVIATION), 
         p_values, 
         q_values, 
         [], 
     )
-    ax.set_ylim(
-        *spearman_ylim(np.concatenate([model_coefficients, null_standard_deviations]))
-    )
+    ax.set_ylim(*spearman_ylim(np.abs(model_coefficients) + null_standard_deviations))
 
     save_figure(fig, args.model_level_plot)
 

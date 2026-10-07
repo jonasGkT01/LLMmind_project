@@ -8,6 +8,7 @@ Changes made on this day, in order:
 - Post-rerun checks: no ISC NIfTI volumes; the conda cleanup deleted the environments in use (removal, documentation)
 - Conda environments rebuilt and stale environments deleted (removal, documentation)
 - Merged branch of the pinned environments deleted (removal)
+- Null SD drawn as the error bar of the model-level enrichment and Spearman points (new_feature, removal, documentation)
 
 ---
 
@@ -137,4 +138,43 @@ the optional lock export per environment (`conda env export --no-builds`) was dr
 - Files changed: this changelog, the user changelog of the day, `.claude/TODO/LLMmind_project.md`.
 - Verification: `.git/refs/heads/s22-pinned-envs` no longer exists, there is no `packed-refs`, and
   the other branch refs (e.g. `s7-isc-nifti`) are still present.
+
+---
+
+## 16:20 — Null SD drawn as the error bar of the model-level enrichment and Spearman points
+
+Kind: new_feature, removal, documentation
+
+- `plot_brain_model_alignment_enrichment_lineplot.py`: `plot_model_points()` gets
+  `model_df["null_standard_deviation"]` as `errors` (was `None`); the `add_null_interval()` call is
+  gone; the y-label is `y_axis_label(ALIGNMENT_ENRICHMENT_LABEL, NULL_STANDARD_DEVIATION)`.
+- `plot_spearman_alignment.py` (model-level plot): the same with
+  `empirical_null_standard_deviation_spearman_coefficient`; the y-limits come from
+  `spearman_ylim(np.abs(model_coefficients) + null_standard_deviations)`. The concept-level plot
+  is unchanged.
+- `libraries/visualisation_utils.py`: new constant `NULL_STANDARD_DEVIATION = "null SD"`;
+  `add_null_interval()` removed (no caller left).
+- `libraries/compute_alignment_enrichment.py`: `enrichment_ylim()` fits enrichment + null SD and
+  1.0 instead of the enrichments and 1 + null SD (shared with the concept-level enrichment plot);
+  the docstring of `compute_model_alignment_enrichment()` describes the bar as the null spread, not
+  a confidence interval.
+- `docs/reference/statistics.md`, section 7: table rows, the error-bar convention and the
+  shared-y-axes paragraph.
+- On the enrichment plots the bars are hard to see: for Caption Scene, cosine, k = 25 the null SD
+  is 0.045–0.052 around enrichments of 1.03–1.29, on a symlog axis that reaches about 100 because
+  of the concept-level values sharing it.
+- Rerun needed: `--forcerun plot_brain_model_alignment_enrichment_lineplot
+  plot_concept_alignment_enrichment_scatterplot plot_spearman_alignment` (72 jobs; a dry run with
+  `--use-conda` lists only these). Not yet run.
+
+### Context
+
+- Request: TODO P52/S52, approved by the developer on 2026-10-07; P52/S52 removed from the TODO
+  file, and SUGGESTIONS I11/IS11 reworded so they no longer cite it.
+- Files changed: the four code files above, `docs/reference/statistics.md`, `docs/AI_USAGE.md`,
+  this changelog and the user changelog (renamed from `2026-10-07_removal_documentation.md`).
+- Verification: both scripts run on the frontend in the visualisation environment with the
+  commands of the dry run for Caption Scene, cosine (k = 25 for enrichment), writing to the
+  scratchpad; the Spearman model-level plot shows the bars and the "± null SD" label; null SDs of
+  the enrichment configuration computed with `compute_alignment_enrichment()`.
 

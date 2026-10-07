@@ -122,26 +122,27 @@ brain's and the model's similarity structures.
 |---|---|---|---|
 | Model-level alignment line plot | mean alignment score over concepts | standard error of that mean across concepts (SD/√*n*) | dashed line at the hypergeometric expectation *k*/(*n* − 1) |
 | Concept-level alignment scatterplot | one point per concept, boxplot per model | none | dashed line at *k*/(*n* − 1) |
-| Model-level enrichment line plot | model-level enrichment | none | dashed line at enrichment = 1, and at each model an interval 1 ± that model's null SD |
+| Model-level enrichment line plot | model-level enrichment | that model's null SD | dashed line at enrichment = 1 |
 | Concept-level enrichment scatterplot | one point per concept, boxplot per model | none | dashed line at enrichment = 1 |
-| Model-level Spearman line plot | model-level ρ | none | dashed line at ρ = 0, and at each model an interval 0 ± that model's null SD |
+| Model-level Spearman line plot | model-level ρ | that model's null SD | dashed line at ρ = 0 |
 | Concept-level Spearman scatterplot | one point per concept, boxplot per model | none | dashed line at ρ = 0 |
 | Alignment heatmap | mean alignment score of each pair; the diagonal is blank | — | — |
 | p-value heatmap | −log10 of each pair's model-level empirical p-value; the diagonal is blank | — | — |
 
 Conventions:
 
-- **Error bars show uncertainty of the plotted value** (the standard error in the alignment line
-  plot) and nothing else.
-- **The null is drawn where it lives:** the grey interval "Null ± 1 SD" sits on the reference
-  line, not around the observed point, because the null distribution is centred on chance
-  (enrichment = 1, ρ = 0). It shows how wide chance variation is for that model; it is not a
-  significance test.
+- **What the error bars mean differs between plots.** In the alignment line plot, the bar is the
+  standard error of the plotted mean, an uncertainty of the value. In the model-level enrichment
+  and Spearman plots, the bar is the model's null SD drawn around the observed value (the y-label
+  reads "± null SD"): it shows how wide chance variation is for that model, but the null
+  distribution is centred on chance (enrichment = 1, ρ = 0), not on the observed value, so the bar
+  is not a confidence interval and whether it reaches the reference line is not a significance
+  test.
 - **Significance is carried by asterisks:** in the model plots, black asterisks give the
   uncorrected model-level empirical p-value and blue asterisks below them the Benjamini-Hochberg
   q-value (`*` < 0.05, `**` < 0.01, `***` < 0.001); in the p-value heatmap, the asterisks give the
   q-value. Section 5 lists the families.
-- The concept-level enrichment and Spearman scatterplots draw no null interval, to stay readable.
+- The concept-level enrichment and Spearman scatterplots draw no error bars, to stay readable.
 
 Layout, shared by all plots (constants and helpers in `libraries/visualisation_utils.py`):
 
@@ -174,7 +175,7 @@ Layout, shared by all plots (constants and helpers in `libraries/visualisation_u
   one dataset/similarity/*k* share the y-range `[0, 1]` (plus legend space), so they can be
   compared side by side. The two enrichment plots share one range too, computed from both
   (`enrichment_ylim()` in `libraries/compute_alignment_enrichment.py`) so that every concept,
-  model-level value and null interval fits. Their y-axis is linear from 0 to 1 and log10 above 1
+  model-level value and its error bar fits. Their y-axis is linear from 0 to 1 and log10 above 1
   (matplotlib `symlog`, `set_enrichment_y_scale()`), with [0, 1] as tall as one decade, so a few
   very high concepts don't squash the rest.
 
@@ -204,3 +205,12 @@ y-axes) moved here from the "Outputs" section of `README.md`, which now links to
 together with the note on Spearman alignment under the `spearman` similarity (section 6). The
 TODO reference in the entry of 2026-10-02 was removed, and the AI attribution block at the end was
 replaced by the note under the title.
+
+### 2026-10-07 16:30 — null SD drawn as the error bar of the model-level points
+
+At the developer's request, the model-level enrichment and Spearman plots now draw each model's
+null SD as the error bar of its point, instead of as a grey interval "Null ± 1 SD" around the
+reference line (enrichment = 1, ρ = 0), which they had done since 2026-10-02. The y-labels read
+"± null SD", the y-ranges fit value + null SD, and section 7 explains that the bar is the spread
+of the null, not a confidence interval.
+

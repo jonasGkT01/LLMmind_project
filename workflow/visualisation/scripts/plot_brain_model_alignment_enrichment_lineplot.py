@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
-# last AI edit: 2026-10-02, see docs/changelog/developers/ for details
+# last AI edit: 2026-10-07, see docs/changelog/developers/ for details
 import argparse
 
 from libraries.compute_alignment_enrichment import (
@@ -11,16 +11,17 @@ from libraries.compute_alignment_enrichment import (
 from libraries.compute_statistics import model_level_significance
 from libraries.manage_model_metadata import parse_model_parameters, sort_models
 from libraries.visualisation_utils import (
-    add_null_interval, 
     add_null_line, 
     ALIGNMENT_ENRICHMENT_LABEL, 
     BRAIN_MODEL_ALIGNMENT_ENRICHMENT, 
     create_model_figure, 
     MODEL_LEVEL, 
+    NULL_STANDARD_DEVIATION, 
     plot_model_points, 
     plot_title, 
     save_figure, 
     style_model_axes, 
+    y_axis_label, 
 )
 
 def main():
@@ -68,12 +69,16 @@ def main():
         args.number_of_neighbours, 
     )
 
-    # plot the model enrichments, with each model's null interval on the enrichment = 1 line
+    # plot the model enrichments, with each model's null SD as its error bar
     fig, ax = create_model_figure(len(model_df))
 
-    plot_model_points(ax, model_df["enrichment"], None, model_df["stimuli_type"])
+    plot_model_points(
+        ax, 
+        model_df["enrichment"], 
+        model_df["null_standard_deviation"], 
+        model_df["stimuli_type"], 
+    )
     add_null_line(ax, 1.0, "Null expectation (enrichment = 1)")
-    add_null_interval(ax, 1.0, model_df["null_standard_deviation"])
     style_model_axes(
         ax, 
         model_df["model"].tolist(), 
@@ -85,7 +90,7 @@ def main():
             args.similarity_type, 
             args.number_of_neighbours, 
         ), 
-        ALIGNMENT_ENRICHMENT_LABEL, 
+        y_axis_label(ALIGNMENT_ENRICHMENT_LABEL, NULL_STANDARD_DEVIATION), 
         p_values, 
         q_values, 
         [], 
