@@ -1,5 +1,5 @@
 # edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
-# last AI edit: 2026-10-05, see docs/changelog/developers/ for details
+# last AI edit: 2026-10-08, see docs/changelog/developers/ for details
 import json
 
 from pathlib import Path
@@ -180,7 +180,8 @@ rule write_nature_stories_parcel_manifest:
     output:
         manifest = NATURE_STORIES_PARCEL_MANIFEST
     params:
-        code = code_version(write_nature_stories_parcel_manifest, nature_stories_parcel_output)
+        code = code_version(write_nature_stories_parcel_manifest, nature_stories_parcel_output), 
+        data = [NATURE_STORIES_SUBJECTS, NATURE_STORIES_TRAIN_STORIES, NATURE_STORIES_TEST_STORY, NATURE_STORIES_RUN_METADATA, NATURE_STORIES_RESPONSES_DIR, NATURE_STORIES_MAPPERS_DIR, NATURE_STORIES_PROCESSING_OUTPUT_DIR]
     run:
         write_nature_stories_parcel_manifest(output.manifest)
 
@@ -190,7 +191,8 @@ rule write_nature_stories_isc_manifest:
     output:
         manifest = NATURE_STORIES_ISC_MANIFEST
     params:
-        code = code_version(write_nature_stories_isc_manifest, nature_stories_parcel_output)
+        code = code_version(write_nature_stories_isc_manifest, nature_stories_parcel_output), 
+        data = [NATURE_STORIES_SUBJECTS, NATURE_STORIES_STORIES, NATURE_STORIES_PROCESSING_OUTPUT_DIR]
     run:
         write_nature_stories_isc_manifest(output.manifest)
 

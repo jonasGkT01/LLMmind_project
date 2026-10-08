@@ -1,5 +1,5 @@
 # edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
-# last AI edit: 2026-10-02, see docs/changelog/developers/ for details
+# last AI edit: 2026-10-08, see docs/changelog/developers/ for details
 import numpy as np
 from scipy.stats import rankdata
 
@@ -41,21 +41,6 @@ def spearman_normalize(x):
     x = rankdata(x, method = "average", axis = 1)
 
     return pearson_normalize(x)
-
-def cosine_similarity(x):
-    x = normalize_l2(x)
-
-    return x @ x.T
-
-def pearson_similarity(x):
-    x = pearson_normalize(x)
-
-    return x @ x.T
-
-def spearman_similarity(x):
-    x = spearman_normalize(x)
-
-    return x @ x.T
 
 def dataframe_to_embedding_matrix(embedding_df):
     """

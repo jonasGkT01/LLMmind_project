@@ -1,5 +1,5 @@
 # edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
-# last AI edit: 2026-10-02, see docs/changelog/developers/ for details
+# last AI edit: 2026-10-08, see docs/changelog/developers/ for details
 import argparse
 from pathlib import Path
 
@@ -7,9 +7,6 @@ import nibabel as nib
 import numpy as np
 import pandas as pd
 from scipy.ndimage import map_coordinates
-
-# cubic interpolation, as in NSD's own func1pt8-to-MNI mapping (map_interpolation)
-SPLINE_ORDER = 3
 
 def parcel_output_path(row, output_root):
     return (
@@ -37,6 +34,10 @@ def main():
     parser.add_argument("--n_rois", 
                         type = int, 
                         required = True)
+    parser.add_argument("--spline_order", 
+                        type = int, 
+                        required = True, 
+                        help = "Spline order of the interpolation when sampling the BOLD volumes")
     args = parser.parse_args()
 
     # load the events, the sampling coordinates and the run
@@ -97,7 +98,7 @@ def main():
 
     for volume in needed_volumes:
         data = np.asarray(img.dataobj[..., volume], dtype = np.float64)
-        sampled = map_coordinates(data, coordinates, order = SPLINE_ORDER)
+        sampled = map_coordinates(data, coordinates, order = args.spline_order)
         parcel_values[volume] = (
             np.bincount(parcel_index, weights = sampled, minlength = args.n_rois)
             /voxels_per_parcel

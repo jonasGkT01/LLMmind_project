@@ -1,63 +1,47 @@
-#!/usr/bin/env python3
 # edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
-# last AI edit: 2026-10-02, see docs/changelog/developers/ for details
+# last AI edit: 2026-10-08, see docs/changelog/developers/ for details
 import argparse
-from pathlib import Path
-
-import pandas as pd
 
 from libraries.compute_alignment import compute_alignment_scores
-from libraries.compute_nearest_neighbours import (
-    require_stored_number_of_neighbours, 
-    slice_top_k_neighbours, 
-)
-from libraries.validate_data import validate_required_columns
-
-def read_nearest_neighbours(path, number_of_neighbours):
-    # both files hold the dataset's largest configured neighbourhood size, not just number_of_neighbours
-    require_stored_number_of_neighbours(path, number_of_neighbours)
-
-    df = pd.read_parquet(path, engine = "pyarrow",)
-
-    validate_required_columns(
-        df = df, 
-        required_columns = {"concept", "neighbour",}, 
-        source = str(path), 
-    )
-
-    return slice_top_k_neighbours(df, number_of_neighbours)
+from libraries.compute_nearest_neighbours import read_nearest_neighbours
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--number_of_neighbours", 
                         type = int, 
-                        required = True)
+                        required = True, 
+                        help = "Number of neighbours per concept to compare")
     parser.add_argument("--llm_nearest_neighbours_1", 
                         type = str, 
-                        required = True)
+                        required = True, 
+                        help = "Path to the nearest neighbours of the first model's embeddings")
     parser.add_argument("--llm_nearest_neighbours_2", 
                         type = str, 
-                        required = True)
+                        required = True, 
+                        help = "Path to the nearest neighbours of the second model's embeddings")
     parser.add_argument("--alignment_score", 
                         type = str, 
-                        required = True)
+                        required = True, 
+                        help = "Path to the output alignment scores")
     args = parser.parse_args()
 
     if args.number_of_neighbours <= 0:
         raise ValueError("--number_of_neighbours must be a positive integer")
 
-    llm_nearest_neighbours_1_df = read_nearest_neighbours(
+    # load both neighbour files and keep the first number_of_neighbours of each concept
+    nearest_neighbours_df_1 = read_nearest_neighbours(
         args.llm_nearest_neighbours_1, 
         args.number_of_neighbours
     )
-    llm_nearest_neighbours_2_df = read_nearest_neighbours(
+    nearest_neighbours_df_2 = read_nearest_neighbours(
         args.llm_nearest_neighbours_2, 
         args.number_of_neighbours
     )
 
+    # compute the alignment score of every shared concept
     alignment_score_df = compute_alignment_scores(
-        nearest_neighbours_df_1 = llm_nearest_neighbours_1_df, 
-        nearest_neighbours_df_2 = llm_nearest_neighbours_2_df, 
+        nearest_neighbours_df_1 = nearest_neighbours_df_1, 
+        nearest_neighbours_df_2 = nearest_neighbours_df_2, 
         number_of_neighbours = args.number_of_neighbours, 
     )
 
@@ -66,10 +50,12 @@ def main():
             "No shared concepts found between the two nearest-neighbour files"
         )
 
-    output_path = Path(args.alignment_score)
-    output_path.parent.mkdir(parents = True, exist_ok = True)
-
-    alignment_score_df.to_parquet(output_path, engine = "pyarrow", index = False)
+    # save the alignment scores as a parquet file
+    alignment_score_df.to_parquet(
+        args.alignment_score, 
+        engine = "pyarrow", 
+        index = False
+    )
 
 if __name__ == "__main__":
     main()

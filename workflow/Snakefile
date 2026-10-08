@@ -1,14 +1,31 @@
 # edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
-# last AI edit: 2026-10-05, see docs/changelog/developers/ for details
+# last AI edit: 2026-10-08, see docs/changelog/developers/ for details
 configfile: "config/config.yaml"
 
 from itertools import combinations
+import re
 
 from libraries.code_version import code_version
 
 shell.prefix(
     'export PYTHONPATH="$PWD/workflow:$PYTHONPATH"; '
 )
+
+# check the config at startup, so a wrong value stops the pipeline before any job runs
+def check_config_value(key, value, allowed):
+    if value not in allowed:
+        raise ValueError(f"config: {key} is {value!r}, expected one of {allowed}")
+
+for model, model_config in config["models"].items():
+    if not re.fullmatch(r".+_[^_]+", model):
+        raise ValueError(f"config: model key {model!r} must be <family>_<size>")
+    check_config_value(f"models.{model}.modality", model_config["modality"], ["language", "vision"])
+    check_config_value(f"models.{model}.quantization_method", model_config["quantization_method"], [None, "4bit", "8bit"])
+
+for similarity_type in config["similarity_types"]:
+    check_config_value("similarity_types entry", similarity_type, ["cosine", "pearson", "spearman"])
+
+check_config_value("minimum_subjects_per_stimulus", config["minimum_subjects_per_stimulus"], list(range(2, 9)))
 
 DATASETS = list(config["datasets"])
 MODEL_KEYS = list(config["models"].keys())
@@ -33,6 +50,12 @@ def max_number_of_neighbours(dataset):
     # Every smaller configured k is a prefix slice of that one stored file (see slice_top_k_neighbours in
     # libraries/compute_nearest_neighbours.py) rather than a separately materialized file
     return max(dataset_numbers_of_neighbours(dataset))
+
+for dataset in DATASETS:
+    numbers_of_neighbours = dataset_numbers_of_neighbours(dataset)
+
+    if not isinstance(numbers_of_neighbours, list) or not all(type(k) is int and k > 0 for k in numbers_of_neighbours):
+        raise ValueError(f"config: {dataset}.number_of_neighbours must be positive integers, got {numbers_of_neighbours!r}")
 
 def pairings():
     pairs = []
@@ -222,5 +245,4 @@ rule all:
             for dataset in DATASETS
             for similarity_type in SIMILARITY_TYPES
         ], 
-        spearman_summary = "results/all_spearman_alignment_scores.tsv", 
-        isc_reliability_summary = "results/mind/all_isc_reliability.tsv"
+        spearman_summary = "results/all_spearman_alignment_scores.tsv"

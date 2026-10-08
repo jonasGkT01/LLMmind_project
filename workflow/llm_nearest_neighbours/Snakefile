@@ -1,5 +1,5 @@
 # edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
-# last AI edit: 2026-10-02, see docs/changelog/developers/ for details
+# last AI edit: 2026-10-08, see docs/changelog/developers/ for details
 from pathlib import Path
 
 def chunk_max_length_arg(model):
@@ -49,7 +49,9 @@ rule get_embeddings:
             "" if config["models"][wc.model]["quantization_method"] is None
             else f"--quantization_method {config['models'][wc.model]['quantization_method']}"
         ), 
-        chunk_max_length_arg = lambda wc: chunk_max_length_arg(wc.model)
+        chunk_max_length_arg = lambda wc: chunk_max_length_arg(wc.model), 
+        chunk_overlap = config["chunk_overlap"], 
+        pool = lambda wc: config["pooling"][config["models"][wc.model]["modality"]]
     conda:
         "envs/llm_nearest_neighbours_environment.yaml"
     shell:
@@ -61,6 +63,8 @@ rule get_embeddings:
                 --modality {params.modality:q} \
                 {params.quantization_arg} \
                 {params.chunk_max_length_arg} \
+                --chunk_overlap {params.chunk_overlap} \
+                --pool {params.pool:q} \
                 --excluded_stimuli {input.excluded_stimuli:q}
         """
 

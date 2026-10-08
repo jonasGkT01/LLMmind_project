@@ -1,91 +1,61 @@
 # edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
-# last AI edit: 2026-10-02, see docs/changelog/developers/ for details
+# last AI edit: 2026-10-08, see docs/changelog/developers/ for details
 import argparse
 
-import pandas as pd
-
 from libraries.compute_alignment import compute_alignment_scores
-from libraries.compute_nearest_neighbours import (
-    require_stored_number_of_neighbours, 
-    slice_top_k_neighbours, 
-)
+from libraries.compute_nearest_neighbours import read_nearest_neighbours
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--number_of_neighbours", 
                         type = int, 
-                        help = "Set the number of neighbours to compute")
+                        required = True, 
+                        help = "Number of neighbours per concept to compare")
     parser.add_argument("--isc_nearest_neighbours", 
                         type = str, 
-                        help = "Path to dataframe of computed nearest neighbours for the ISC model")
+                        required = True, 
+                        help = "Path to the nearest neighbours of the ISC vectors")
     parser.add_argument("--llm_nearest_neighbours", 
                         type = str, 
-                        help = "Path to dataframe of computed nearest neighbours for the LLM model")
+                        required = True, 
+                        help = "Path to the nearest neighbours of the model embeddings")
     parser.add_argument("--alignment_score", 
                         type = str, 
-                        help = "Path to the file containing the alignment score")
+                        required = True, 
+                        help = "Path to the output alignment scores")
     args = parser.parse_args()
 
-    number_of_neighbours = args.number_of_neighbours
-    isc_nearest_neighbours = args.isc_nearest_neighbours
-    llm_nearest_neighbours = args.llm_nearest_neighbours
-    alignment_score = args.alignment_score
-
-    if number_of_neighbours is None or number_of_neighbours <= 0:
+    if args.number_of_neighbours <= 0:
         raise ValueError("--number_of_neighbours must be a positive integer")
 
-    # both files must hold at least number_of_neighbours: fail loudly instead of truncating
-    require_stored_number_of_neighbours(isc_nearest_neighbours, number_of_neighbours)
-    require_stored_number_of_neighbours(llm_nearest_neighbours, number_of_neighbours)
-
-    # load the dataframes
-    nearest_neighbours_df_1 = pd.read_parquet(
-        isc_nearest_neighbours, 
-        engine = "pyarrow"
+    # load both neighbour files and keep the first number_of_neighbours of each concept
+    nearest_neighbours_df_1 = read_nearest_neighbours(
+        args.isc_nearest_neighbours, 
+        args.number_of_neighbours
     )
-    nearest_neighbours_df_2 = pd.read_parquet(
-        llm_nearest_neighbours, 
-        engine = "pyarrow"
+    nearest_neighbours_df_2 = read_nearest_neighbours(
+        args.llm_nearest_neighbours, 
+        args.number_of_neighbours
     )
 
-    required_columns = {"concept", "neighbour"}
-
-    missing_columns_1 = required_columns - set(nearest_neighbours_df_1.columns)
-    missing_columns_2 = required_columns - set(nearest_neighbours_df_2.columns)
-
-    if missing_columns_1:
-        raise ValueError(
-            "The first nearest-neighbours dataframe is missing columns: "
-            f"{sorted(missing_columns_1)}"
-        )
-
-    if missing_columns_2:
-        raise ValueError(
-            "The second nearest-neighbours dataframe is missing columns: "
-            f"{sorted(missing_columns_2)}"
-        )
-
-    nearest_neighbours_df_1 = slice_top_k_neighbours(
-        nearest_neighbours_df_1, 
-        number_of_neighbours
-    )
-    nearest_neighbours_df_2 = slice_top_k_neighbours(
-        nearest_neighbours_df_2, 
-        number_of_neighbours
-    )
-
+    # compute the alignment score of every shared concept
     alignment_score_df = compute_alignment_scores(
         nearest_neighbours_df_1 = nearest_neighbours_df_1, 
         nearest_neighbours_df_2 = nearest_neighbours_df_2, 
-        number_of_neighbours = number_of_neighbours, 
+        number_of_neighbours = args.number_of_neighbours, 
     )
 
-    # save the alignment scores as a parquet file
-    alignment_score_df.to_parquet(alignment_score, engine = "pyarrow", index = False)
+    if alignment_score_df.empty:
+        raise ValueError(
+            "No shared concepts found between the two nearest-neighbour files"
+        )
 
-#    # print the alignment score dataframe
-#    with pd.option_context("display.max_rows", None, "display.max_columns", None):
-#        print(alignment_score_df)
+    # save the alignment scores as a parquet file
+    alignment_score_df.to_parquet(
+        args.alignment_score, 
+        engine = "pyarrow", 
+        index = False
+    )
 
 if __name__ == "__main__":
     main()

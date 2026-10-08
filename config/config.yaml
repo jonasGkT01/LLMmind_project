@@ -1,5 +1,5 @@
 # edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
-# last AI edit: 2026-10-06, see docs/changelog/developers/ for details
+# last AI edit: 2026-10-08, see docs/changelog/developers/ for details
 
 # worker processes or threads used inside the jobs that parallelise internally (NSD parcel extraction,
 # Caption Scene T1w registration, p-value aggregation). Snakemake counts each job as one core, so
@@ -13,13 +13,19 @@ random_seed: 37
 # a stimulus is retained only if it was presented to at least this many different subjects
 minimum_subjects_per_stimulus: 2
 
-# random splits of the subjects into halves when measuring the reliability of each ISC vector
-isc_reliability_number_of_splits: 100
-
 # maximum number of tokens per chunk when language models embed long textual stimuli, the same for every language model.
 # Set to null (or "none") to pass no --chunk_max_length to get_embeddings.py: each model then uses its own context length
-# (max_position_embeddings, e.g. 8192 for Gemma 1/2), or 2048 when that is missing or above 100,000 tokens (e.g. Gemma 3/4)
+# (max_position_embeddings, e.g. 8192 for Gemma 1/2), or 2048 when that is missing or above 100,000 tokens (e.g. Gemma 3/4).
+# null is the intended default; 2048 is set because some Gemma models crash with null
 max_chunk_length: 2048
+# number of tokens shared by consecutive chunks of a long textual stimulus
+chunk_overlap: 256
+
+# how each model turns its last hidden states into one embedding: the mean over tokens for
+# language models, the CLS token for vision models
+pooling:
+  language: "avg"
+  vision: "cls"
 
 # a model key is <family>_<size>: the family may contain "_", the size must not (e.g. clip_i21k_ft_b);
 # model_family() takes everything before the last "_", and figures group and order models by it
@@ -286,7 +292,7 @@ datasets:
 
 caption_scene:
   # numbers of nearest neighbours k; every analysis runs once per k
-  number_of_neighbours: [5, 25, 50, 100]
+  number_of_neighbours: [5, 25, 125]
   bold_glob: "resources/datasets/caption_scene_dataset/V1/derivatives/pp_data/sub-*/func/sub-*_ses-*_task-CSD_run-*.nii.gz"
   # T1w registered to MNI; the BOLD data are aligned to it. Each subject has four repeated T1w
   # scans on one grid, and run-001 matches the mean BOLD image at least as well as the others
@@ -308,6 +314,12 @@ caption_scene:
   event_duration_s: 12.0
   # text encoding of the dataset's run tables
   run_table_encoding: "gbk"
+  # an atlas voxel is sampled only if its warped field-of-view mask is at least this value,
+  # i.e. it maps (almost) fully inside the native field of view
+  inside_threshold: 0.999
+  # spline order when sampling the BOLD volumes on the atlas grid: cubic, as in NSD's own
+  # func1pt8-to-MNI mapping (nsd_data map_interpolation)
+  spline_order: 3
 
 narratives:
   number_of_neighbours: 5
@@ -395,7 +407,7 @@ nature_stories:
   subjects: 11
 
 nsd_data:
-  number_of_neighbours: [5, 25, 50, 100]
+  number_of_neighbours: [5, 25, 125]
   dataset_dir: "resources/datasets/nsd_data_dataset"
   processing_output_dir: "results/mind/nsd_data"
   # the dataset's images, exported to stimuli_dir by the workflow

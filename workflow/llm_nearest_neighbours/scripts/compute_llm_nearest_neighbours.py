@@ -1,5 +1,5 @@
 # edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
-# last AI edit: 2026-10-02, see docs/changelog/developers/ for details
+# last AI edit: 2026-10-08, see docs/changelog/developers/ for details
 
 import argparse
 
@@ -12,6 +12,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--embedding_dataframe", 
                         type = str, 
+                        required = True, 
                         help = "Path to dataframe of embeddings")
     parser.add_argument("--number_of_neighbours", 
                         type = int, 
@@ -19,12 +20,15 @@ def main():
                         help = "Number of neighbours to compute and store (the dataset's largest configured neighbourhood size)")
     parser.add_argument("--cosine_nearest_neighbours", 
                         type = str, 
+                        required = True, 
                         help = "Path to the file containing the cosine nearest neighbours of concepts")
     parser.add_argument("--pearson_nearest_neighbours", 
                         type = str, 
+                        required = True, 
                         help = "Path to the file containing the Pearson nearest neighbours of concepts")
     parser.add_argument("--spearman_nearest_neighbours", 
                         type = str, 
+                        required = True, 
                         help = "Path to the file containing the Spearman nearest neighbours of concepts")
     args = parser.parse_args()
 

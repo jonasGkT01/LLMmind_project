@@ -1,5 +1,5 @@
 # edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
-# last AI edit: 2026-10-06, see docs/changelog/developers/ for details
+# last AI edit: 2026-10-08, see docs/changelog/developers/ for details
 
 import re
 from pathlib import Path
@@ -27,7 +27,6 @@ CAPTION_SCENE_T1W = config["caption_scene"]["t1w_pattern"]
 MNI_TEMPLATE = f"{config['atlas']['atlas_dir']}/tpl-MNI152NLin6Asym_res-01_T1w.nii.gz"
 MNI_TEMPLATE_URL = "https://templateflow.s3.amazonaws.com/tpl-MNI152NLin6Asym/tpl-MNI152NLin6Asym_res-01_T1w.nii.gz"
 CAPTION_SCENE_ISC_DONE = f"{CAPTION_SCENE_PROCESSING_OUTPUT_DIR}/manifests/.isc_done"
-CAPTION_SCENE_ISC_MANIFEST = f"{CAPTION_SCENE_PROCESSING_OUTPUT_DIR}/manifests/isc_manifest.tsv"
 
 CAPTION_SCENE_IMAGE_CAPTION_TSV = "resources/datasets/caption_scene_dataset/V1/stimuli/COCO_CN/Translated_Image_Caption_pairs.tsv"
 CAPTION_SCENE_STIMULI_READY = config["caption_scene"]["stimuli_ready"]
@@ -175,7 +174,7 @@ checkpoint make_caption_scene_manifest:
         tr = config["caption_scene"]["tr"], 
         event_duration_s = config["caption_scene"]["event_duration_s"], 
         onset_shift_s = config["caption_scene"]["onset_shift_s"], 
-        run_table_encoding = config["caption_scene"].get("run_table_encoding", "gbk"), 
+        run_table_encoding = config["caption_scene"]["run_table_encoding"], 
         minimum_subjects_per_stimulus = MINIMUM_SUBJECTS_PER_STIMULUS, 
         code = code_version(MAKE_CAPTION_SCENE_MANIFEST_SCRIPT)
     conda:
@@ -256,7 +255,8 @@ rule compute_caption_scene_sampling_coordinates:
     params:
         n_rois = config["atlas"]["n_rois"], 
         yeo_networks = config["atlas"]["yeo_networks"], 
-        atlas_dir = config["atlas"]["atlas_dir"]
+        atlas_dir = config["atlas"]["atlas_dir"], 
+        inside_threshold = config["caption_scene"]["inside_threshold"]
     conda:
         "envs/caption_scene_dataset_processing_environment.yaml"
     shell:
@@ -268,6 +268,7 @@ rule compute_caption_scene_sampling_coordinates:
                 --n_rois {params.n_rois} \
                 --yeo_networks {params.yeo_networks} \
                 --atlas_dir {params.atlas_dir:q} \
+                --inside_threshold {params.inside_threshold} \
                 --output {output.sampling_coordinates:q}
         """
 
@@ -283,6 +284,7 @@ rule extract_caption_scene_run_parcels:
     params:
         run_manifest = lambda wildcards: f"{CAPTION_SCENE_RUN_MANIFEST_DIR}/{wildcards.run_key}.tsv", 
         n_rois = config["atlas"]["n_rois"], 
+        spline_order = config["caption_scene"]["spline_order"], 
         output_root = CAPTION_SCENE_PROCESSING_OUTPUT_DIR
     conda:
         "envs/caption_scene_dataset_processing_environment.yaml"
@@ -293,7 +295,8 @@ rule extract_caption_scene_run_parcels:
                 --bold {input.bold:q} \
                 --sampling_coordinates {input.sampling_coordinates:q} \
                 --output_root {params.output_root:q} \
-                --n_rois {params.n_rois}
+                --n_rois {params.n_rois} \
+                --spline_order {params.spline_order}
         """
 
 rule extract_caption_scene_parcels:
@@ -330,26 +333,6 @@ def caption_scene_parcel_paths(wildcards):
         raise ValueError(f"Stimulus {wildcards.stimulus_id} has only {len(parcel_paths)} parcel time-series files in the manifest")
 
     return parcel_paths
-
-rule write_caption_scene_isc_manifest:
-    # one row per parcel file of every stimulus, as the other datasets' ISC manifests; read by
-    # the ISC reliability rule
-    input:
-        manifest = CAPTION_SCENE_MANIFEST
-    output:
-        isc_manifest = CAPTION_SCENE_ISC_MANIFEST
-    params:
-        code = code_version(read_manifest, caption_scene_parcel_path)
-    run:
-        events = read_manifest(input.manifest)
-        isc_manifest = pd.DataFrame(
-            {
-                "stimulus_id": events["stimulus_id"], 
-                "subject": events["subject"], 
-                "parcel_ts": [caption_scene_parcel_path(row) for row in events.itertuples(index = False)], 
-            }
-        )
-        isc_manifest.to_csv(output.isc_manifest, sep = "\t", index = False)
 
 rule compute_caption_scene_isc:
     input:

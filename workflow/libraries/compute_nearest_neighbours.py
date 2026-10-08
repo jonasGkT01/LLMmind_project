@@ -1,5 +1,5 @@
 # edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
-# last AI edit: 2026-10-02, see docs/changelog/developers/ for details
+# last AI edit: 2026-10-08, see docs/changelog/developers/ for details
 
 from pathlib import Path
 
@@ -9,6 +9,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 
 from libraries.compute_similarity import normalize_fn_for_similarity_type
+from libraries.validate_data import validate_required_columns
 
 DEFAULT_COLUMN_BLOCK_SIZE = 4096
 NEAREST_NEIGHBOURS_COUNT_METADATA_KEY = b"llmmind.number_of_neighbours"
@@ -33,6 +34,17 @@ def compute_blockwise_topk_from_embeddings(
         raise ValueError(
             f"Requested {number_of_neighbours} neighbours, but only "
             f"{number_of_concepts - 1} candidates are available"
+        )
+
+    # a non-finite row would rank above every number, and a constant row (zero vector
+    # included) normalises to zeros and gets arbitrary neighbours
+    is_non_finite = ~np.isfinite(embedding_matrix).all(axis = 1)
+    is_constant = np.ptp(embedding_matrix, axis = 1) == 0
+    bad_rows = np.flatnonzero(is_non_finite | is_constant)
+
+    if len(bad_rows) > 0:
+        raise ValueError(
+            f"Rows with a non-finite value or a constant vector: {bad_rows.tolist()}"
         )
 
     normalized = normalize_fn(embedding_matrix)
@@ -183,6 +195,20 @@ def slice_top_k_neighbours(neighbours_df, number_of_neighbours):
         .groupby("concept", sort = False, observed = True)
         .head(number_of_neighbours)
     )
+
+def read_nearest_neighbours(path, number_of_neighbours):
+    # both files hold the dataset's largest configured neighbourhood size, not just number_of_neighbours
+    require_stored_number_of_neighbours(path, number_of_neighbours)
+
+    df = pd.read_parquet(path, engine = "pyarrow",)
+
+    validate_required_columns(
+        df = df, 
+        required_columns = {"concept", "neighbour",}, 
+        source = str(path), 
+    )
+
+    return slice_top_k_neighbours(df, number_of_neighbours)
 
 def create_neighbour_mask(neighbours):
     number_of_concepts = neighbours.shape[0]

@@ -1,5 +1,5 @@
 # edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
-# last AI edit: 2026-10-02, see docs/changelog/developers/ for details
+# last AI edit: 2026-10-08, see docs/changelog/developers/ for details
 import argparse
 import math
 from pathlib import Path
@@ -176,10 +176,10 @@ def main():
                         required = True, 
                         type = float)
     parser.add_argument("--onset_shift_s", 
-                        default = 0.0, 
+                        required = True, 
                         type = float)
     parser.add_argument("--run_table_encoding", 
-                        default = "gbk")
+                        required = True)
     parser.add_argument("--minimum_subjects_per_stimulus", 
                         required = True, 
                         type = int)

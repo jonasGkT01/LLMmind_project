@@ -1,5 +1,5 @@
 # edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
-# last AI edit: 2026-10-02, see docs/changelog/developers/ for details
+# last AI edit: 2026-10-08, see docs/changelog/developers/ for details
 import argparse
 
 import numpy as np
@@ -133,7 +133,7 @@ def main():
                         required = True)
     parser.add_argument("--random_seed", 
                         type = int, 
-                        default = 0)
+                        required = True)
     parser.add_argument("--model", 
                         type = str, 
                         required = True)

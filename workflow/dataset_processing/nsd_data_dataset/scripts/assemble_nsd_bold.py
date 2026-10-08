@@ -1,5 +1,5 @@
 # edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
-# last AI edit: 2026-10-02, see docs/changelog/developers/ for details
+# last AI edit: 2026-10-08, see docs/changelog/developers/ for details
 import argparse
 from concurrent.futures import as_completed, ProcessPoolExecutor
 from pathlib import Path
@@ -205,7 +205,7 @@ def main():
     parser.add_argument("--dataset_dir", 
                         required = True)
     parser.add_argument("--interpolation", 
-                        default = "cubic")
+                        required = True)
     parser.add_argument("--number_of_regions", 
                         type = int, 
                         required = True)

@@ -1,5 +1,5 @@
 # edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
-# last AI edit: 2026-10-06, see docs/changelog/developers/ for details
+# last AI edit: 2026-10-08, see docs/changelog/developers/ for details
 
 import pandas as pd
 
@@ -123,7 +123,8 @@ rule write_nsd_parcel_manifest:
     output:
         manifest = NSD_PARCEL_MANIFEST
     params:
-        code = code_version(write_nsd_parcel_manifest, nsd_parcel_time_series_output)
+        code = code_version(write_nsd_parcel_manifest, nsd_parcel_time_series_output), 
+        data = [NSD_PROCESSING_OUTPUT_DIRECTORY]
     run:
         write_nsd_parcel_manifest(input.occurrence_manifest, output.manifest)
 
@@ -162,7 +163,8 @@ rule write_nsd_isc_manifest:
     output:
         manifest = NSD_ISC_MANIFEST
     params:
-        code = code_version(write_nsd_isc_manifest)
+        code = code_version(write_nsd_isc_manifest), 
+        data = [NSD_ISC_DIRECTORY]
     run:
         write_nsd_isc_manifest(input.parcel_manifest, output.manifest)
 

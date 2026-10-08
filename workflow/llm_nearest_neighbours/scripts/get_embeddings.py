@@ -1,5 +1,5 @@
 # edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
-# last AI edit: 2026-10-02, see docs/changelog/developers/ for details
+# last AI edit: 2026-10-08, see docs/changelog/developers/ for details
 import argparse
 import gc
 import os
@@ -466,7 +466,7 @@ def main():
                         help = "File containing one excluded stimulus name per line")
     parser.add_argument("--pool", 
                         choices = ["avg", "cls", "last"], 
-                        default = None, 
+                        required = True, 
                         help = "Pooling method")
     parser.add_argument("--chunk_max_length", 
                         type = int, 
@@ -474,7 +474,7 @@ def main():
                         help = "Maximum model input length per textual chunk")
     parser.add_argument("--chunk_overlap", 
                         type = int, 
-                        default = 256, 
+                        required = True, 
                         help = "Number of overlapping tokens between textual chunks")
     parser.add_argument("--trust_remote_code", 
                         action = "store_true", 
@@ -495,16 +495,6 @@ def main():
 
     if args.modality == "vision" and input_type != "image":
         raise ValueError("A vision model requires visual stimuli")
-
-    if args.pool is None:
-        if input_type == "image":
-            pool = "cls"
-
-        else:
-            pool = "avg"
-
-    else:
-        pool = args.pool
 
     model = load_model(
         model_path = args.model_path, 
@@ -546,7 +536,7 @@ def main():
         )
 
     print(
-        f"model_modality={args.modality}, input_type={input_type}, pool={pool}, "
+        f"model_modality={args.modality}, input_type={input_type}, pool={args.pool}, "
         f"number_of_stimuli={len(items)}"
     )
 
@@ -567,7 +557,7 @@ def main():
                 device = device, 
                 max_length = max_length, 
                 overlap = args.chunk_overlap, 
-                pool = pool, 
+                pool = args.pool, 
             )
 
         else:
@@ -576,7 +566,7 @@ def main():
                 processor = processor, 
                 model = model, 
                 device = device, 
-                pool = pool, 
+                pool = args.pool, 
             )
 
             n_tokens = 0

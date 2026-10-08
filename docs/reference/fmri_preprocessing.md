@@ -78,8 +78,9 @@ steps are listed below.
   already aligned to that T1w by the dataset authors and share one grid per subject, so the same
   transforms map them to MNI. For every atlas voxel in a parcel, the native BOLD voxel to sample is
   found once per subject by warping native index images onto the atlas grid
-  (`antsApplyTransforms`, linear). Each run is then sampled at these coordinates volume by volume
-  with cubic spline interpolation (as NSD), averaged per parcel, and only then cut into event
+  (`antsApplyTransforms`, linear); an atlas voxel is used only if a warped field-of-view mask
+  reaches `inside_threshold` (0.999) there. Each run is then sampled at these coordinates volume by
+  volume with spline interpolation of order `spline_order` (3, cubic, as NSD), averaged per parcel, and only then cut into event
   windows; this equals cutting first, since every step acts volume by volume. All 200 parcels lie
   fully inside every subject's field of view. A QC plot per subject (`registration/sub-*_t1w_to_mni_qc.png`)
   shows the registered T1w with the template's edges.
@@ -130,36 +131,6 @@ purpose:
 
 The methods section should state the same.
 
-**7. Reliability of the ISC vectors.** For every stimulus, the subjects
-are split at random into two halves, the leave-one-out ISC is computed on each half (on exactly the
-data behind the ISC: same files, truncation and repeat averaging), and the Pearson r between the two
-200-parcel vectors is averaged over `isc_reliability_number_of_splits` (= 100) splits, all drawn
-from one `default_rng(random_seed)` stream. The Spearman-Brown correction `2r/(1 + r)` estimates the
-reliability at the full number of subjects. A stimulus needs at least 4 subjects. Results:
-`results/mind/{dataset}/isc_reliability.tsv` per stimulus and `results/mind/all_isc_reliability.tsv`
-per dataset.
-
-Measured on 2026-10-02 (100 splits; NSD with the MNI mapping and the repeat averaging). The Caption
-Scene values were computed before its registration to MNI (step 3) and will change:
-
-| | Narratives | Nature Stories | NSD | Caption Scene |
-|---|---|---|---|---|
-| time points per stimulus (median) | 395 | 358 | 3 | 6 |
-| split-half r (median) | 0.934 | 0.761 | 0.012 | 0.006 |
-| Spearman-Brown r (median, IQR) | 0.966 (0.962–0.978) | 0.864 (0.845–0.893) | 0.025 (−0.067–0.110) | 0.011 (−0.069–0.074) |
-| median \|ISC\| | 0.124 | 0.241 | 0.169 | 0.129 |
-| share of \|ISC\| ≥ 0.9 | 0 | 0 | 0.004 | 0 |
-
-The story datasets give highly reliable ISC vectors. The 3- and 6-volume ISC vectors of NSD and
-Caption Scene are not reliable: two halves of the subjects agree on a stimulus's parcel pattern
-barely above zero. Few ISC values are near ±1, because the ISC averages r over 8 subjects.
-
-**Decision (developer, 2026-10-02):** the ISC definition stays as it is for all four datasets. The
-NSD and Caption Scene brain-model results are reported as exploratory, together with the
-reliability of their brain representations from `all_isc_reliability.tsv`. Single-trial GLM betas
-(NSD) and longer event windows were considered and not adopted. The methods and results should
-state this.
-
 ### Why z-scoring would change (almost) nothing, and what it means for cosine similarity
 
 - **ISC is Pearson-based.** Pearson's r between two time series is unchanged if either series is
@@ -196,7 +167,8 @@ state this.
   window is negligible compared with the stimulus response: for NSD, the in-brain mean drifts by
   about 0.07 % over a whole run. The current approach is kept (decision of 2026-09-30).
 - The short windows themselves (a correlation over 3 or 6 time points) are a separate
-  methodological question; the decision taken on them is in step 7.
+  methodological question. The windows are kept as they are: single-trial GLM betas (NSD) and
+  longer event windows were considered and not adopted (decision of 2026-10-02).
 
 ## Changes
 
@@ -226,4 +198,37 @@ to the entries above, and the verification notes of the old attribution block mo
 sources of section 1. The tolerance of the constant-signal check (step 6) moved here from
 `README.md`.
 
+### 2026-10-08 09:43 — reliability of the ISC vectors removed
 
+The developer decided not to use the split-half reliability of the ISC vectors for the time
+being, and dropped the "exploratory" label of the NSD and Caption Scene results that rested on it.
+Step 7 and its rules were removed. What it said, for the record:
+
+- **Method.** For every stimulus, the subjects were split at random into two halves, the
+  leave-one-out ISC computed on each half (same files, truncation and repeat averaging as the
+  ISC), and the Pearson r between the two 200-parcel vectors averaged over 100 splits drawn from
+  one `default_rng(random_seed)` stream. The Spearman-Brown correction `2r/(1 + r)` estimated the
+  reliability at the full number of subjects; a stimulus needed at least 4 subjects.
+- **Measurements of 2026-10-02** (NSD with the MNI mapping and the repeat averaging; Caption Scene
+  before its registration to MNI):
+
+  | | Narratives | Nature Stories | NSD | Caption Scene |
+  |---|---|---|---|---|
+  | time points per stimulus (median) | 395 | 358 | 3 | 6 |
+  | split-half r (median) | 0.934 | 0.761 | 0.012 | 0.006 |
+  | Spearman-Brown r (median, IQR) | 0.966 (0.962–0.978) | 0.864 (0.845–0.893) | 0.025 (−0.067–0.110) | 0.011 (−0.069–0.074) |
+  | median \|ISC\| | 0.124 | 0.241 | 0.169 | 0.129 |
+  | share of \|ISC\| ≥ 0.9 | 0 | 0 | 0.004 | 0 |
+
+  The story datasets gave highly reliable ISC vectors; the 3- and 6-volume vectors of NSD and
+  Caption Scene did not (two halves of the subjects agreed barely above zero).
+- **Decision of 2026-10-02**, still in force for the ISC itself: the ISC definition stays as it is
+  for all four datasets; single-trial GLM betas (NSD) and longer event windows were considered and
+  not adopted. The part of that decision reporting NSD and Caption Scene as exploratory was
+  withdrawn on 2026-10-08.
+
+### 2026-10-08 09:44 — Caption Scene sampling parameters set in the config
+
+The field-of-view threshold (0.999) and the spline order (3) of the Caption Scene sampling were
+constants in the scripts; they are now `inside_threshold` and `spline_order` under `caption_scene:`
+in `config/config.yaml`. The values did not change.

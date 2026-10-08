@@ -1,5 +1,5 @@
 # written with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
-# last AI edit: 2026-10-02, see docs/changelog/developers/ for details
+# last AI edit: 2026-10-08, see docs/changelog/developers/ for details
 import argparse
 from pathlib import Path
 import subprocess
@@ -8,9 +8,6 @@ import tempfile
 import nibabel as nib
 from nilearn import datasets
 import numpy as np
-
-# an atlas voxel is sampled only if it maps fully inside the native field of view
-INSIDE_THRESHOLD = 0.999
 
 def check_common_grid(bold_files):
     # every run of a subject must share one BOLD grid, so one set of coordinates serves all
@@ -73,6 +70,10 @@ def main():
                         required = True)
     parser.add_argument("--atlas_dir", 
                         required = True)
+    parser.add_argument("--inside_threshold", 
+                        type = float, 
+                        required = True, 
+                        help = "Smallest warped field-of-view mask value for an atlas voxel to be sampled")
     parser.add_argument("--output", 
                         required = True)
     args = parser.parse_args()
@@ -118,7 +119,7 @@ def main():
 
     upper = (np.asarray(shape) - 1)[:, None]
     valid = (
-        (inside >= INSIDE_THRESHOLD)
+        (inside >= args.inside_threshold)
         & np.all(coordinates >= 0, axis = 0)
         & np.all(coordinates <= upper, axis = 0)
     )

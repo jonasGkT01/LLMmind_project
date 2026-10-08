@@ -45,7 +45,7 @@ the pipeline:
   hypergeometric tests, enrichment, the Benjamini-Hochberg families, and what
   every figure shows and how it is laid out (a source for the methods section)
 - [`docs/reference/clean_run_duration.md`](docs/reference/clean_run_duration.md)
-  — how long a clean run takes on node5 (about 32 h), rule by rule
+  — how long a clean run takes on node5 (about 31 h), rule by rule
 - [`docs/changelog/developers/`](docs/changelog/developers/) and
   [`docs/changelog/users/`](docs/changelog/users/) — one file per day with
   changes, technical and plain-language. Each file name lists the kinds of
@@ -365,7 +365,10 @@ snakemake --use-conda --cores <N>
 
 All pipeline behaviour (datasets, models, similarity metrics, neighbourhood
 sizes, number of permutations) is set in `config/config.yaml`; no code changes
-are needed to add a model or adjust a dataset. Partial runs, rerun behaviour,
+are needed to add a model or adjust a dataset. The main values (model
+modality, quantization, model-key format, similarity types, minimum subjects
+per stimulus, neighbourhood sizes) are checked when the pipeline starts, and a
+wrong value stops it at once with a message naming the key. Partial runs, rerun behaviour,
 the settings that rebuild many results and the fixes for common failures are
 in [`running_and_troubleshooting.md`](docs/guides/running_and_troubleshooting.md).
 
@@ -395,12 +398,6 @@ combined summary tables have a `similarity_type` column instead.
   `*_p_value_across_concepts` statistics are descriptive summaries of the
   per-concept p-values, not tests (see
   [`statistics.md`](docs/reference/statistics.md)).
-- `results/mind/all_isc_reliability.tsv` — one row per dataset: the
-  split-half reliability of the ISC vectors (per stimulus in
-  `results/mind/{dataset}/isc_reliability.tsv`). The NSD and Caption Scene
-  brain-model results are reported as exploratory, together with this table
-  (see [`fmri_preprocessing.md`](docs/reference/fmri_preprocessing.md),
-  step 7).
 - `results/pictures/` — every plot and heatmap, one subfolder per plot type:
   `alignment_heatmaps/`, `alignment_p_value_heatmaps/`,
   `alignment_lineplots/`, `concept_alignment_scatterplots/`,

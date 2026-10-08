@@ -48,7 +48,7 @@ snakemake --use-conda --cores <N> --rerun-triggers mtime \
                plot_alignment_heatmap plot_empirical_p_value_heatmap
 ```
 
-A clean run of everything takes about 32 h on node5; see
+A clean run of everything takes about 31 h on node5; see
 [`clean_run_duration.md`](../reference/clean_run_duration.md).
 
 **Parallelism.** No rule declares `threads:`, so Snakemake counts every job as one core and
@@ -70,14 +70,23 @@ edits to a Python script called from `shell:`, or to a helper function defined o
 **Covered by `code_version()`.** These rules have a `code` param, `code_version(...)`
 (`workflow/libraries/code_version.py`), that holds a hash of their helper functions, or of their
 script and the `workflow/libraries/` modules it imports. Editing that code reruns the rule and
-everything downstream of it (comments and blank lines do not count):
+everything downstream of it. For helper functions only the compiled code counts (comments and blank
+lines do not); scripts and the libraries they import are hashed byte for byte, so even a comment or
+the AI-attribution header line of `make_nsd_manifest.py` or `make_caption_scene_manifest.py` reruns
+its whole dataset:
 
 - the dataset manifests: `make_nsd_manifest`, `make_caption_scene_manifest`,
   `write_narratives_parcel_manifest`, `write_narratives_isc_manifest`,
   `write_nature_stories_parcel_manifest`, `write_nature_stories_isc_manifest`,
-  `write_nsd_parcel_manifest`, `write_nsd_isc_manifest`, `write_caption_scene_isc_manifest`;
+  `write_nsd_parcel_manifest`, `write_nsd_isc_manifest`;
 - the summary tables: `aggregate_all_p_value_outputs`, `aggregate_all_llm_llm_p_value_outputs`,
-  `aggregate_all_spearman_alignment_scores`, `aggregate_isc_reliability`.
+  `aggregate_all_spearman_alignment_scores`.
+
+The `write_*_manifest` rules also have a `data` param listing the values their helpers read
+(for example `NARRATIVES_TASK_GROUPS`, built from the `narratives:` config section,
+`minimum_subjects_per_stimulus` and `scan_exclude.json`), so they rerun when the manifest's content
+would change, whatever the cause. When a helper starts reading a new module-level variable, add it
+to the rule's `data` list.
 
 This relies on the `params` rerun trigger, so a run with `--rerun-triggers mtime` misses such
 edits.
@@ -89,11 +98,7 @@ changing its code. This includes:
 - the embedding and ISC code, including the shared `libraries/` modules, for example
   `--forcerun get_embeddings compute_narratives_isc compute_nature_stories_isc`;
 - `create_isc_manifest`, `write_narratives_problematic_stimuli` and
-  `write_nature_stories_excluded_stimuli` (the last two write the excluded-stimuli lists);
-- the data the `write_*_manifest` rules are written from. Their hash covers the functions' code,
-  not the values those functions read from `config/config.yaml` or from files such as
-  `scan_exclude.json`, so a change there does not rebuild them (see the Narratives entry in
-  section 6).
+  `write_nature_stories_excluded_stimuli` (the last two write the excluded-stimuli lists).
 
 ## 3. Settings that change many results
 
@@ -214,19 +219,12 @@ bf16). Before adding a model, check its `config.json` for `num_experts`, `num_lo
   the code and was not rebuilt. This happens after a run with `--rerun-triggers mtime`, or for a
   rule not covered by `code_version()` (section 2). Force it with `--forcerun <rule name>`.
 - **Results don't change after editing a dataset's inclusion rules**: the manifest rules rerun
-  by themselves when their code changes (section 2), but the excluded-stimuli rules of Narratives
-  and Nature Stories, and any change to the config values or files the manifests read, do not.
-  Force the dataset's manifest and exclusion rules, e.g.
-  `--forcerun write_narratives_problematic_stimuli write_narratives_parcel_manifest`. If
+  by themselves when their code or the data they are written from changes (section 2), but the
+  excluded-stimuli rules of Narratives and Nature Stories do not. Force them, e.g.
+  `--forcerun write_narratives_problematic_stimuli`. If
   `create_isc_manifest` stops with `FileNotFoundError: N of M eligible stimuli have no ISC file`,
   the dataset's `excluded_stimuli` file is older than its ISC outputs; the same forced rerun fixes
   it.
-- **`MissingOutputException` in `compute_narratives_isc` after lowering
-  `minimum_subjects_per_stimulus`**: this only happens once the value is 15 or more. The
-  Narratives parcel and ISC manifests are written from values read when the workflow is parsed,
-  and their `code` param hashes only their code, so Snakemake doesn't rebuild them when a story
-  comes back into the analysis. Add `--forcerun write_narratives_parcel_manifest`. Raising the
-  value doesn't need this: the stale manifests only cost extra compute.
 - **A rule fails with `exit status 126` and `message: None`**: usually the command line was longer
   than Linux allows (`getconf ARG_MAX`, 2 MB on frontend and node5), so the program never started
   ("Argument list too long"). This happens when a rule passes thousands of input paths. Pass them
@@ -304,3 +302,17 @@ Section 4 now describes how to remove old environments by hand, and how to rebui
 use (with `CONDA_OVERRIDE_CUDA=12.9`, without which a rebuild on the frontend got the CPU build of
 PyTorch); it replaces the warning added earlier the same day.
 
+### 2026-10-08 09:43 — ISC reliability rules removed; script hashes include comments
+
+`write_caption_scene_isc_manifest` and `aggregate_isc_reliability` were removed from the
+`code_version()` lists with the ISC reliability. The section also said that comments and blank
+lines never count; that holds for helper functions only, not for hashed scripts, as an edit to
+`make_caption_scene_manifest.py` showed (it would have rerun the whole Caption Scene chain).
+
+### 2026-10-08 09:45 — manifest rules rerun when their data changes
+
+The `write_*_manifest` rules got a `data` param, so a change of the config values or files they
+are written from now rebuilds them. The "not covered" item about that data and the troubleshooting
+entry about `MissingOutputException` after lowering `minimum_subjects_per_stimulus` were removed,
+and the inclusion-rules entry now forces only the excluded-stimuli rules. The clean-run duration in section 1 went from about 32 h to about 31 h, after
+`caption_scene` and `nsd_data` went from four neighbourhood sizes to three.

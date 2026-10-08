@@ -1,5 +1,5 @@
 # written with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
-# last AI edit: 2026-10-02, see docs/changelog/developers/ for details
+# last AI edit: 2026-10-08, see docs/changelog/developers/ for details
 import numpy as np
 
 # a float32 signal whose range is within a few ulps of its magnitude is only rounding noise.
@@ -68,13 +68,12 @@ def average_repeats_by_subject(arrays, subjects):
         for subject in sorted(repeats_by_subject)
     ]
 
-def load_isc_inputs(
+def compute_isc_from_files(
     paths, 
     n_rois, 
     subjects = None, 
     truncate_to_shortest = False, 
 ):
-    # the (subject x time x parcel) array behind a stimulus's ISC
     # load the (time x parcel) arrays and check their shapes
     if len(paths) < 2:
         raise ValueError(
@@ -120,43 +119,7 @@ def load_isc_inputs(
                 f"{sorted(set(subjects))}"
             )
 
-    return np.stack(arrays, axis = 0).astype(np.float32)
-
-def compute_isc_from_files(
-    paths, 
-    n_rois, 
-    subjects = None, 
-    truncate_to_shortest = False, 
-):
-    return compute_leave_one_out_isc(
-        load_isc_inputs(paths, n_rois, subjects, truncate_to_shortest)
-    )
-
-def compute_split_half_isc_reliability(data, number_of_splits, rng):
-    # mean Pearson r between the ISC vectors of two random halves of the subjects; NaN when a
-    # half would have fewer than 2 subjects
-    number_of_subjects = data.shape[0]
-
-    if number_of_subjects < 4:
-        return np.nan
-
-    correlations = []
-
-    for _ in range(number_of_splits):
-        order = rng.permutation(number_of_subjects)
-        half = number_of_subjects//2
-        isc_1 = compute_leave_one_out_isc(data[order[:half]])
-        isc_2 = compute_leave_one_out_isc(data[order[half:]])
-
-        with np.errstate(invalid = "ignore", divide = "ignore"):
-            correlations.append(np.corrcoef(isc_1, isc_2)[0, 1])
-
-    correlations = np.asarray(correlations, dtype = np.float64)
-
-    if np.all(np.isnan(correlations)):
-        return np.nan
-
-    return float(np.nanmean(correlations))
+    return compute_leave_one_out_isc(np.stack(arrays, axis = 0).astype(np.float32))
 
 def single_value(df, column, group):
     values = df[column].unique()

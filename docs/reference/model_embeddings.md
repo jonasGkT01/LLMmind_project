@@ -32,13 +32,14 @@ section. For how to *configure* the chunk length, see section 3 of
 1. **Tokenisation.** The whole text is tokenised once, without special tokens.
 2. **Chunks.** The tokens are split into chunks of at most `max_chunk_length − 1` tokens
    (`max_chunk_length` = 2048 in the config, the same for every language model), overlapping by
-   256 tokens. Chunking stops at the first chunk that reaches the end of the text, so a text that
+   `chunk_overlap` = 256 tokens (config). Chunking stops at the first chunk that reaches the end of the text, so a text that
    fits in one chunk gets exactly one.
 3. **BOS token.** If the tokenizer defines a beginning-of-sequence (BOS) token, it is added in
    front of every chunk, so each chunk has at most `max_chunk_length` tokens. All the configured
    tokenizers (BLOOMZ, Gemma 1–4, OpenLLaMA) define one.
 4. **Chunk vector.** The chunk is run through the model, and its vector is the **mean of the last
-   layer's hidden states over all its tokens, including the BOS token**.
+   layer's hidden states over all its tokens, including the BOS token** (`pooling: language: avg`
+   in the config).
 5. **Stimulus vector.** The mean of the chunk vectors, weighted by the number of text tokens in
    each chunk (the BOS token is not counted). Tokens in an overlap therefore contribute to two
    chunks.
@@ -62,8 +63,8 @@ so it has not been done. The manuscript's methods state that the BOS token is in
 1. The image is converted to RGB and prepared by the model's own image processor
    (`AutoProcessor`: resizing, cropping and normalisation as defined for that checkpoint).
 2. The vector is the **first (CLS) token of the last layer's hidden states**, after the model's
-   final normalisation layer (`get_embeddings.py --pool` can override this; the workflow does
-   not pass it):
+   final normalisation layer (`pooling: vision: cls` in the config, passed to
+   `get_embeddings.py --pool`):
    - CLIP, CLIP fine-tuned on ImageNet-12k, and the ImageNet-21k ViTs are `timm` checkpoints,
      loaded through the `transformers` timm wrapper with its head removed. The hidden states are
      timm's `forward_features()` output, so the CLIP projection and the classification heads
@@ -100,3 +101,9 @@ Written to document the BOS-token pooling, after a project review found it.
 The sources and the "not verified" note of the old attribution block became section 6, and the
 block was replaced by the note under the title. The `--pool` option (from `README.md`) is now
 mentioned in section 4, and the chunk-length link points to the new guide.
+
+### 2026-10-08 09:43 — chunk overlap and pooling set in the config
+
+The chunk overlap (256) and the pooling (`avg` for text, `cls` for images) were hard-coded in
+`get_embeddings.py`; they are now the `chunk_overlap` and `pooling` keys of `config/config.yaml`,
+passed by the `get_embeddings` rule. The values did not change.

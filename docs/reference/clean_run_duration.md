@@ -10,7 +10,7 @@ e.g. `snakemake --forceall`). It assumes the usual command on **node5** (1× RTX
 snakemake --use-conda --cores 4 --resources gpu=1
 ```
 
-**Short answer: about 32 hours (30–35 h) if the models are already in `resources/models/`, and
+**Short answer: about 31 hours (29–34 h) if the models are already in `resources/models/`, and
 about 1.5 h more if they have to be downloaded.** Almost every figure is measured on node5; the
 critical path is `assemble_nsd_bold` (18.6 h) running next to the Caption Scene per-run
 extraction (about 50 job-hours). The estimate does not include the time lost when a job hangs
@@ -78,7 +78,6 @@ and the smaller models take at most about 2 min.
 | `compute_caption_scene_sampling_coordinates` | 8 | 32 s | 39 s | 4 min | 10-06 |
 | `extract_caption_scene_run_parcels` | 795 | 3.7 min | 5.5 min | 49.9 h | 10-06 |
 | `extract_caption_scene_parcels` (collects the run flags) | 1 | <1 s | | <1 s | 10-06 |
-| `write_caption_scene_isc_manifest` | 1 | 43 s | | 43 s | 10-05 |
 | `compute_caption_scene_isc` | 1,000 | 1 s | 3 s | 15 min | 10-06 |
 | `write_caption_scene_stimuli_transcripts` | 1 | 6 s | | 6 s | 10-05 |
 | `finish_caption_scene_isc` | 1 | 1 s | | 1 s | 10-06 |
@@ -99,12 +98,10 @@ and the smaller models take at most about 2 min.
 | `write_nature_stories_isc_manifest` | 1 | 10 s | | 10 s | 10-05 |
 | `compute_nature_stories_isc` | 1 | 6 s | | 6 s | 10-05 |
 | `mark_nature_stories_isc_done` | 1 | <1 s | | <1 s | 10-05 |
-| **ISC nearest neighbours and reliability (all 4 datasets)** | | | | | |
+| **ISC nearest neighbours (all 4 datasets)** | | | | | |
 | `create_isc_manifest` (checkpoint) | 4 | 1 s | 8 s | 11 s | 10-05, 10-06 |
 | `create_isc_dataframe` | 4 | 1 s | 4 s | 7 s | 10-05, 10-06 |
 | `compute_isc_nearest_neighbours` | 4 | 2 s | 3 s | 9 s | 10-05, 10-06 |
-| `compute_isc_reliability` | 4 | 1.6 min | 2.2 min | 6 min | 10-05, 10-06 |
-| `aggregate_isc_reliability` | 1 | 2 s | | 2 s | 10-06 |
 
 `assemble_nsd_bold` took 11.4 h when it ran alone on all 4 cores (2026-09-24) and 18.6 h on
 10-06, when no rule reserved cores any more and 3 `extract_caption_scene_run_parcels` jobs ran
@@ -115,10 +112,10 @@ rules marked "guess" only read or write small tables.
 
 | Rule | Jobs | Median | Max | Total | Measured in |
 |---|---:|---:|---:|---:|---|
-| `compute_llm_mind_alignment_score` | 768 | 2 s | 7 s | 27 min | 10-05, 10-06 |
+| `compute_llm_mind_alignment_score` | 612 | 2 s | 7 s | 22 min | 10-05, 10-06 |
 | `relabel_llm_similarity_and_compute_relabelled_llm_alignment_score` | 300 | 13 s | 2.3 min | 52 min | 10-05, 10-06 |
-| `compute_empirical_p_value` | 768 | 4 s | 35 s | 45 min | 10-05, 10-06 |
-| `compute_hypergeometric_p_value` | 768 | 2 s | 6 s | 20 min | 10-05, 10-06 |
+| `compute_empirical_p_value` | 612 | 4 s | 35 s | 36 min | 10-05, 10-06 |
+| `compute_hypergeometric_p_value` | 612 | 2 s | 6 s | 16 min | 10-05, 10-06 |
 | `aggregate_all_p_value_outputs` | 1 | 4.1 min | | 4.1 min | 10-06 |
 | `compute_spearman_alignmentwith_empirical_p_value` | 300 | 1.7 min | 3.9 min | 6.1 h | 10-05, 10-06 |
 | `aggregate_all_spearman_alignment_scores` | 1 | 3 s | | 3 s | 10-06 |
@@ -130,10 +127,10 @@ about 2 min each, against a few seconds for narratives and nature_stories.
 
 | Rule | Jobs | Median | Max | Total | Measured in |
 |---|---:|---:|---:|---:|---|
-| `compute_llm_llm_alignment_score` | 11,184 | 2 s | 1.6 min | 4.9 h | 10-05 |
+| `compute_llm_llm_alignment_score` | 8,802 | 2 s | 1.6 min | 3.9 h | 10-05 |
 | `relabel_llm_similarity_and_compute_relabelled_llm_llm_alignment_score` | 4,038 | 13 s | 2.3 min | 10.6 h | 10-05 |
-| `compute_llm_llm_empirical_p_value` | 11,184 | 3 s | 11 s | 9.8 h | 10-05 |
-| `compute_llm_llm_hypergeometric_p_value` | 11,184 | 1 s | 13 s | 4.1 h | 10-05, 10-06 |
+| `compute_llm_llm_empirical_p_value` | 8,802 | 3 s | 11 s | 7.7 h | 10-05 |
+| `compute_llm_llm_hypergeometric_p_value` | 8,802 | 1 s | 13 s | 3.2 h | 10-05, 10-06 |
 | `aggregate_all_llm_llm_p_value_outputs` | 1 | 2.1 h | | 2.1 h | 10-06 |
 
 `aggregate_all_llm_llm_p_value_outputs` took 51 min on 2026-10-01, when it ran on its own; on
@@ -143,18 +140,18 @@ about 2 min each, against a few seconds for narratives and nature_stories.
 
 | Rule | Jobs | Median | Max | Total | Measured in |
 |---|---:|---:|---:|---:|---|
-| `plot_concept_alignment_scatterplot` | 30 | 2 s | 3 s | 1 min | 10-06 |
-| `plot_concept_alignment_enrichment_scatterplot` | 30 | 10 s | 27 s | 7 min | 10-06 |
-| `plot_brain_model_alignment_lineplot` | 30 | 2 s | 3 s | 1 min | 10-06 |
-| `plot_brain_model_alignment_enrichment_lineplot` | 30 | 10 s | 26 s | 7 min | 10-06 |
-| `plot_alignment_heatmap` | 30 | 4 s | 21 s | 5 min | 10-05, 10-06 |
-| `plot_empirical_p_value_heatmap` | 30 | 4 s | 8 s | 2 min | 10-06 |
+| `plot_concept_alignment_scatterplot` | 24 | 2 s | 3 s | 1 min | 10-06 |
+| `plot_concept_alignment_enrichment_scatterplot` | 24 | 10 s | 27 s | 6 min | 10-06 |
+| `plot_brain_model_alignment_lineplot` | 24 | 2 s | 3 s | 1 min | 10-06 |
+| `plot_brain_model_alignment_enrichment_lineplot` | 24 | 10 s | 26 s | 6 min | 10-06 |
+| `plot_alignment_heatmap` | 24 | 4 s | 21 s | 4 min | 10-05, 10-06 |
+| `plot_empirical_p_value_heatmap` | 24 | 4 s | 8 s | 2 min | 10-06 |
 | `plot_spearman_alignment` | 12 | 4 s | 7 s | 1 min | 10-05, 10-06 |
 
 ## 3. From job-hours to elapsed time
 
-The whole run is about **119 job-hours** of work (about 125 with downloads): 18.6 h of
-`assemble_nsd_bold` and about 100 job-hours of everything else, half of it the Caption Scene
+The whole run is about **115 job-hours** of work (about 121 with downloads): 18.6 h of
+`assemble_nsd_bold` and about 96 job-hours of everything else, half of it the Caption Scene
 per-run extraction. With 4 job slots, it cannot take less than about 30 h:
 
 1. **`assemble_nsd_bold` runs 4 worker processes** for 18.6 h but counts as one job, so 3 other
@@ -170,10 +167,10 @@ per-run extraction. With 4 job slots, it cannot take less than about 30 h:
 |---|---:|
 | Model downloads (only if `resources/models/` is empty; 4 at a time) | ~1.5 h |
 | `assemble_nsd_bold`, with 3 other jobs next to it (Caption Scene extraction, embeddings, narratives, nature_stories, part of the model–model statistics) | 18.6 h |
-| Remaining alignment, statistics and plots (~44 job-h at ~3.8 in parallel) | ~12 h |
+| Remaining alignment, statistics and plots (~40 job-h at ~3.8 in parallel) | ~11 h |
 | Final aggregation steps (one job at a time at the end) | ~0.5–2 h |
-| **Total, models already downloaded** | **~32 h (30–35 h)** |
-| **Total, models downloaded too** | **~33.5 h** |
+| **Total, models already downloaded** | **~31 h (29–34 h)** |
+| **Total, models downloaded too** | **~32.5 h** |
 
 As a check against real runs: the 10-05 run did 38.5 job-hours in 15.3 h (from 17:17, three hung
 jobs held cores, so it averaged only 1.9 jobs in parallel after the embeddings), and the 10-06 run
@@ -294,3 +291,18 @@ went from ~29 h (27–34 h) to ~32 h (30–35 h), and from about 69 to about 119
 - **Section 3** now builds the elapsed time around `assemble_nsd_bold` with 3 jobs next to it,
   instead of the earlier sum of stages.
 
+### 2026-10-08 09:43 — ISC reliability rules removed
+
+The rows of `write_caption_scene_isc_manifest`, `compute_isc_reliability` and
+`aggregate_isc_reliability` were removed with the rules (about 7 min in all on the 10-05/10-06
+runs). The totals above are rounded to the hour and are not changed by this.
+
+### 2026-10-08 09:46 — three neighbourhood sizes instead of four: ~31 h
+
+`caption_scene` and `nsd_data` went from `number_of_neighbours: [5, 25, 50, 100]` to
+`[5, 25, 125]`. The job counts of the k-dependent rules were scaled to the counts of a dry run
+(`compute_llm_mind_alignment_score` and its two p-value rules 768 → 612, the three model–model
+rules 11,184 → 8,802, each brain-model plot rule 30 → 24), keeping the measured per-job durations;
+the relabelling rules run once per largest k and keep their counts. The work falls by about 4
+job-hours, almost all in the stage after `assemble_nsd_bold`: ~31 h (29–34 h) instead of ~32 h.
+The per-job durations at k = 125 are not measured yet.
