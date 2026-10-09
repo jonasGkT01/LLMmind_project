@@ -1,9 +1,8 @@
 # edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
-# last AI edit: 2026-10-08, see docs/changelog/developers/ for details
+# last AI edit: 2026-10-09, see docs/changelog/developers/ for details
 import argparse
 
 import numpy as np
-import pandas as pd
 
 from libraries.compute_nearest_neighbours import require_stored_number_of_neighbours
 from libraries.compute_relabelled_alignment import (
@@ -12,6 +11,7 @@ from libraries.compute_relabelled_alignment import (
     create_relabelled_alignment_dataframe, 
     write_relabelled_common_neighbours, 
 )
+from libraries.parquet_io import read_parquet
 
 def make_concept_index(concepts):
     return {concept: i for i, concept in enumerate(concepts)}
@@ -149,12 +149,9 @@ def main():
         args.isc_nearest_neighbours, 
         max(args.number_of_neighbours)
     )
-    brain_nearest_neighbours_df = pd.read_parquet(
-        args.isc_nearest_neighbours, 
-        engine = "pyarrow"
-    )
+    brain_nearest_neighbours_df = read_parquet(args.isc_nearest_neighbours)
 
-    embedding_df = pd.read_parquet(args.embedding_dataframe)
+    embedding_df = read_parquet(args.embedding_dataframe)
 
     results_by_k = compute_relabelled_alignment_scores_for_all_k(
         embedding_df = embedding_df, 

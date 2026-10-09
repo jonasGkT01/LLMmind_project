@@ -13,8 +13,7 @@ snakemake --use-conda --cores 4 --resources gpu=1
 **Short answer: about 31 hours (29–34 h) if the models are already in `resources/models/`, and
 about 1.5 h more if they have to be downloaded.** Almost every figure is measured on node5; the
 critical path is `assemble_nsd_bold` (18.6 h) running next to the Caption Scene per-run
-extraction (about 50 job-hours). The estimate does not include the time lost when a job hangs
-after writing its output, which stalls the run until it is killed.
+extraction (about 50 job-hours).
 
 ## 1. Where the numbers come from
 
@@ -306,3 +305,9 @@ rules 11,184 → 8,802, each brain-model plot rule 30 → 24), keeping the measu
 the relabelling rules run once per largest k and keep their counts. The work falls by about 4
 job-hours, almost all in the stage after `assemble_nsd_bold`: ~31 h (29–34 h) instead of ~32 h.
 The per-job durations at k = 125 are not measured yet.
+
+### 2026-10-09 09:40 — hung jobs no longer expected
+
+The summary said that the estimate leaves out the time lost when a job hangs after writing its
+output. The cause of those hangs (reading parquet files through a Python file object, which could
+deadlock the process at exit) was fixed, so the sentence was removed. No duration changed.

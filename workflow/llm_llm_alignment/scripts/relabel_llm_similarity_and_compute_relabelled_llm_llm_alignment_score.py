@@ -1,8 +1,6 @@
 # edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
-# last AI edit: 2026-10-08, see docs/changelog/developers/ for details
+# last AI edit: 2026-10-09, see docs/changelog/developers/ for details
 import argparse
-
-import pandas as pd
 
 from libraries.compute_relabelled_alignment import (
     compute_relabelled_common_neighbours_for_all_k, 
@@ -10,6 +8,7 @@ from libraries.compute_relabelled_alignment import (
     create_relabelled_alignment_dataframe, 
     write_relabelled_common_neighbours, 
 )
+from libraries.parquet_io import read_parquet
 
 def select_shared_concepts(embedding_df_1, embedding_df_2):
     # the first model's concept order fixes the positions every permutation works on
@@ -107,8 +106,8 @@ def main():
     if any(k <= 0 for k in args.number_of_neighbours):
         raise ValueError("--number_of_neighbours must all be positive integers")
 
-    embedding_df_1 = pd.read_parquet(args.embedding_dataframe_1, engine = "pyarrow")
-    embedding_df_2 = pd.read_parquet(args.embedding_dataframe_2, engine = "pyarrow")
+    embedding_df_1 = read_parquet(args.embedding_dataframe_1)
+    embedding_df_2 = read_parquet(args.embedding_dataframe_2)
 
     results_by_k = compute_relabelled_alignment_scores_for_all_k(
         embedding_df_1 = embedding_df_1, 

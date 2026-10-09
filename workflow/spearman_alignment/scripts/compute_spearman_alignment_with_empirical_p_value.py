@@ -1,5 +1,5 @@
 # edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
-# last AI edit: 2026-10-08, see docs/changelog/developers/ for details
+# last AI edit: 2026-10-09, see docs/changelog/developers/ for details
 import argparse
 from pathlib import Path
 
@@ -13,6 +13,7 @@ from libraries.compute_similarity import (
     normalize_fn_for_similarity_type, 
 )
 from libraries.compute_statistics import empirical_upper_tail_p_value
+from libraries.parquet_io import read_parquet
 from libraries.validate_data import validate_similarity_dataframe
 
 def compute_similarity_dataframe(embedding_matrix, concepts, normalize_fn):
@@ -74,7 +75,7 @@ def main():
 
     normalize_fn = normalize_fn_for_similarity_type(args.similarity_type)
 
-    brain_embedding_df = pd.read_parquet(args.brain_embeddings, engine = "pyarrow")
+    brain_embedding_df = read_parquet(args.brain_embeddings)
     concepts = brain_embedding_df.index.to_numpy()
 
     if len(concepts) < 3:
@@ -92,7 +93,7 @@ def main():
         source = args.brain_embeddings, 
     )
 
-    model_embedding_df = pd.read_parquet(args.model_embeddings, engine = "pyarrow")
+    model_embedding_df = read_parquet(args.model_embeddings)
     missing_concepts = sorted(set(concepts) - set(model_embedding_df.index))
 
     if missing_concepts:

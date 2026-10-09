@@ -1,9 +1,10 @@
 # edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
-# last AI edit: 2026-10-02, see docs/changelog/developers/ for details
+# last AI edit: 2026-10-09, see docs/changelog/developers/ for details
 
 import numpy as np
 import pandas as pd
 
+from libraries.parquet_io import read_parquet
 from libraries.path_metadata import parse_alignment_path
 
 def nearest_neighbours_to_dict(nearest_neighbours_df):
@@ -53,9 +54,8 @@ def compute_common_neighbours(neighbours, neighbour_mask, concept_indices,):
 
 def read_relabelled_alignment_scores(path, number_of_neighbours):
     # one k's rows of an all-k relabelled file, with alignment_score = common_neighbours / k
-    relabelled_df = pd.read_parquet(
+    relabelled_df = read_parquet(
         path, 
-        engine = "pyarrow", 
         columns = ["shuffle_id", "concept", "common_neighbours"], 
         filters = [("number_of_neighbours", "==", number_of_neighbours)], 
     )
@@ -89,9 +89,8 @@ def read_alignment_scores(path, dataset, similarity_type, number_of_neighbours):
             )
 
     # load and validate the scores
-    df = pd.read_parquet(
+    df = read_parquet(
         path, 
-        engine = "pyarrow", 
         columns = ["concept", "alignment_score"], 
     )
     df["concept"] = df["concept"].astype(str)

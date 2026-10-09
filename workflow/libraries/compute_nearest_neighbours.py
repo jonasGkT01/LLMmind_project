@@ -1,5 +1,5 @@
 # edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
-# last AI edit: 2026-10-08, see docs/changelog/developers/ for details
+# last AI edit: 2026-10-09, see docs/changelog/developers/ for details
 
 from pathlib import Path
 
@@ -9,6 +9,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 
 from libraries.compute_similarity import normalize_fn_for_similarity_type
+from libraries.parquet_io import read_parquet
 from libraries.validate_data import validate_required_columns
 
 DEFAULT_COLUMN_BLOCK_SIZE = 4096
@@ -200,7 +201,7 @@ def read_nearest_neighbours(path, number_of_neighbours):
     # both files hold the dataset's largest configured neighbourhood size, not just number_of_neighbours
     require_stored_number_of_neighbours(path, number_of_neighbours)
 
-    df = pd.read_parquet(path, engine = "pyarrow",)
+    df = read_parquet(path)
 
     validate_required_columns(
         df = df, 

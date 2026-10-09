@@ -248,6 +248,17 @@ bf16). Before adding a model, check its `config.json` for `num_experts`, `num_lo
   don't fit on the GPU at all. If loading fails with `ValueError: Some modules are dispatched on
   the CPU or the disk`, the quantized model doesn't fit even before any text is read; for MoE
   models this is expected (section 5).
+- **A job wrote its complete output but its process never exits** (0 CPU time for hours, main
+  thread blocked in `futex`): such a job holds one of the `--cores` slots, and enough of them stop
+  the run. Reading parquet files with `pd.read_parquet` on a local path used to cause this: pandas
+  opened a Python file object, and closing it on a pyarrow I/O thread after Python had shut down
+  deadlocked the exit. Scripts therefore read parquet files with `read_parquet()` from
+  `workflow/libraries/parquet_io.py`, which lets pyarrow open the file itself; use it in new
+  scripts too. If a job still hangs, record every thread's stack on node5 before ending it
+  (`gdb -p <pid> -batch -ex "thread apply all bt"`). Then end it with exit status 0, so that
+  Snakemake keeps the output and the run goes on: `gdb -p <pid> -batch -ex "call (void)_exit(0)"`.
+  A plain `kill` makes Snakemake count the job as failed, and without `--keep-going` it then
+  schedules no new jobs.
 - **"Requested k neighbours, but only n candidates"**: a dataset's `number_of_neighbours` must be
   smaller than its number of included stimuli (about 1,000 for `nsd_data` and `caption_scene`).
 
@@ -316,3 +327,10 @@ are written from now rebuilds them. The "not covered" item about that data and t
 entry about `MissingOutputException` after lowering `minimum_subjects_per_stimulus` were removed,
 and the inclusion-rules entry now forces only the excluded-stimuli rules. The clean-run duration in section 1 went from about 32 h to about 31 h, after
 `caption_scene` and `nsd_data` went from four neighbourhood sizes to three.
+
+### 2026-10-09 09:40 — jobs that hang after writing their output
+
+New troubleshooting entry. A hang in the run of 2026-10-08 was traced with gdb to
+`pd.read_parquet` on a local path (a deadlock between pyarrow 25 and Python 3.14 at interpreter
+exit); the hangs of the 2026-09-30 and 2026-10-05 runs showed the same symptoms. All scripts now
+read parquet files through `read_parquet()`.

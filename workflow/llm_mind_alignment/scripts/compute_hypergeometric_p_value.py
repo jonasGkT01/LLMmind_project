@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 # edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
-# last AI edit: 2026-10-02, see docs/changelog/developers/ for details
+# last AI edit: 2026-10-09, see docs/changelog/developers/ for details
 import argparse
 
 import pandas as pd
 from scipy.stats import hypergeom
+
+from libraries.parquet_io import read_parquet
 
 def compute_hypergeometric_statistics(
     observed_df: pd.DataFrame, 
@@ -45,10 +47,7 @@ def main() -> None:
                         help = "Number of nearest neighbours used to compute alignment")
     args = parser.parse_args()
 
-    observed_df = pd.read_parquet(
-        args.observed_alignment_score, 
-        engine = "pyarrow", 
-    )
+    observed_df = read_parquet(args.observed_alignment_score)
 
     summary_df = compute_hypergeometric_statistics(
         observed_df = observed_df, 

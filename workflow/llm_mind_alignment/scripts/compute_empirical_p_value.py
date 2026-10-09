@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 # edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
-# last AI edit: 2026-10-02, see docs/changelog/developers/ for details
+# last AI edit: 2026-10-09, see docs/changelog/developers/ for details
 import argparse
 
 import pandas as pd
 
 from libraries.compute_alignment import read_relabelled_alignment_scores
 from libraries.compute_statistics import empirical_upper_tail_p_value
+from libraries.parquet_io import read_parquet
 
 def compute_empirical_statistics(
     observed_df: pd.DataFrame, 
@@ -82,7 +83,7 @@ def main() -> None:
                         required = True)
     args = parser.parse_args()
 
-    observed_df = pd.read_parquet(args.observed_alignment_score, engine = "pyarrow")
+    observed_df = read_parquet(args.observed_alignment_score)
     relabelled_df = read_relabelled_alignment_scores(
         args.relabelled_common_neighbours, 
         args.number_of_neighbours

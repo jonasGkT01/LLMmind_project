@@ -19,6 +19,7 @@ def check_config_value(key, value, allowed):
 for model, model_config in config["models"].items():
     if not re.fullmatch(r".+_[^_]+", model):
         raise ValueError(f"config: model key {model!r} must be <family>_<size>")
+        
     check_config_value(f"models.{model}.modality", model_config["modality"], ["language", "vision"])
     check_config_value(f"models.{model}.quantization_method", model_config["quantization_method"], [None, "4bit", "8bit"])
 
