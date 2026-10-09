@@ -45,7 +45,10 @@ snakemake --use-conda --cores <N> --rerun-triggers mtime \
     --forcerun plot_brain_model_alignment_lineplot plot_concept_alignment_scatterplot \
                plot_brain_model_alignment_enrichment_lineplot \
                plot_concept_alignment_enrichment_scatterplot plot_spearman_alignment \
-               plot_alignment_heatmap plot_empirical_p_value_heatmap
+               plot_alignment_heatmap plot_empirical_p_value_heatmap \
+               plot_similarity_comparison_alignment_lineplot \
+               plot_similarity_comparison_enrichment_lineplot \
+               plot_similarity_comparison_spearman_lineplot
 ```
 
 A clean run of everything takes about 31 h on node5; see
@@ -334,3 +337,8 @@ New troubleshooting entry. A hang in the run of 2026-10-08 was traced with gdb t
 `pd.read_parquet` on a local path (a deadlock between pyarrow 25 and Python 3.14 at interpreter
 exit); the hangs of the 2026-09-30 and 2026-10-05 runs showed the same symptoms. All scripts now
 read parquet files through `read_parquet()`.
+
+### 2026-10-09 15:14 — similarity-comparison plots added to the redraw command
+
+The command that redraws every plot now also forces the three rules of the new
+similarity-comparison line plots.

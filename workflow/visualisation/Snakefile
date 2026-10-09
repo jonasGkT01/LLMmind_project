@@ -1,5 +1,5 @@
 # edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
-# last AI edit: 2026-10-02, see docs/changelog/developers/ for details
+# last AI edit: 2026-10-09, see docs/changelog/developers/ for details
 rule all_visualisation:
     input:
         alignment_heatmaps = [
@@ -35,6 +35,18 @@ rule all_visualisation:
             f"results/pictures/concept_spearman_alignment_scatterplots/dataset-{dataset}_{similarity_type}-concept_spearman_alignment.png"
             for dataset in DATASETS
             for similarity_type in SIMILARITY_TYPES
+        ], 
+        similarity_comparison_alignment_lineplots = [
+            f"results/pictures/similarity_comparison_lineplots/dataset-{pair['dataset']}-brain_model_alignment_{pair['number_of_neighbours']}NN.png"
+            for pair in NEIGHBOUR_PAIRINGS
+        ], 
+        similarity_comparison_enrichment_lineplots = [
+            f"results/pictures/similarity_comparison_lineplots/dataset-{pair['dataset']}-brain_model_alignment_enrichment_{pair['number_of_neighbours']}NN.png"
+            for pair in NEIGHBOUR_PAIRINGS
+        ], 
+        similarity_comparison_spearman_lineplots = [
+            f"results/pictures/similarity_comparison_lineplots/dataset-{dataset}-brain_model_spearman_alignment.png"
+            for dataset in DATASETS
         ], 
 
 rule plot_alignment_heatmap:
@@ -282,4 +294,100 @@ rule plot_spearman_alignment:
                 --similarity_type {wildcards.similarity_type:q} \
                 --model_level_plot {output.model_level_plot:q} \
                 --concept_level_plot {output.concept_level_plot:q}
+        """
+
+rule plot_similarity_comparison_alignment_lineplot:
+    # the model-level alignment line plot of every similarity type in one figure
+    input:
+        llm_brain_alignment_scores = lambda wc: [
+            f"results/alignment_scores/dataset-{wc.dataset}_model-{pair['model']}-{pair['stimuli_type']}_brain_{pair['similarity_type']}-alignment_score_{wc.number_of_neighbours}NN.parquet"
+            for pair in PAIRINGS
+            if pair["dataset"] == wc.dataset
+            and str(pair["number_of_neighbours"]) == str(wc.number_of_neighbours)
+        ]
+    output:
+        plot = "results/pictures/similarity_comparison_lineplots/dataset-{dataset}-brain_model_alignment_{number_of_neighbours}NN.png"
+    wildcard_constraints:
+        number_of_neighbours = r"\d+"
+    params:
+        model_parameters = [
+            f"{model}={config['models'][model]['parameters_millions']}"
+            for model in MODEL_KEYS
+        ]
+    conda:
+        "envs/visualisation_environment.yaml"
+    shell:
+        r"""
+            python3 workflow/visualisation/scripts/plot_similarity_comparison_lineplot.py \
+                --quantity alignment \
+                --llm_brain_alignment_scores {input.llm_brain_alignment_scores:q} \
+                --model_parameters {params.model_parameters:q} \
+                --dataset {wildcards.dataset:q} \
+                --number_of_neighbours {wildcards.number_of_neighbours} \
+                --plot {output.plot:q}
+        """
+
+rule plot_similarity_comparison_enrichment_lineplot:
+    # the model-level alignment enrichment line plot of every similarity type in one figure
+    input:
+        llm_brain_alignment_scores = lambda wc: [
+            f"results/alignment_scores/dataset-{wc.dataset}_model-{pair['model']}-{pair['stimuli_type']}_brain_{pair['similarity_type']}-alignment_score_{wc.number_of_neighbours}NN.parquet"
+            for pair in PAIRINGS
+            if pair["dataset"] == wc.dataset
+            and str(pair["number_of_neighbours"]) == str(wc.number_of_neighbours)
+        ], 
+        relabelled_llm_brain_alignment_scores = lambda wc: [
+            f"results/alignment_scores/relabelled_common_neighbours/dataset-{wc.dataset}_model-{pair['model']}-{pair['stimuli_type']}_brain_{pair['similarity_type']}-relabelled_common_neighbours.parquet"
+            for pair in PAIRINGS
+            if pair["dataset"] == wc.dataset
+            and str(pair["number_of_neighbours"]) == str(wc.number_of_neighbours)
+        ]
+    output:
+        plot = "results/pictures/similarity_comparison_lineplots/dataset-{dataset}-brain_model_alignment_enrichment_{number_of_neighbours}NN.png"
+    wildcard_constraints:
+        number_of_neighbours = r"\d+"
+    params:
+        model_parameters = [
+            f"{model}={config['models'][model]['parameters_millions']}"
+            for model in MODEL_KEYS
+        ]
+    conda:
+        "envs/visualisation_environment.yaml"
+    shell:
+        r"""
+            python3 workflow/visualisation/scripts/plot_similarity_comparison_lineplot.py \
+                --quantity enrichment \
+                --llm_brain_alignment_scores {input.llm_brain_alignment_scores:q} \
+                --relabelled_llm_brain_alignment_scores {input.relabelled_llm_brain_alignment_scores:q} \
+                --model_parameters {params.model_parameters:q} \
+                --dataset {wildcards.dataset:q} \
+                --number_of_neighbours {wildcards.number_of_neighbours} \
+                --plot {output.plot:q}
+        """
+
+rule plot_similarity_comparison_spearman_lineplot:
+    # the model-level Spearman alignment line plot of every similarity type in one figure
+    input:
+        model_level_spearman_scores = lambda wc: [
+            f"results/spearman_alignment_scores/dataset-{wc.dataset}_model-{pair['model']}-{pair['stimuli_type']}_brain_empirical_{pair['similarity_type']}-spearman_alignment_model_level.p_value.tsv"
+            for pair in SPEARMAN_PAIRINGS
+            if pair["dataset"] == wc.dataset
+        ]
+    output:
+        plot = "results/pictures/similarity_comparison_lineplots/dataset-{dataset}-brain_model_spearman_alignment.png"
+    params:
+        model_parameters = [
+            f"{model}={config['models'][model]['parameters_millions']}"
+            for model in MODEL_KEYS
+        ]
+    conda:
+        "envs/visualisation_environment.yaml"
+    shell:
+        r"""
+            python3 workflow/visualisation/scripts/plot_similarity_comparison_lineplot.py \
+                --quantity spearman \
+                --model_level_spearman_scores {input.model_level_spearman_scores:q} \
+                --model_parameters {params.model_parameters:q} \
+                --dataset {wildcards.dataset:q} \
+                --plot {output.plot:q}
         """

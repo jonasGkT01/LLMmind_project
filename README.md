@@ -408,7 +408,8 @@ combined summary tables have a `similarity_type` column instead.
   `alignment_lineplots/`, `concept_alignment_scatterplots/`,
   `alignment_enrichment_lineplots/`,
   `concept_alignment_enrichment_scatterplots/`,
-  `spearman_alignment_lineplots/`, `concept_spearman_alignment_scatterplots/`.
+  `spearman_alignment_lineplots/`, `concept_spearman_alignment_scatterplots/`,
+  `similarity_comparison_lineplots/`.
   The "scatterplots" are concept-level boxplots with one point per concept.
   What each figure shows and the conventions shared by all plots (model
   order, colours, asterisks, null intervals, axes) are in section 7 of

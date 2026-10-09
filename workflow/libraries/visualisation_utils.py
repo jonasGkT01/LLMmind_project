@@ -1,5 +1,5 @@
 # edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
-# last AI edit: 2026-10-07, see docs/changelog/developers/ for details
+# last AI edit: 2026-10-09, see docs/changelog/developers/ for details
 import colorsys
 import hashlib
 
@@ -135,8 +135,17 @@ EMPIRICAL_P_VALUE_LABEL = "-log10(empirical p-value)"
 STANDARD_ERROR = "SE"
 NULL_STANDARD_DEVIATION = "null SD"
 
-def plot_title(level, quantity, dataset, similarity_type, number_of_neighbours = None):
-    parameters = [f"dataset: {dataset}", f"similarity: {similarity_type}",]
+def plot_title(
+    level, 
+    quantity, 
+    dataset, 
+    similarity_type = None, 
+    number_of_neighbours = None, 
+):
+    parameters = [f"dataset: {dataset}"]
+
+    if similarity_type is not None:
+        parameters.append(f"similarity: {similarity_type}")
 
     if number_of_neighbours is not None:
         parameters.append(f"neighbours: {number_of_neighbours}")
@@ -192,6 +201,19 @@ def legend_headroom_top(bottom, data_top):
     """
 
     return bottom + (data_top - bottom)/(1.0 - LEGEND_HEADROOM_FRACTION)
+
+# fraction of the data range added below and above the data by data_fitted_ylim()
+DATA_FITTED_Y_PADDING = 0.05
+
+def data_fitted_ylim(values, minimum = -np.inf,):
+    # y-limits fitted to the given values (error-bar ends and the null line), with padding,
+    # the lower limit not below minimum, and the legend headroom on top
+    bottom = float(np.nanmin(values))
+    top = float(np.nanmax(values))
+    padding = DATA_FITTED_Y_PADDING*(top - bottom)
+    bottom = max(minimum, bottom - padding)
+
+    return bottom, legend_headroom_top(bottom, top + padding)
 
 def add_legend(ax, handles = None,):
     # the plot's own labelled artists come first; extra handles (e.g. significance) go after them.
@@ -279,9 +301,80 @@ def plot_model_points(ax, values, errors, stimuli_types,):
             label = f"{stimuli_type.capitalize()} stimuli", 
         )
 
+# similarity-measure colour code of the plots that compare the measures: Okabe-Ito blue,
+# reddish purple and sky blue, colour-blind safe and distinct from the stimulus-type colours,
+# which these plots keep for the model names
+SIMILARITY_TYPE_COLOURS = {
+    "cosine": "#0072B2", 
+    "pearson": "#CC79A7", 
+    "spearman": "#56B4E9", 
+}
+
+def plot_similarity_type_points(ax, values, errors, stimuli_types, similarity_type,):
+    # one similarity measure's model-level values: a thin line in the measure's colour joins
+    # the models, the error bars are half transparent and each point keeps its stimulus
+    # type's marker
+    x = np.arange(len(values))
+    values = np.asarray(values, dtype = float)
+    stimuli_types = np.asarray(stimuli_types)
+    colour = SIMILARITY_TYPE_COLOURS[similarity_type]
+
+    ax.plot(x, values, color = colour, linewidth = 0.8, zorder = 1,)
+    ax.errorbar(
+        x, 
+        values, 
+        yerr = np.asarray(errors, dtype = float), 
+        fmt = "none", 
+        ecolor = colour, 
+        alpha = 0.5, 
+        capsize = 3, 
+        zorder = 2, 
+    )
+
+    for stimuli_type in sorted(set(stimuli_types)):
+        selected = stimuli_types == stimuli_type
+
+        ax.plot(
+            x[selected], 
+            values[selected], 
+            linestyle = "none", 
+            marker = STIMULI_TYPE_MARKERS[stimuli_type], 
+            color = colour, 
+            markersize = 7, 
+            zorder = 3, 
+        )
+
+def similarity_type_legend_handles(similarity_types, stimuli_types):
+    # the measures by colour, the stimulus types by marker shape in neutral grey
+    return [
+        Line2D(
+            [], 
+            [], 
+            color = SIMILARITY_TYPE_COLOURS[similarity_type], 
+            linewidth = 2, 
+            label = f"{similarity_type.capitalize()} similarity"
+        )
+        for similarity_type in similarity_types
+    ] + [
+        Line2D(
+            [], 
+            [], 
+            linestyle = "none", 
+            marker = STIMULI_TYPE_MARKERS[stimuli_type], 
+            markersize = 7, 
+            color = NEUTRAL_COLOUR, 
+            label = f"{stimuli_type.capitalize()} stimuli"
+        )
+        for stimuli_type in sorted(set(stimuli_types))
+    ]
+
 # the reference expected under the null: a dashed line
 NULL_COLOUR = "grey"
 NULL_LINE_STYLE = {"linestyle": "--", "linewidth": 1.2, "color": NULL_COLOUR}
+
+HYPERGEOMETRIC_NULL_LABEL = "Null expectation (hypergeometric)"
+ENRICHMENT_NULL_LABEL = "Null expectation (enrichment = 1)"
+SPEARMAN_NULL_LABEL = "Null expectation (no rank correlation)"
 
 def add_null_line(ax, y, label):
     ax.axhline(y, label = label, **NULL_LINE_STYLE)
@@ -360,12 +453,16 @@ def style_model_axes(
     ax.grid(axis = "y", alpha = 0.25)
     colour_tick_labels_by_stimuli_type(ax, stimuli_types)
     add_model_family_annotations(ax, models)
-    annotate_significance(ax, positions, p_values, q_values)
+
+    # no asterisks when the figure has no model-level significance (p_values is None)
+    if p_values is not None:
+        annotate_significance(ax, positions, p_values, q_values)
+        legend_handles = legend_handles + significance_legend_handles()
 
     ax.set_xlabel(MODEL_AXIS_LABEL)
     ax.set_ylabel(y_label)
     ax.set_title(title, pad = TITLE_PAD)
-    add_legend(ax, legend_handles + significance_legend_handles())
+    add_legend(ax, legend_handles)
 
 def add_model_family_annotations(ax, models,):
     start = 0

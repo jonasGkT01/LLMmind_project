@@ -126,6 +126,7 @@ brain's and the model's similarity structures.
 | Concept-level enrichment scatterplot | one point per concept, boxplot per model | none | dashed line at enrichment = 1 |
 | Model-level Spearman line plot | model-level ρ | that model's null SD | dashed line at ρ = 0 |
 | Concept-level Spearman scatterplot | one point per concept, boxplot per model | none | dashed line at ρ = 0 |
+| Similarity-comparison line plots (alignment, enrichment, Spearman) | the value of the matching model-level line plot, one series per similarity type | as in that line plot (SE or null SD) | as in that line plot |
 | Alignment heatmap | mean alignment score of each pair; the diagonal is blank | — | — |
 | p-value heatmap | −log10 of each pair's model-level empirical p-value; the diagonal is blank | — | — |
 
@@ -143,6 +144,15 @@ Conventions:
   q-value (`*` < 0.05, `**` < 0.01, `***` < 0.001); in the p-value heatmap, the asterisks give the
   q-value. Section 5 lists the families.
 - The concept-level enrichment and Spearman scatterplots draw no error bars, to stay readable.
+- **Similarity-comparison line plots** (`results/pictures/similarity_comparison_lineplots/`,
+  `plot_similarity_comparison_lineplot.py`) put the cosine, Pearson and Spearman versions of a
+  model-level line plot into one figure: one per dataset and *k* for the alignment score and the
+  enrichment, one per dataset for the Spearman alignment. Each similarity type is one series in its
+  own colour (`SIMILARITY_TYPE_COLOURS`: Okabe-Ito blue `#0072B2` for cosine, reddish purple
+  `#CC79A7` for Pearson, sky blue `#56B4E9` for Spearman), joined by a thin line, with half-transparent
+  error bars. The series sit at the same x positions, so points may overlap. They have no
+  asterisks, because each series belongs to a different Benjamini-Hochberg family, and the title
+  names no similarity type.
 
 Layout, shared by all plots (constants and helpers in `libraries/visualisation_utils.py`):
 
@@ -180,6 +190,12 @@ Layout, shared by all plots (constants and helpers in `libraries/visualisation_u
   very high concepts don't squash the rest. Because the range must fit the highest concepts, the
   model-level null-SD error bars (about 0.05) are often shorter than the markers; the shared range
   is kept on purpose, so the two plots stay comparable.
+- **Data-fitted y-axes.** The similarity-comparison line plots have no concept-level counterpart,
+  so their y-range is fitted to their own data (`data_fitted_ylim()`): from the lowest to the
+  highest error-bar end of the three series and the reference line, plus 5% padding and the legend
+  space. The alignment plot does not use the fixed `[0, 1]` range, the Spearman plot is not
+  symmetric around 0, and the enrichment plot keeps the symlog axis, fitted on the axis positions
+  and starting at 0 at the lowest.
 
 ## 8. Changes
 
@@ -218,3 +234,9 @@ of the null, not a confidence interval.
 The developer chose to keep the shared y-range of the two enrichment
 plots, even though the bars are often shorter than the markers there.
 
+### 2026-10-09 15:14 — similarity-comparison line plots
+
+At the developer's request, new line plots show the cosine, Pearson and Spearman versions of the
+model-level alignment, enrichment and Spearman line plots in one figure, so the effect of the
+similarity type is visible at a glance. Section 7 describes them; the existing plots did not
+change.

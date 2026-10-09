@@ -1,13 +1,16 @@
 # edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
-# last AI edit: 2026-10-02, see docs/changelog/developers/ for details
+# last AI edit: 2026-10-09, see docs/changelog/developers/ for details
 import argparse
+import urllib.request
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from nilearn import datasets, image
+from nilearn import image
 
 from libraries.fmri_processing import extract_parcels
+
+TEMPLATEFLOW_URL = "https://templateflow.s3.amazonaws.com/tpl-MNI152NLin2009cAsym"
 
 def main():
     parser = argparse.ArgumentParser()
@@ -32,13 +35,19 @@ def main():
     if missing_columns:
         raise ValueError(f"Manifest is missing columns: {sorted(missing_columns)}")
 
-    atlas = datasets.fetch_atlas_schaefer_2018(
-        n_rois = args.n_rois, 
-        data_dir = args.atlas_dir, 
-        yeo_networks = args.yeo_networks, 
+    # download the Schaefer atlas in the space of the Narratives BOLD (MNI152NLin2009cAsym)
+    # from TemplateFlow; nilearn's copy is in MNI152NLin6Asym
+    atlas_name = (
+        "tpl-MNI152NLin2009cAsym_res-01_atlas-Schaefer2018_"
+        f"desc-{args.n_rois}Parcels{args.yeo_networks}Networks_dseg.nii.gz"
     )
+    atlas_file = Path(args.atlas_dir)/atlas_name
 
-    atlas_img = image.load_img(atlas.maps)
+    if not atlas_file.exists():
+        atlas_file.parent.mkdir(parents = True, exist_ok = True)
+        urllib.request.urlretrieve(f"{TEMPLATEFLOW_URL}/{atlas_name}", atlas_file)
+
+    atlas_img = image.load_img(atlas_file)
     parcel_matrix_cache = {}
 
     for row in manifest.itertuples(index = False):

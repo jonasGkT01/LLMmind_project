@@ -4,6 +4,7 @@
 import numpy as np
 import pandas as pd
 
+from libraries.manage_model_metadata import model_key
 from libraries.parquet_io import read_parquet
 from libraries.path_metadata import parse_alignment_path
 
@@ -130,3 +131,37 @@ def common_hypergeometric_expectation(expectations):
         )
 
     return expectations.pop()
+
+def summarise_alignment_scores(paths, dataset, similarity_type, number_of_neighbours):
+    # mean and standard error of each model's concept-level alignment scores, and the
+    # hypergeometric expectation the files share
+    rows = []
+    expectations = []
+
+    for path in paths:
+        scores_df, metadata, expectation = read_alignment_scores(
+            path, 
+            dataset, 
+            similarity_type, 
+            number_of_neighbours, 
+        )
+        scores = scores_df["alignment_score"]
+        rows.append(
+            {
+                "label": model_key(metadata["model"], metadata["stimuli_type"]), 
+                "model": metadata["model"], 
+                "stimuli_type": metadata["stimuli_type"], 
+                "mean": scores.mean(), 
+                "standard_error": scores.std(ddof = 1)/np.sqrt(len(scores)), 
+            }
+        )
+        expectations.append(expectation)
+
+    model_df = pd.DataFrame(rows)
+
+    if model_df["label"].duplicated().any():
+        raise ValueError(
+            "More than one alignment-score file was provided for the same model"
+        )
+
+    return model_df, common_hypergeometric_expectation(expectations)

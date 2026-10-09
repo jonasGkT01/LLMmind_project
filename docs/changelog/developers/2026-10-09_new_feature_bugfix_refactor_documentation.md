@@ -6,6 +6,8 @@ Changes made on this day, in order:
 
 - Parquet files read through pyarrow's own file system, fixing jobs that hang at exit (bugfix, documentation)
 - Origin of the Nature Stories TextGrids documented and checked against the fMRI data (documentation)
+- Narratives parcellated with the Schaefer atlas in its own MNI template (bugfix, documentation)
+- Similarity-comparison line plots (new_feature, refactor, documentation)
 
 ---
 
@@ -100,3 +102,95 @@ from the Nature Stories input list:
   `read_textgrid`/`get_word_tier` functions of `convert_nature_stories_textgrids.py`, in the
   Nature Stories processing environment, on the files in
   `public_datasets/results_molilab_cold_back/nature_stories_dataset/`.
+
+---
+
+## 15:14 — Narratives parcellated with the Schaefer atlas in its own MNI template
+
+Kind: bugfix, documentation
+
+**Problem (TODO P53).** The Narratives BOLD files are in MNI152NLin2009cAsym, but
+`extract_narratives_parcels.py` took the atlas from nilearn's `fetch_atlas_schaefer_2018()`
+(`Schaefer2018_200Parcels_7Networks_order_FSLMNI152_1mm`, MNI152NLin6Asym).
+`get_resampled_parcel_matrix()` matches atlas and BOLD by world coordinates only, and its
+`sform_code` check accepts both templates, so the parcel borders were shifted by a few mm.
+
+**Change (S53).** `workflow/dataset_processing/narratives_dataset/scripts/extract_narratives_parcels.py`
+no longer imports `nilearn.datasets`. It builds
+`tpl-MNI152NLin2009cAsym_res-01_atlas-Schaefer2018_desc-{n_rois}Parcels{yeo_networks}Networks_dseg.nii.gz`,
+downloads it with `urllib.request.urlretrieve()` from `TEMPLATEFLOW_URL`
+(`https://templateflow.s3.amazonaws.com/tpl-MNI152NLin2009cAsym`) into `--atlas_dir` if it is not
+there yet, and loads it with `image.load_img()`. Arguments, rule and environment are unchanged;
+`extract_parcels()` and `get_resampled_parcel_matrix()` are unchanged; NSD and Caption Scene keep
+the nilearn atlas, Nature Stories the fsaverage one. The rule has no `code` param, so the change
+does not trigger a rerun by itself: run with `--forcerun extract_narratives_parcels`, which
+recomputes the Narratives parcel time series, ISC, nearest neighbours, alignment and Spearman
+scores, summary TSVs and plots.
+
+### Context
+
+- Request: the developer approved S53 on 2026-10-09 and asked for it to be implemented.
+- Files: `extract_narratives_parcels.py`; `docs/reference/fmri_preprocessing.md` (parcellation step
+  and Changes).
+- Verification: label order checked against nilearn's `Schaefer2018_200Parcels_7Networks_order.txt`
+  with TemplateFlow's `..._desc-200Parcels7Networks_dseg.tsv` and both NIfTIs: the nearest
+  TemplateFlow parcel of every nilearn parcel has the same index (200/200), all 200 colours agree,
+  and the centroids differ by 1.6 mm median (3.1 mm max). 40 sub-region names differ (older naming
+  in TemplateFlow); the workflow never reads the names. The script was run on one run
+  (`sub-001_task-tunnel`) in the narratives conda env: download OK, output 1040 × 200, per-parcel
+  correlation with the old time series median 0.981, min 0.768. The full rerun has not been run.
+
+---
+
+## 15:14 — Similarity-comparison line plots
+
+Kind: new_feature, refactor, documentation
+
+**Request (TODO P52).** One plot per dataset × *k* comparing the cosine, Pearson and Spearman
+similarity types, in addition to the existing per-type plots, which stay unchanged.
+
+**New outputs** in `results/pictures/similarity_comparison_lineplots/`, 20 PNGs with the current
+config (8 dataset × *k* combinations for each of the first two, 4 datasets for the third):
+`dataset-{dataset}-brain_model_alignment_{k}NN.png`,
+`dataset-{dataset}-brain_model_alignment_enrichment_{k}NN.png`,
+`dataset-{dataset}-brain_model_spearman_alignment.png`. (S52 said 18; the count is 20.)
+
+**Code (S52):**
+- `workflow/visualisation/scripts/plot_similarity_comparison_lineplot.py` (new):
+  `--quantity {alignment, enrichment, spearman}`. Groups the alignment parquets by similarity type
+  (`parse_alignment_path()`), or the Spearman TSV rows by their `similarity_type` column; for
+  enrichment, passes each group the relabelled files matching `relabelled_name_for_observed_path()`
+  to `compute_alignment_enrichment()`. Checks that every type covers the same models, sorts them with
+  `sort_models()`, draws one series per type, the null line, no asterisks, and data-fitted y-limits
+  (on symlog positions for enrichment, bottom ≥ 0).
+- `workflow/libraries/visualisation_utils.py`: `SIMILARITY_TYPE_COLOURS`,
+  `plot_similarity_type_points()`, `similarity_type_legend_handles()`, `DATA_FITTED_Y_PADDING` and
+  `data_fitted_ylim(values, minimum)`; `HYPERGEOMETRIC_NULL_LABEL`, `ENRICHMENT_NULL_LABEL`,
+  `SPEARMAN_NULL_LABEL`; `plot_title()` takes `similarity_type = None`; `style_model_axes()` skips
+  the asterisks and their legend entries when `p_values` is `None`.
+- Refactor: the per-model mean/SE loop of `plot_brain_model_alignment_lineplot.py` moved to
+  `summarise_alignment_scores()` in `workflow/libraries/compute_alignment.py` (returns the model
+  dataframe and the shared hypergeometric expectation); the Spearman TSV loading and validation of
+  `plot_spearman_alignment.py` moved to `read_spearman_scores(paths, dataset, model_level)` in the
+  new `workflow/libraries/spearman_scores.py`, together with `NULL_STANDARD_DEVIATION_COLUMN`. The
+  duplicate check is now on (label, similarity type); the similarity-type check stays in
+  `plot_spearman_alignment.py`.
+- `workflow/Snakefile`: `NEIGHBOUR_PAIRINGS` (dataset × *k*), the three output lists in `rule all`.
+- `workflow/visualisation/Snakefile`: the same lists in `rule all_visualisation`; rules
+  `plot_similarity_comparison_alignment_lineplot`, `plot_similarity_comparison_enrichment_lineplot`
+  (both with `wildcard_constraints: number_of_neighbours = r"\d+"`, so the alignment rule cannot
+  match the enrichment file names) and `plot_similarity_comparison_spearman_lineplot`.
+
+### Context
+
+- Request: the developer approved S52 on 2026-10-09, after the run of that day had finished.
+- Files: the five Python files and two Snakefiles above; `docs/reference/statistics.md`
+  (section 7 and Changes), `docs/guides/running_and_troubleshooting.md` (redraw command),
+  `README.md` (output folders).
+- Verification: `snakemake -n` on the 20 new targets plans exactly the 20 new jobs and nothing
+  upstream. The refactored `plot_brain_model_alignment_lineplot.py` (3 configurations) and
+  `plot_spearman_alignment.py` (2 configurations, both outputs) give PNGs pixel-identical to those
+  of the 2026-10-09 run. Comparison plots rendered for alignment (caption_scene, k = 25;
+  nature_stories, k = 3), enrichment (nature_stories, k = 3) and Spearman (caption_scene,
+  narratives) and checked by eye.
+

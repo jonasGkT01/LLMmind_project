@@ -1,5 +1,5 @@
 # edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
-# last AI edit: 2026-10-08, see docs/changelog/developers/ for details
+# last AI edit: 2026-10-09, see docs/changelog/developers/ for details
 configfile: "config/config.yaml"
 
 from itertools import combinations
@@ -126,6 +126,16 @@ HEATMAP_PAIRINGS = [
     for number_of_neighbours in dataset_numbers_of_neighbours(dataset)
 ]
 
+# one entry per (dataset, number_of_neighbours): the plots that compare the similarity types
+NEIGHBOUR_PAIRINGS = [
+    {
+        "dataset": dataset, 
+        "number_of_neighbours": number_of_neighbours, 
+    }
+    for dataset in DATASETS
+    for number_of_neighbours in dataset_numbers_of_neighbours(dataset)
+]
+
 # one entry per (dataset, model, stimuli_type, similarity_type) — no number_of_neighbours dimension.
 # Drives compute_llm_nearest_neighbours (workflow/llm_nearest_neighbours/Snakefile), which now computes
 # and stores only the dataset's largest configured k; every k-specific consumer rule still iterates
@@ -245,5 +255,17 @@ rule all:
             f"results/pictures/concept_spearman_alignment_scatterplots/dataset-{dataset}_{similarity_type}-concept_spearman_alignment.png"
             for dataset in DATASETS
             for similarity_type in SIMILARITY_TYPES
+        ], 
+        similarity_comparison_alignment_lineplots = [
+            f"results/pictures/similarity_comparison_lineplots/dataset-{pair['dataset']}-brain_model_alignment_{pair['number_of_neighbours']}NN.png"
+            for pair in NEIGHBOUR_PAIRINGS
+        ], 
+        similarity_comparison_enrichment_lineplots = [
+            f"results/pictures/similarity_comparison_lineplots/dataset-{pair['dataset']}-brain_model_alignment_enrichment_{pair['number_of_neighbours']}NN.png"
+            for pair in NEIGHBOUR_PAIRINGS
+        ], 
+        similarity_comparison_spearman_lineplots = [
+            f"results/pictures/similarity_comparison_lineplots/dataset-{dataset}-brain_model_spearman_alignment.png"
+            for dataset in DATASETS
         ], 
         spearman_summary = "results/all_spearman_alignment_scores.tsv"

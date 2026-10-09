@@ -85,12 +85,26 @@ steps are listed below.
   fully inside every subject's field of view. A QC plot per subject (`registration/sub-*_t1w_to_mni_qc.png`)
   shows the registered T1w with the template's edges.
 
-**4. Parcellation.** Schaefer 2018, 200 parcels, 7 networks: the MNI volume atlas, resampled with
-nearest neighbour onto the MNI BOLD grid (Narratives, NSD), sampled directly on its own 1 mm grid
-(Caption Scene, step 3), or the fsaverage atlas for Nature Stories. Each parcel's time series is the
-**unweighted mean of its voxels** (or vertices). `get_resampled_parcel_matrix()` refuses images with
-`sform_code` 0 or 1 (scanner or unknown coordinates), so native data can no longer be parcellated
-with the MNI atlas by mistake.
+**4. Parcellation.** Schaefer 2018, 200 parcels, 7 networks, always in the space of the BOLD data:
+
+| Dataset | Atlas file | Space | How it is applied |
+|---|---|---|---|
+| Narratives | `tpl-MNI152NLin2009cAsym_res-01_atlas-Schaefer2018_desc-200Parcels7Networks_dseg.nii.gz`, downloaded from TemplateFlow into `resources/atlases/` by `extract_narratives_parcels.py` | MNI152NLin2009cAsym, like the BOLD files | resampled with nearest neighbour onto the BOLD grid |
+| NSD | nilearn's `Schaefer2018_200Parcels_7Networks_order_FSLMNI152_1mm.nii.gz` | MNI152NLin6Asym (FSL MNI152) | resampled with nearest neighbour onto the BOLD grid |
+| Caption Scene | the same nilearn atlas | MNI152NLin6Asym | sampled on its own 1 mm grid (step 3) |
+| Nature Stories | the fsaverage annotation | fsaverage | per vertex |
+
+The volume atlas is matched to the BOLD grid by world coordinates only, with no transform between
+templates, so each dataset must use the atlas in its own template. The TemplateFlow and nilearn
+volume atlases number the parcels the same way: each nilearn parcel's nearest TemplateFlow parcel
+has the same index, the colours of all 200 labels agree, and the centroids differ by 1.6 mm
+(median, at most 3.1 mm), the difference between the two templates. Only some sub-region names
+differ (for example `FrOperIns` and `FrOper`): TemplateFlow ships an older naming, and the
+workflow never reads the names. Checked on 2026-10-09.
+
+Each parcel's time series is the **unweighted mean of its voxels** (or vertices).
+`get_resampled_parcel_matrix()` refuses images with `sform_code` 0 or 1 (scanner or unknown
+coordinates), so native data can no longer be parcellated with the MNI atlas by mistake.
 
 **5. Equal lengths.** Narratives truncates all subjects of a story to the shortest run and lists the
 truncated files, with their original lengths, in the job log. This is safe because every subject of
@@ -232,3 +246,12 @@ Step 7 and its rules were removed. What it said, for the record:
 The field-of-view threshold (0.999) and the spline order (3) of the Caption Scene sampling were
 constants in the scripts; they are now `inside_threshold` and `spline_order` under `caption_scene:`
 in `config/config.yaml`. The values did not change.
+
+### 2026-10-09 15:14 — Narratives parcellated in its own template
+
+Until then, Narratives used nilearn's Schaefer atlas, which is in MNI152NLin6Asym, while its BOLD
+files are in MNI152NLin2009cAsym. Because the atlas is matched by world coordinates only, the
+parcel borders were shifted by a few millimetres, mostly at the cortical edge. Narratives now uses
+the TemplateFlow copy of the atlas in MNI152NLin2009cAsym. On one run (`sub-001`, `tunnel`), the
+old and new parcel time series correlate at 0.98 (median over parcels, at least 0.77). The
+Narratives parcel time series, ISC and every result downstream of them must be recomputed.

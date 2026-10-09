@@ -48,7 +48,7 @@ SUGGESTIONS lists, which live outside this repository, in `LLMmind/.claude/`.
 | `docs/changelog/developers/2026-10-06_bugfix_documentation.md` | written | 2026-10-06 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
 | `docs/changelog/developers/2026-10-07_new_feature_removal_documentation.md` | written | 2026-10-07 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
 | `docs/changelog/developers/2026-10-08_new_feature_bugfix_refactor_removal_documentation.md` | written | 2026-10-08 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
-| `docs/changelog/developers/2026-10-09_bugfix_documentation.md` | written | 2026-10-09 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
+| `docs/changelog/developers/2026-10-09_new_feature_bugfix_refactor_documentation.md` | written | 2026-10-09 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
 | `docs/changelog/users/2026-09-21_new_feature_bugfix_refactor_removal_documentation.md` | written | 2026-10-06 | Claude Opus 5.5 (`claude-opus-5-5`); Claude Sonnet 5 (`claude-sonnet-5`) for the original entries | not yet reviewed |
 | `docs/changelog/users/2026-09-22_new_feature_optimisation.md` | written | 2026-10-06 | Claude Opus 5.5 (`claude-opus-5-5`); Claude Sonnet 5 (`claude-sonnet-5`) for the original entries | not yet reviewed |
 | `docs/changelog/users/2026-09-23_new_feature_bugfix_refactor_documentation.md` | written | 2026-10-06 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
@@ -63,17 +63,17 @@ SUGGESTIONS lists, which live outside this repository, in `LLMmind/.claude/`.
 | `docs/changelog/users/2026-10-06_bugfix_documentation.md` | written | 2026-10-06 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
 | `docs/changelog/users/2026-10-07_new_feature_removal_documentation.md` | written | 2026-10-07 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
 | `docs/changelog/users/2026-10-08_new_feature_bugfix_refactor_removal_documentation.md` | written | 2026-10-08 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
-| `docs/changelog/users/2026-10-09_bugfix_documentation.md` | written | 2026-10-09 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
+| `docs/changelog/users/2026-10-09_new_feature_bugfix_refactor_documentation.md` | written | 2026-10-09 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
 | `docs/guides/running_and_troubleshooting.md` | written | 2026-10-09 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
 | `docs/reference/clean_run_duration.md` | written | 2026-10-09 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
-| `docs/reference/fmri_preprocessing.md` | written | 2026-10-08 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
+| `docs/reference/fmri_preprocessing.md` | written | 2026-10-09 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
 | `docs/reference/nature_stories_stimuli.md` | written | 2026-10-09 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
 | `docs/reference/model_embeddings.md` | written | 2026-10-08 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
-| `docs/reference/statistics.md` | written | 2026-10-07 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
+| `docs/reference/statistics.md` | written | 2026-10-09 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
 | `.gitignore` | edited | 2026-10-02 | Claude Opus 5.5 (`claude-opus-5-5`) * | not yet reviewed |
 | `config/config.yaml` | edited | 2026-10-08 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
 | `parquet2tsv.sh` | edited | 2026-10-02 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
-| `workflow/Snakefile` | edited | 2026-10-08 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
+| `workflow/Snakefile` | edited | 2026-10-09 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
 | `workflow/dataset_processing/caption_scene_dataset/Snakefile` | edited | 2026-10-08 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
 | `workflow/dataset_processing/caption_scene_dataset/envs/caption_scene_dataset_processing_environment.yaml` | edited | 2026-10-02 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
 | `workflow/dataset_processing/caption_scene_dataset/scripts/compute_caption_scene_isc.py` | edited | 2026-10-02 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
@@ -85,7 +85,7 @@ SUGGESTIONS lists, which live outside this repository, in `LLMmind/.claude/`.
 | `workflow/dataset_processing/narratives_dataset/Snakefile` | edited | 2026-10-08 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
 | `workflow/dataset_processing/narratives_dataset/envs/narratives_dataset_processing_environment.yaml` | edited | 2026-10-01 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
 | `workflow/dataset_processing/narratives_dataset/scripts/compute_narratives_isc.py` | edited | 2026-10-02 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
-| `workflow/dataset_processing/narratives_dataset/scripts/extract_narratives_parcels.py` | edited | 2026-10-02 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
+| `workflow/dataset_processing/narratives_dataset/scripts/extract_narratives_parcels.py` | edited | 2026-10-09 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
 | `workflow/dataset_processing/nature_stories_dataset/Snakefile` | edited | 2026-10-08 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
 | `workflow/dataset_processing/nature_stories_dataset/envs/nature_stories_dataset_processing_environment.yaml` | edited | 2026-10-01 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
 | `workflow/dataset_processing/nature_stories_dataset/scripts/compute_nature_stories_isc.py` | edited | 2026-10-02 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
@@ -117,8 +117,9 @@ SUGGESTIONS lists, which live outside this repository, in `LLMmind/.claude/`.
 | `workflow/libraries/manage_model_metadata.py` | edited | 2026-10-02 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
 | `workflow/libraries/parquet_io.py` | written | 2026-10-09 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
 | `workflow/libraries/path_metadata.py` | edited | 2026-10-02 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
+| `workflow/libraries/spearman_scores.py` | written | 2026-10-09 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
 | `workflow/libraries/validate_data.py` | edited | 2026-10-02 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
-| `workflow/libraries/visualisation_utils.py` | edited | 2026-10-07 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
+| `workflow/libraries/visualisation_utils.py` | edited | 2026-10-09 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
 | `workflow/llm_llm_alignment/Snakefile` | edited | 2026-10-06 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
 | `workflow/llm_llm_alignment/envs/llm_llm_alignment_environment.yaml` | edited | 2026-10-01 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
 | `workflow/llm_llm_alignment/scripts/aggregate_all_llm_llm_p_value_outputs.py` | edited | 2026-10-02 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
@@ -140,14 +141,15 @@ SUGGESTIONS lists, which live outside this repository, in `LLMmind/.claude/`.
 | `workflow/spearman_alignment/envs/spearman_alignment_environment.yaml` | edited | 2026-10-01 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
 | `workflow/spearman_alignment/scripts/aggregate_all_spearman_outputs.py` | edited | 2026-10-02 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
 | `workflow/spearman_alignment/scripts/compute_spearman_alignment_with_empirical_p_value.py` | edited | 2026-10-09 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
-| `workflow/visualisation/Snakefile` | edited | 2026-10-02 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
+| `workflow/visualisation/Snakefile` | edited | 2026-10-09 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
 | `workflow/visualisation/envs/visualisation_environment.yaml` | edited | 2026-10-01 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
 | `workflow/visualisation/scripts/plot_alignment_heatmap.py` | edited | 2026-10-02 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
 | `workflow/visualisation/scripts/plot_brain_model_alignment_enrichment_lineplot.py` | edited | 2026-10-07 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
-| `workflow/visualisation/scripts/plot_brain_model_alignment_lineplot.py` | edited | 2026-10-02 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
+| `workflow/visualisation/scripts/plot_brain_model_alignment_lineplot.py` | edited | 2026-10-09 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
 | `workflow/visualisation/scripts/plot_concept_alignment_enrichment_scatterplot.py` | edited | 2026-10-02 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
 | `workflow/visualisation/scripts/plot_concept_alignment_scatterplot.py` | edited | 2026-10-02 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
 | `workflow/visualisation/scripts/plot_empirical_p_value_heatmap.py` | edited | 2026-10-02 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
-| `workflow/visualisation/scripts/plot_spearman_alignment.py` | edited | 2026-10-07 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
+| `workflow/visualisation/scripts/plot_similarity_comparison_lineplot.py` | written | 2026-10-09 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
+| `workflow/visualisation/scripts/plot_spearman_alignment.py` | edited | 2026-10-09 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
 | `../.claude/SUGGESTIONS/LLMmind_project.md` | written | 2026-10-08 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
 | `../.claude/TODO/LLMmind_project.md` | written | 2026-10-09 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |

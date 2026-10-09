@@ -1,25 +1,16 @@
 #!/usr/bin/env python3
 # edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
-# last AI edit: 2026-10-02, see docs/changelog/developers/ for details
+# last AI edit: 2026-10-09, see docs/changelog/developers/ for details
 import argparse
 
-import numpy as np
-import pandas as pd
-
-from libraries.compute_alignment import (
-    common_hypergeometric_expectation, 
-    read_alignment_scores, 
-)
+from libraries.compute_alignment import summarise_alignment_scores
 from libraries.compute_statistics import model_level_significance
-from libraries.manage_model_metadata import (
-    model_key, 
-    parse_model_parameters, 
-    sort_models, 
-)
+from libraries.manage_model_metadata import parse_model_parameters, sort_models
 from libraries.visualisation_utils import (
     add_null_line, 
     BRAIN_MODEL_ALIGNMENT_SCORE, 
     create_model_figure, 
+    HYPERGEOMETRIC_NULL_LABEL, 
     MEAN_ALIGNMENT_SCORE_LABEL, 
     MODEL_LEVEL, 
     plot_model_points, 
@@ -56,37 +47,13 @@ def main():
     args = parser.parse_args()
 
     # summarise each model's concept-level alignment scores by their mean and standard error
-    rows = []
-    expectations = []
-
-    for path in args.llm_brain_alignment_scores:
-        scores_df, metadata, expectation = read_alignment_scores(
-            path, 
-            args.dataset, 
-            args.similarity_type, 
-            args.number_of_neighbours, 
-        )
-        scores = scores_df["alignment_score"]
-        rows.append(
-            {
-                "label": model_key(metadata["model"], metadata["stimuli_type"]), 
-                "model": metadata["model"], 
-                "stimuli_type": metadata["stimuli_type"], 
-                "mean": scores.mean(), 
-                "standard_error": scores.std(ddof = 1)/np.sqrt(len(scores)), 
-            }
-        )
-        expectations.append(expectation)
-
-    model_df = sort_models(
-        pd.DataFrame(rows), 
-        parse_model_parameters(args.model_parameters), 
+    model_df, expectation = summarise_alignment_scores(
+        args.llm_brain_alignment_scores, 
+        args.dataset, 
+        args.similarity_type, 
+        args.number_of_neighbours, 
     )
-
-    if model_df["label"].duplicated().any():
-        raise ValueError(
-            "More than one alignment-score file was provided for the same model"
-        )
+    model_df = sort_models(model_df, parse_model_parameters(args.model_parameters))
 
     labels = model_df["label"].tolist()
     p_values, q_values = model_level_significance(
@@ -106,11 +73,7 @@ def main():
         model_df["standard_error"], 
         model_df["stimuli_type"], 
     )
-    add_null_line(
-        ax, 
-        common_hypergeometric_expectation(expectations), 
-        "Null expectation (hypergeometric)", 
-    )
+    add_null_line(ax, expectation, HYPERGEOMETRIC_NULL_LABEL)
     style_model_axes(
         ax, 
         model_df["model"].tolist(), 
