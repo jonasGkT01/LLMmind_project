@@ -5,6 +5,7 @@
 Changes made on this day, in order:
 
 - Jobs no longer get stuck after finishing their work (bugfix, documentation)
+- Where the Nature Stories transcripts come from is now documented (documentation)
 
 ---
 
@@ -21,3 +22,16 @@ Nothing changes in the results, and nothing has to be recomputed because of this
 still hangs, the troubleshooting section of the
 [guide](../../guides/running_and_troubleshooting.md#6-troubleshooting) explains how to end it
 without losing its output.
+
+---
+
+## 11:35 — Where the Nature Stories transcripts come from is now documented
+
+Kind: documentation
+
+The word transcripts of the Nature Stories come from a different public dataset than the brain
+recordings. A new page, [`nature_stories_stimuli.md`](../../reference/nature_stories_stimuli.md),
+explains where each comes from and shows that both describe the same 11 stories with the same
+lengths. The only mismatch is the audio file of the story "life" in the brain-data download, which
+is about 71 seconds too short; the pipeline does not use the audio, so the results are not
+affected.

@@ -36,6 +36,9 @@ the pipeline:
   — what each dataset's authors did to the BOLD data before this workflow, and
   what the workflow itself does, up to the ISC (a source for the methods
   section)
+- [`docs/reference/nature_stories_stimuli.md`](docs/reference/nature_stories_stimuli.md)
+  — where the Nature Stories transcripts come from (a separate release from
+  the fMRI data) and the check that both describe the same stimuli
 - [`docs/reference/model_embeddings.md`](docs/reference/model_embeddings.md)
   — how each model turns a stimulus into one vector: chunking, pooling
   (including the BOS token) and the CLS token of vision models (a source for
@@ -221,7 +224,9 @@ relative to `resources/datasets/`:
 - Run/story onset metadata:
   `responses/new_run_onsets.json`
 - Source TextGrid stimulus files:
-  `stimuli/textgrids/<story>.TextGrid`
+  `stimuli/textgrids/<story>.TextGrid`, from OpenNeuro `ds003020`, not from
+  the fMRI archive (see
+  [`nature_stories_stimuli.md`](docs/reference/nature_stories_stimuli.md))
 
 **NSD dataset** (`nsd_data_dataset/`)
 
