@@ -101,6 +101,12 @@ A second pass over the same pages found three more statements that did not match
   `README.md#code-conventions` in the 2026-09-23 developer changelog, points to a section that no
   longer exists; left as it is, since changelogs record past states).
 
+- **Untracked folders** (`README.md`, Repository layout): `.gitignore` excludes the whole
+  `resources/` folder and `workflow/envs/LLMmind_project/`, but the layout marked only
+  `resources/datasets/` and `resources/models/` as not tracked, which suggested that
+  `resources/atlases/` is. The note now sits on `resources/` and on the built base environment.
+  Pointed out by the developer.
+
 ### Context
 
 - Request: check the documentation once more, then fix everything found; then a last check.

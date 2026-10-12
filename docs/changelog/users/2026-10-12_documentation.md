@@ -53,3 +53,5 @@ pipeline does. Again, nothing in the pipeline or its results changed.
   lists them.
 - **Caption Scene trials without an image**, and scans whose file cannot be read, are left out.
   [`fmri_preprocessing.md`](../../reference/fmri_preprocessing.md) now says so.
+- **Nothing under `resources/` is stored in git**, including the downloaded atlases; the README
+  layout now says so for the whole folder.

@@ -79,11 +79,12 @@ workflow/
   visualisation/            Plotting rules (heatmaps, line plots, boxplots)
   envs/                     Base environment for running Snakemake itself
                              (LLMmind_project_environment.yaml spec + the
-                             materialized LLMmind_project/ conda prefix)
-resources/
-  atlases/                  Brain parcellation atlas used to extract ROI-level signal
-  datasets/                 Raw dataset inputs (fMRI + stimuli) — not tracked in git
-  models/                   Downloaded pretrained model weights — not tracked in git
+                             materialized LLMmind_project/ conda prefix,
+                             which is not tracked in git)
+resources/                  Inputs — not tracked in git (the whole folder is in .gitignore)
+  atlases/                  Downloaded brain parcellation atlases and MNI template
+  datasets/                 Raw dataset inputs (fMRI + stimuli)
+  models/                   Downloaded pretrained model weights
 results/                    Pipeline outputs — not tracked in git
 docs/
   guides/                   How to run the pipeline and fix failed runs
