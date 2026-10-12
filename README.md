@@ -81,7 +81,7 @@ workflow/
                              (LLMmind_project_environment.yaml spec + the
                              materialized LLMmind_project/ conda prefix,
                              which is not tracked in git)
-resources/                  Inputs — not tracked in git (the whole folder is in .gitignore)
+resources/                  Inputs — not tracked in git
   atlases/                  Downloaded brain parcellation atlases and MNI template
   datasets/                 Raw dataset inputs (fMRI + stimuli)
   models/                   Downloaded pretrained model weights
