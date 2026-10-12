@@ -178,9 +178,12 @@ Layout, shared by all plots (constants and helpers in `libraries/visualisation_u
   (protan, deutan, tritan) with ≥ 5:1 contrast on white, the heatmaps use `viridis`, and red is
   avoided for the q-value asterisks and the degenerate-box marker. The per-concept colours are
   the exception: with 11 to 1,000 concepts, no palette keeps them distinguishable.
-- **Degenerate boxes.** In the concept-level alignment and Spearman plots, a model whose
-  per-concept values show no spread would render as a flat, easy-to-miss box; it is marked with a
-  black diamond instead.
+- **Degenerate boxes.** In the three concept-level plots (alignment, enrichment, Spearman), a box
+  whose median coincides with its first or third quartile, or whose two quartiles coincide, is
+  drawn partly or wholly flat and is easy to miss; a black diamond at the median marks it
+  (`mark_degenerate_boxplot_statistics()`). This is common at small *k*, where the alignment scores
+  take only the values 0, 1/*k*, 2/*k*, …, so the diamond does not mean that the values have no
+  spread.
 - **Shared y-axes.** The model-level alignment line plot and the concept-level alignment plot of
   one dataset/similarity/*k* share the y-range `[0, 1]` (plus legend space), so they can be
   compared side by side. The two enrichment plots share one range too, computed from both
@@ -197,7 +200,7 @@ Layout, shared by all plots (constants and helpers in `libraries/visualisation_u
   symmetric around 0, and the enrichment plot keeps the symlog axis, fitted on the axis positions
   and starting at 0 at the lowest.
 
-## 8. Changes
+## Changes
 
 Changes to the methods described above, oldest first. Each entry gives when the change happened,
 what changed and why. The sections above always describe the current code.
@@ -240,3 +243,10 @@ At the developer's request, new line plots show the cosine, Pearson and Spearman
 model-level alignment, enrichment and Spearman line plots in one figure, so the effect of the
 similarity type is visible at a glance. Section 7 describes them; the existing plots did not
 change.
+
+### 2026-10-12 09:51 — degenerate-box marker described as the code draws it
+
+Section 7 said the diamond marks boxes with no spread, in the alignment and Spearman plots. The
+code also marks a box whose median equals one of its quartiles, which is frequent at small *k*,
+and does so in the enrichment plot too; the text now says this. The heading of this section lost
+its number, like the other living documents. No plot changed.

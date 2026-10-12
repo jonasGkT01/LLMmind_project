@@ -58,7 +58,7 @@ A clean run of everything takes about 31 h on node5; see
 `--cores <N>` runs up to `<N>` jobs at once. A few steps also parallelize internally, with
 `number_of_workers` worker processes or threads (`config/config.yaml`, default 4): NSD's
 functional-to-MNI registration (`assemble_nsd_bold`), the Caption Scene T1w-to-MNI registration
-(`register_caption_scene_t1w`, one job per subject, about 2 min each) and the two summary-table
+(`register_caption_scene_t1w`, one job per subject, about 3 min each) and the two summary-table
 steps (`aggregate_all_p_value_outputs` and `aggregate_all_llm_llm_p_value_outputs`). Snakemake
 does not reserve cores for these workers, so these steps never wait for free cores, but while one
 runs alongside other jobs the run briefly uses more CPUs than `--cores`. Lower
@@ -107,11 +107,11 @@ changing its code. This includes:
 
 **`similarity_types`** lists the similarity metrics: `cosine` (angle between two vectors),
 `pearson` (linear correlation of their values) and `spearman` (correlation of the ranks of their
-values, so only the order counts). Every analysis and plot is produced once per listed metric.
-Adding a metric reruns the nearest-neighbour rules (`compute_llm_nearest_neighbours`,
-`compute_isc_nearest_neighbours`), which write one file per metric in a single job. The existing
-metrics' files are rewritten too, and everything downstream of them reruns, even with
-`--rerun-triggers mtime`. Adding `spearman` planned about 11,900 jobs.
+values, so only the order counts). Only these three are accepted. Every analysis and plot is
+produced once per listed metric. The nearest-neighbour rules (`compute_llm_nearest_neighbours`,
+`compute_isc_nearest_neighbours`) always write the files of all three metrics, whatever the list
+says, so changing it never reruns them: removing a metric drops its alignment, Spearman and plot
+jobs, and adding one back runs only those jobs, from the neighbour files already on disk.
 
 **`minimum_subjects_per_stimulus`** (default 2) keeps a stimulus only if at least that many
 different subjects saw it. It must be at least 2 (ISC needs two observations) and at most 8 (the
@@ -127,11 +127,12 @@ decides whether `get_embeddings` passes `--chunk_max_length` to `get_embeddings.
 | `max_chunk_length` | What `get_embeddings.py` receives | Chunk length used |
 |---|---|---|
 | an integer, e.g. `2048` (default) | `--chunk_max_length 2048` | exactly that value, for **every** language model |
-| `null`, `"none"`, `"null"`, `""`, or the key left out | **no** `--chunk_max_length` argument | inferred per model by `get_safe_max_length()`: the smaller of the tokenizer's `model_max_length` and the config's `max_position_embeddings`, ignoring values above 100,000 and falling back to 2048 when none are left |
+| `null`, `"none"`, `"null"`, `""`, or the key left out | **no** `--chunk_max_length` argument | inferred per model by `get_safe_max_length()`: the smallest of the tokenizer's `model_max_length`, the config's `max_position_embeddings` and its `text_config.max_position_embeddings`, ignoring values of 100,000 or more and falling back to 2048 when none are left |
 
 > **Watch out:** with `null`/`"none"`, the chunk length is **not the same across models**. Gemma
-> 1/2 get 8192 (their `max_position_embeddings`), BLOOM and OpenLLaMA 2048, and Gemma 3/3n/4 fall
-> back to 2048 because their context lengths exceed 100,000. Since chunk length changes the
+> 1/2 get 8192 (their `max_position_embeddings`), Gemma 3 270M/1B and Gemma 3n 32768, OpenLLaMA
+> 2048 (its own limit), and BLOOM, Gemma 3 4B/12B/27B and Gemma 4 fall back to 2048 (BLOOM
+> declares no context length; the Gemma ones declare 131,072 or more). Since chunk length changes the
 > embeddings, models are then compared under different conditions. Longer chunks also need much
 > more GPU memory (see section 6). Use `null` only if you want each model's native context on
 > purpose.
@@ -148,8 +149,16 @@ check the two limitations of section 5.
 
 ## 4. Software environments
 
-Every rule declares its own `conda:` environment (`workflow/*/envs/*.yaml`), which Snakemake
-creates automatically with `--use-conda`. Every package listed in an environment file is pinned
+Every rule that runs a Python script declares its own `conda:` environment
+(`workflow/*/envs/*.yaml`), which Snakemake creates automatically with `--use-conda`. The other
+rules run in the base environment: the `run:` rules, which write the manifests and the
+excluded-stimuli lists (`write_*_manifest`, `write_narratives_problematic_stimuli`,
+`write_nature_stories_excluded_stimuli`) and check the Nature Stories stimuli
+(`verify_nature_stories_stimuli`); `fetch_mni_template` (`curl`) and
+`rename_narratives_stimuli_transcipts` (`cp`); and the rules that only touch a flag file
+(`mark_*_isc_done`, `finish_caption_scene_isc`, `extract_caption_scene_parcels`). Anything the
+`run:` rules and the Snakefiles import comes from the base environment, for example pandas 2.x
+instead of the pandas 3 of the rule environments. Every package listed in an environment file is pinned
 to an exact version (`- numpy=2.5.3`; pip packages as `netneurotools==0.3.0`, and `nsdcode` at a
 fixed git commit), so a rebuilt environment gets the same versions. Packages that are not listed
 (dependencies of dependencies) are not pinned and can still move. The versions were chosen on
@@ -237,7 +246,8 @@ bf16). Before adding a model, check its `config.json` for `num_experts`, `num_lo
 - **A rule fails with only `CalledProcessError … returned non-zero exit status 1`**: the Snakemake
   log doesn't include the script's own error message. Copy the rule's `shell:` command from the
   log and re-run it inside the conda env the log names:
-  `source /opt/conda/miniconda3/bin/activate .snakemake/conda/<hash>_`, then
+  `source "$(conda info --base)/bin/activate" .snakemake/conda/<hash>_` (the conda that built
+  the environments, as in `.envrc`), then
   `export PYTHONPATH="$PWD/workflow:$PYTHONPATH"`. That prints the full Python traceback. For a
   quicker test, lower `--number_of_relabellings` and point the output at a scratch path. After
   fixing the problem, restart with `--rerun-incomplete`, so that the half-written outputs left by
@@ -342,3 +352,24 @@ read parquet files through `read_parquet()`.
 
 The command that redraws every plot now also forces the three rules of the new
 similarity-comparison line plots.
+
+### 2026-10-12 09:51 — corrections from a check against the code
+
+- Section 3: with `max_chunk_length: null`, Gemma 3 270M/1B and Gemma 3n would get 32768 tokens,
+  not 2048 as stated; the table now also names `text_config.max_position_embeddings`, which
+  `get_safe_max_length()` reads.
+- Section 1: the Caption Scene T1w registration takes about 3 min per subject (measured median
+  3.2 min), not about 2 min.
+- Section 6: the environments are activated with the `activate` of `conda info --base`, as in
+  `.envrc`, instead of a fixed `/opt/conda/miniconda3` path, which is not the conda that builds
+  them.
+
+### 2026-10-12 10:05 — rules without their own environment; `similarity_types` reruns
+
+- Section 4 said that every rule declares its own `conda:` environment. Fifteen rules do not and
+  run in the base environment (the `run:` rules, two shell rules and the flag rules); they are now
+  listed.
+- Section 3 said that adding a similarity metric reruns the nearest-neighbour rules and rewrites
+  every metric's files. Both rules always write all three metrics' files, independently of
+  `similarity_types`, so changing the list only adds or drops the downstream jobs of that metric.
+  The job count quoted for adding `spearman` described the older design and was removed.

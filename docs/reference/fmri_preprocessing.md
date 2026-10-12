@@ -46,12 +46,15 @@ The workflow adds **no** detrending, filtering, confound regression, smoothing o
 steps are listed below.
 
 **1. Stimulus selection.** A stimulus is kept only if at least `minimum_subjects_per_stimulus`
-(= 2) different subjects saw it, and it is not in the dataset's `excluded_stimuli.txt`.
+(= 2) different subjects saw it, and it is not in the dataset's `excluded_stimuli.txt`. Nature
+Stories ignores `minimum_subjects_per_stimulus`: it requires every subject for every story.
 
 - Narratives: the 10 tasks of `schema_subtasks` and `notthefall_variants` in `config.yaml` (the schema sub-stories and the two
   scrambled "Not the Fall" versions) are dropped, and scans listed in `scan_exclude.json` are
   excluded. That leaves 18 stories.
-- Caption Scene: events flagged `Blank` or `Unmatch` in the run tables are dropped.
+- Caption Scene: events flagged `Blank` or `Unmatch` in the run tables, and events with no image
+  (`Image` empty or `none`), are dropped. Runs whose BOLD file cannot be loaded are skipped
+  whole; `make_caption_scene_manifest.py` prints how many.
 
 **2. Stimulus windows**, only for the event-related datasets:
 
@@ -255,3 +258,15 @@ parcel borders were shifted by a few millimetres, mostly at the cortical edge. N
 the TemplateFlow copy of the atlas in MNI152NLin2009cAsym. On one run (`sub-001`, `tunnel`), the
 old and new parcel time series correlate at 0.98 (median over parcels, at least 0.77). The
 Narratives parcel time series, ISC and every result downstream of them must be recomputed.
+
+### 2026-10-12 09:51 — Nature Stories exception in the stimulus selection
+
+Step 1 presented `minimum_subjects_per_stimulus` as applying to every dataset; it now says that
+Nature Stories ignores it and requires every subject for every story, as the code does and the
+guide already said. The processing did not change.
+
+### 2026-10-12 10:05 — all Caption Scene selection rules listed
+
+Step 1 named only the `Blank` and `Unmatch` flags. `make_caption_scene_manifest.py` also drops
+events without an image and skips runs whose BOLD file cannot be loaded; both are now listed.
+The processing did not change.

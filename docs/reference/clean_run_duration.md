@@ -146,6 +146,14 @@ about 2 min each, against a few seconds for narratives and nature_stories.
 | `plot_alignment_heatmap` | 24 | 4 s | 21 s | 4 min | 10-05, 10-06 |
 | `plot_empirical_p_value_heatmap` | 24 | 4 s | 8 s | 2 min | 10-06 |
 | `plot_spearman_alignment` | 12 | 4 s | 7 s | 1 min | 10-05, 10-06 |
+| `plot_similarity_comparison_alignment_lineplot` | 8 | not measured | | ~1 min (guess) | — |
+| `plot_similarity_comparison_enrichment_lineplot` | 8 | not measured | | ~5 min (guess) | — |
+| `plot_similarity_comparison_spearman_lineplot` | 4 | not measured | | <1 min (guess) | — |
+
+The three similarity-comparison rules were added after the measured runs. Each job reads the
+inputs of the matching per-similarity plots for all three similarity types, so the guesses are
+three times the per-job time of those plots; the enrichment one reads the relabelled files. They
+do not change the totals of section 3.
 
 ## 3. From job-hours to elapsed time
 
@@ -185,7 +193,7 @@ it prints a `[timestamp]` line followed by `rule <name>:` (or `localrule`, `chec
 Pairing the two timestamps by job id gives each job's duration; a job with no `Finished` line
 failed or hung. `snakemake -n --forceall` prints the job count per rule.
 
-## 5. Changes
+## Changes
 
 Changes to the estimate, oldest first. Each entry gives when the change happened, what changed
 and why. The tables above always show the current estimate.
@@ -311,3 +319,10 @@ The per-job durations at k = 125 are not measured yet.
 The summary said that the estimate leaves out the time lost when a job hangs after writing its
 output. The cause of those hangs (reading parquet files through a Python file object, which could
 deadlock the process at exit) was fixed, so the sentence was removed. No duration changed.
+
+### 2026-10-12 09:51 — similarity-comparison plots listed
+
+The three similarity-comparison plot rules, added on 2026-10-09, were missing from section 2e.
+They now have rows with guessed durations (20 jobs, a few minutes in all), until a run measures
+them. The totals did not change. The heading of this section lost its number, like the other
+living documents.

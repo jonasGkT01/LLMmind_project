@@ -1,5 +1,5 @@
 # edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
-# last AI edit: 2026-10-08, see docs/changelog/developers/ for details
+# last AI edit: 2026-10-12, see docs/changelog/developers/ for details
 
 # worker processes or threads used inside the jobs that parallelise internally (NSD parcel extraction,
 # Caption Scene T1w registration, p-value aggregation). Snakemake counts each job as one core, so
@@ -15,7 +15,8 @@ minimum_subjects_per_stimulus: 2
 
 # maximum number of tokens per chunk when language models embed long textual stimuli, the same for every language model.
 # Set to null (or "none") to pass no --chunk_max_length to get_embeddings.py: each model then uses its own context length
-# (max_position_embeddings, e.g. 8192 for Gemma 1/2), or 2048 when that is missing or above 100,000 tokens (e.g. Gemma 3/4).
+# (max_position_embeddings, e.g. 8192 for Gemma 1/2, 32768 for Gemma 3 270M/1B and Gemma 3n), or 2048 when that is missing
+# or at least 100,000 tokens (e.g. BLOOM, Gemma 3 4B/12B/27B, Gemma 4).
 # null is the intended default; 2048 is set because some Gemma models crash with null
 max_chunk_length: 2048
 # number of tokens shared by consecutive chunks of a long textual stimulus
