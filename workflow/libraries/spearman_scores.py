@@ -1,10 +1,11 @@
 # written with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
-# last AI edit: 2026-10-09, see docs/changelog/developers/ for details
+# last AI edit: 2026-10-13, see docs/changelog/developers/ for details
 import pandas as pd
 
 from libraries.manage_model_metadata import model_key
 from libraries.validate_data import validate_required_columns
 
+NULL_MEAN_COLUMN = "empirical_null_mean_spearman_coefficient"
 NULL_STANDARD_DEVIATION_COLUMN = (
     "empirical_null_standard_deviation_spearman_coefficient"
 )
@@ -31,6 +32,7 @@ def read_spearman_scores(paths, dataset, model_level):
     if model_level:
         required_columns |= {
             "empirical_upper_tail_p_value",
+            NULL_MEAN_COLUMN,
             NULL_STANDARD_DEVIATION_COLUMN,
         }
     else:
@@ -66,6 +68,12 @@ def read_spearman_scores(paths, dataset, model_level):
             )
 
         df[NULL_STANDARD_DEVIATION_COLUMN] = null_standard_deviations
+        null_means = pd.to_numeric(df[NULL_MEAN_COLUMN], errors = "coerce")
+
+        if (null_means.isna() | (null_means.abs() > 1)).any():
+            raise ValueError("Model-level Spearman data contains invalid null means")
+
+        df[NULL_MEAN_COLUMN] = null_means
 
     if set(df["dataset"]) != {dataset}:
         raise ValueError(f"{name} Spearman data contains an unexpected dataset")

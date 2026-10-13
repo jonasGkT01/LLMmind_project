@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
-# last AI edit: 2026-10-09, see docs/changelog/developers/ for details
+# last AI edit: 2026-10-13, see docs/changelog/developers/ for details
 import argparse
 
 import numpy as np
@@ -8,6 +8,7 @@ import numpy as np
 from libraries.compute_statistics import benjamini_hochberg
 from libraries.manage_model_metadata import parse_model_parameters, sort_models
 from libraries.spearman_scores import (
+    NULL_MEAN_COLUMN, 
     NULL_STANDARD_DEVIATION_COLUMN, 
     read_spearman_scores, 
 )
@@ -18,16 +19,15 @@ from libraries.visualisation_utils import (
     create_model_figure, 
     legend_headroom_top, 
     MODEL_LEVEL, 
-    NULL_STANDARD_DEVIATION, 
     plot_concept_distributions, 
     plot_model_points, 
+    plot_null_distributions, 
     plot_title, 
     save_figure, 
     SPEARMAN_COEFFICIENT_LABEL, 
     SPEARMAN_NULL_LABEL, 
     stimuli_type_legend_handles, 
     style_model_axes, 
-    y_axis_label, 
 )
 
 # symmetric y-limits: the largest |value| plus padding, rounded up to a step, at least the minimum
@@ -97,14 +97,16 @@ def main():
     model_coefficients = model_df["observed_spearman_coefficient"].to_numpy(
         dtype = float
     )
+    null_means = model_df[NULL_MEAN_COLUMN].to_numpy(dtype = float)
     null_standard_deviations = model_df[NULL_STANDARD_DEVIATION_COLUMN].to_numpy(
         dtype = float
     )
 
-    # plot the model coefficients, with each model's null SD as its error bar
+    # plot the model coefficients next to each model's relabelling null (mean ± SD)
     fig, ax = create_model_figure(len(labels))
 
-    plot_model_points(ax, model_coefficients, null_standard_deviations, stimuli_types)
+    plot_null_distributions(ax, null_means, null_standard_deviations)
+    plot_model_points(ax, model_coefficients, None, stimuli_types)
     add_null_line(ax, 0.0, SPEARMAN_NULL_LABEL)
     style_model_axes(
         ax, 
@@ -116,12 +118,18 @@ def main():
             args.dataset, 
             args.similarity_type, 
         ), 
-        y_axis_label(SPEARMAN_COEFFICIENT_LABEL, NULL_STANDARD_DEVIATION), 
+        SPEARMAN_COEFFICIENT_LABEL, 
         p_values, 
         q_values, 
         [], 
     )
-    ax.set_ylim(*spearman_ylim(np.abs(model_coefficients) + null_standard_deviations))
+    ax.set_ylim(
+        *spearman_ylim(
+            np.concatenate(
+                [model_coefficients, np.abs(null_means) + null_standard_deviations]
+            )
+        )
+    )
 
     save_figure(fig, args.model_level_plot)
 

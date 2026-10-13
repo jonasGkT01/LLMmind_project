@@ -1,5 +1,5 @@
 # edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
-# last AI edit: 2026-10-09, see docs/changelog/developers/ for details
+# last AI edit: 2026-10-13, see docs/changelog/developers/ for details
 import colorsys
 import hashlib
 
@@ -375,9 +375,24 @@ NULL_LINE_STYLE = {"linestyle": "--", "linewidth": 1.2, "color": NULL_COLOUR}
 HYPERGEOMETRIC_NULL_LABEL = "Null expectation (hypergeometric)"
 ENRICHMENT_NULL_LABEL = "Null expectation (enrichment = 1)"
 SPEARMAN_NULL_LABEL = "Null expectation (no rank correlation)"
+NULL_DISTRIBUTION_LABEL = "Relabelling null (mean ± SD)"
 
 def add_null_line(ax, y, label):
     ax.axhline(y, label = label, **NULL_LINE_STYLE)
+
+def plot_null_distributions(ax, null_means, null_standard_deviations):
+    # each model's relabelling null: its mean as a grey dash, its SD as the error bar
+    ax.errorbar(
+        np.arange(len(null_means)), 
+        null_means, 
+        yerr = null_standard_deviations, 
+        fmt = "_", 
+        color = NULL_COLOUR, 
+        markersize = 10, 
+        capsize = 3, 
+        zorder = 1, 
+        label = NULL_DISTRIBUTION_LABEL, 
+    )
 
 def plot_concept_distributions(ax, labels, concept_df, value_column):
     # one jittered point per concept and a boxplot per model, at the position of its label;
