@@ -375,23 +375,22 @@ NULL_LINE_STYLE = {"linestyle": "--", "linewidth": 1.2, "color": NULL_COLOUR}
 HYPERGEOMETRIC_NULL_LABEL = "Null expectation (hypergeometric)"
 ENRICHMENT_NULL_LABEL = "Null expectation (enrichment = 1)"
 SPEARMAN_NULL_LABEL = "Null expectation (no rank correlation)"
-NULL_DISTRIBUTION_LABEL = "Relabelling null (mean ± SD)"
+NULL_MEAN_LABEL = "Relabelling null mean"
 
 def add_null_line(ax, y, label):
     ax.axhline(y, label = label, **NULL_LINE_STYLE)
 
-def plot_null_distributions(ax, null_means, null_standard_deviations):
-    # each model's relabelling null: its mean as a grey dash, its SD as the error bar
-    ax.errorbar(
+def plot_null_means(ax, null_means):
+    # each model's relabelling null mean as a grey dash
+    ax.plot(
         np.arange(len(null_means)), 
         null_means, 
-        yerr = null_standard_deviations, 
-        fmt = "_", 
+        linestyle = "none", 
+        marker = "_", 
         color = NULL_COLOUR, 
-        markersize = 10, 
-        capsize = 3, 
+        markersize = 12, 
         zorder = 1, 
-        label = NULL_DISTRIBUTION_LABEL, 
+        label = NULL_MEAN_LABEL, 
     )
 
 def plot_concept_distributions(ax, labels, concept_df, value_column):

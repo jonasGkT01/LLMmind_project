@@ -5,6 +5,7 @@
 Changes made on this day, in order:
 
 - The Spearman line plot now shows each model's null distribution (new_feature, documentation)
+- Spearman error bars back on the points (new_feature, documentation)
 
 ---
 
@@ -22,3 +23,14 @@ the grey dashes show it (they all sit at about 0). The
 To redraw the plots, run the pipeline with `--forcerun plot_spearman_alignment` (see the
 [guide](../../guides/running_and_troubleshooting.md#2-when-snakemake-reruns-a-job)). Only the
 Spearman plots are redrawn; no result is recomputed.
+
+---
+
+## 18:21 — Spearman error bars back on the points
+
+Kind: new_feature, documentation
+
+In the model-level Spearman line plots, the error bar (the null's standard deviation) is again
+drawn around each model's point, as before 17:50. Each model keeps a small grey dash at the
+average of its null, which sits on the dashed line at ρ = 0. To redraw the plots, run the
+pipeline with `--forcerun plot_spearman_alignment`.

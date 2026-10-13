@@ -5,6 +5,7 @@
 Changes made on this day, in order:
 
 - Model-level Spearman line plot draws the computed relabelling null (new_feature, documentation)
+- Spearman error bars back on the observed ρ (new_feature, documentation)
 
 ---
 
@@ -49,3 +50,34 @@ tables are untouched. Redraw with `--forcerun plot_spearman_alignment`.
 - Verification: the script was run with the visualisation conda environment on the existing
   cosine Spearman TSVs of Narratives and NSD, writing to the scratchpad; both plots were inspected
   (grey null bands centred on about 0, observed ρ unchanged, legend and limits correct).
+
+---
+
+## 18:21 — Spearman error bars back on the observed ρ
+
+Kind: new_feature, documentation
+
+The 17:50 change moved the null-SD error bar from the observed ρ to the null mean. On seeing the
+plots, the developer asked to put it back on the observed ρ and keep everything else.
+
+- `libraries/visualisation_utils.py`: `plot_null_distributions()` replaced by
+  `plot_null_means(ax, null_means)`, a grey `_` marker at each null mean with no error bar;
+  `NULL_DISTRIBUTION_LABEL` replaced by `NULL_MEAN_LABEL` ("Relabelling null mean").
+- `visualisation/scripts/plot_spearman_alignment.py`, model-level plot: `plot_model_points()`
+  again gets `null_standard_deviations` as error bars; y-label back to
+  `y_axis_label(SPEARMAN_COEFFICIENT_LABEL, NULL_STANDARD_DEVIATION)`; y-limits from
+  |ρ| + null SD and the null means. `read_spearman_scores()` (null mean column) is unchanged.
+- `docs/reference/statistics.md`: section 7 (table row and error-bar conventions) and its Changes
+  section.
+
+Rerun: `--forcerun plot_spearman_alignment` (12 plot jobs).
+
+### Context
+
+- Request: the developer found the error bar on the reference line instead of on the points and
+  asked to move it back, keeping the rest ("just move the error bar back where it was").
+- Files: `workflow/libraries/visualisation_utils.py`,
+  `workflow/visualisation/scripts/plot_spearman_alignment.py`, `docs/reference/statistics.md`.
+- Verification: the script was run on the cosine Spearman TSVs of all four datasets in the
+  scratchpad; the Caption Scene plot was inspected (bars on the points, grey dashes on the line at
+  0, y-label "± null SD").

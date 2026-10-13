@@ -134,7 +134,7 @@ brain's and the model's similarity structures.
 | Concept-level alignment scatterplot | one point per concept, boxplot per model | none | dashed line at *k*/(*n* − 1) |
 | Model-level enrichment line plot | model-level enrichment | that model's null SD | dashed line at enrichment = 1 |
 | Concept-level enrichment scatterplot | one point per concept, boxplot per model | none | dashed line at enrichment = 1 |
-| Model-level Spearman line plot | model-level ρ, and in grey that model's null mean | none on ρ; the null SD around the null mean | dashed line at ρ = 0, the exact null expectation (section 6) |
+| Model-level Spearman line plot | model-level ρ, and a grey dash at that model's computed null mean | that model's null SD | dashed line at ρ = 0, the exact null expectation (section 6) |
 | Concept-level Spearman scatterplot | one point per concept, boxplot per model | none | dashed line at ρ = 0, the exact null expectation (section 6) |
 | Similarity-comparison line plots (alignment, enrichment, Spearman) | the value of the matching model-level line plot, one series per similarity type | as in that line plot (SE or null SD) | as in that line plot |
 | Alignment heatmap | mean alignment score of each pair; the diagonal is blank | — | — |
@@ -144,14 +144,12 @@ Conventions:
 
 - **What the error bars mean differs between plots.** In the alignment line plot, the bar is the
   standard error of the plotted mean, an uncertainty of the value. In the model-level enrichment
-  plot and in the similarity-comparison plots of enrichment and Spearman alignment, the bar is the
-  model's null SD drawn around the observed value (the y-label reads "± null SD"): it shows how
-  wide chance variation is for that model, but the null distribution is centred on chance
-  (enrichment = 1, ρ = 0), not on the observed value, so the bar is not a confidence interval and
-  whether it reaches the reference line is not a significance test. The model-level Spearman line
-  plot instead draws the null where it lies: a grey dash at each model's computed null mean with
-  the null SD as its bar (legend "Relabelling null (mean ± SD)"), and the observed ρ without a
-  bar.
+  and Spearman plots, the bar is the model's null SD drawn around the observed value (the y-label
+  reads "± null SD"): it shows how wide chance variation is for that model, but the null
+  distribution is centred on chance (enrichment = 1, ρ = 0), not on the observed value, so the bar
+  is not a confidence interval and whether it reaches the reference line is not a significance
+  test. The model-level Spearman line plot also marks each model's computed null mean with a grey
+  dash (legend "Relabelling null mean"), which lies on the line at ρ = 0.
 - **Significance is carried by asterisks:** in the model plots, black asterisks give the
   uncorrected model-level empirical p-value and blue asterisks below them the Benjamini-Hochberg
   q-value (`*` < 0.05, `**` < 0.01, `***` < 0.001); in the p-value heatmap, the asterisks give the
@@ -271,3 +269,9 @@ Section 6 now shows that 0 is the exact expectation of the relabelling null and 
 measured null means. The model-level Spearman line plot now draws each model's computed null mean
 ± null SD in grey, instead of the null SD around the observed ρ; the dashed line at 0 stays. The
 other plots did not change.
+
+### 2026-10-13 18:21 — Spearman error bars back on the observed ρ
+
+At the developer's request, the model-level Spearman line plot again draws the null SD around the
+observed ρ, as before 17:50. The grey dash at each model's computed null mean stays, now without
+a bar.

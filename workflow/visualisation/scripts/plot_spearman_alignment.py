@@ -19,15 +19,17 @@ from libraries.visualisation_utils import (
     create_model_figure, 
     legend_headroom_top, 
     MODEL_LEVEL, 
+    NULL_STANDARD_DEVIATION, 
     plot_concept_distributions, 
     plot_model_points, 
-    plot_null_distributions, 
+    plot_null_means, 
     plot_title, 
     save_figure, 
     SPEARMAN_COEFFICIENT_LABEL, 
     SPEARMAN_NULL_LABEL, 
     stimuli_type_legend_handles, 
     style_model_axes, 
+    y_axis_label, 
 )
 
 # symmetric y-limits: the largest |value| plus padding, rounded up to a step, at least the minimum
@@ -102,11 +104,12 @@ def main():
         dtype = float
     )
 
-    # plot the model coefficients next to each model's relabelling null (mean ± SD)
+    # plot the model coefficients, with each model's null SD as its error bar, and each
+    # model's null mean
     fig, ax = create_model_figure(len(labels))
 
-    plot_null_distributions(ax, null_means, null_standard_deviations)
-    plot_model_points(ax, model_coefficients, None, stimuli_types)
+    plot_null_means(ax, null_means)
+    plot_model_points(ax, model_coefficients, null_standard_deviations, stimuli_types)
     add_null_line(ax, 0.0, SPEARMAN_NULL_LABEL)
     style_model_axes(
         ax, 
@@ -118,7 +121,7 @@ def main():
             args.dataset, 
             args.similarity_type, 
         ), 
-        SPEARMAN_COEFFICIENT_LABEL, 
+        y_axis_label(SPEARMAN_COEFFICIENT_LABEL, NULL_STANDARD_DEVIATION), 
         p_values, 
         q_values, 
         [], 
@@ -126,7 +129,7 @@ def main():
     ax.set_ylim(
         *spearman_ylim(
             np.concatenate(
-                [model_coefficients, np.abs(null_means) + null_standard_deviations]
+                [np.abs(model_coefficients) + null_standard_deviations, null_means]
             )
         )
     )
