@@ -27,13 +27,12 @@ files were affected, so that the individual files do not each carry their own pr
 
 "Written" means the AI wrote the file from scratch; "edited" means the AI changed a file a human
 wrote. Files marked * carry no header of their own; their date comes from the changelogs and the
-git history and may include later human edits. The last two rows are the project's TODO and
-SUGGESTIONS lists, which live outside this repository, in `LLMmind/.claude/`.
+git history and may include later human edits.
 
 | File | AI role | Latest AI edit | Model | Review status |
 |---|---|---|---|---|
 | `README.md` | written | 2026-10-12 | Claude Opus 5.5 (`claude-opus-5-5`); Claude Sonnet 5 (`claude-sonnet-5`) until 2026-09-22 | not yet reviewed |
-| `docs/AI_USAGE.md` | written | 2026-10-12 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
+| `docs/AI_USAGE.md` | written | 2026-10-14 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
 | `docs/changelog/developers/2026-09-21_new_feature_bugfix_refactor_removal_documentation.md` | written | 2026-10-06 | Claude Opus 5.5 (`claude-opus-5-5`); Claude Sonnet 5 (`claude-sonnet-5`) for the original entries | not yet reviewed |
 | `docs/changelog/developers/2026-09-22_new_feature_optimisation.md` | written | 2026-10-06 | Claude Opus 5.5 (`claude-opus-5-5`); Claude Sonnet 5 (`claude-sonnet-5`) for the original entries | not yet reviewed |
 | `docs/changelog/developers/2026-09-23_new_feature_bugfix_refactor_documentation.md` | written | 2026-10-06 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
@@ -51,6 +50,7 @@ SUGGESTIONS lists, which live outside this repository, in `LLMmind/.claude/`.
 | `docs/changelog/developers/2026-10-09_new_feature_bugfix_refactor_documentation.md` | written | 2026-10-09 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
 | `docs/changelog/developers/2026-10-12_documentation.md` | written | 2026-10-12 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
 | `docs/changelog/developers/2026-10-13_new_feature_documentation.md` | written | 2026-10-13 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
+| `docs/changelog/developers/2026-10-14_documentation.md` | written | 2026-10-14 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
 | `docs/changelog/users/2026-09-21_new_feature_bugfix_refactor_removal_documentation.md` | written | 2026-10-06 | Claude Opus 5.5 (`claude-opus-5-5`); Claude Sonnet 5 (`claude-sonnet-5`) for the original entries | not yet reviewed |
 | `docs/changelog/users/2026-09-22_new_feature_optimisation.md` | written | 2026-10-06 | Claude Opus 5.5 (`claude-opus-5-5`); Claude Sonnet 5 (`claude-sonnet-5`) for the original entries | not yet reviewed |
 | `docs/changelog/users/2026-09-23_new_feature_bugfix_refactor_documentation.md` | written | 2026-10-06 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
@@ -68,6 +68,7 @@ SUGGESTIONS lists, which live outside this repository, in `LLMmind/.claude/`.
 | `docs/changelog/users/2026-10-09_new_feature_bugfix_refactor_documentation.md` | written | 2026-10-09 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
 | `docs/changelog/users/2026-10-12_documentation.md` | written | 2026-10-12 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
 | `docs/changelog/users/2026-10-13_new_feature_documentation.md` | written | 2026-10-13 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
+| `docs/changelog/users/2026-10-14_documentation.md` | written | 2026-10-14 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
 | `docs/guides/running_and_troubleshooting.md` | written | 2026-10-12 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
 | `docs/reference/clean_run_duration.md` | written | 2026-10-12 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
 | `docs/reference/fmri_preprocessing.md` | written | 2026-10-12 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
@@ -155,5 +156,3 @@ SUGGESTIONS lists, which live outside this repository, in `LLMmind/.claude/`.
 | `workflow/visualisation/scripts/plot_empirical_p_value_heatmap.py` | edited | 2026-10-02 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
 | `workflow/visualisation/scripts/plot_similarity_comparison_lineplot.py` | written | 2026-10-09 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
 | `workflow/visualisation/scripts/plot_spearman_alignment.py` | edited | 2026-10-13 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
-| `../.claude/SUGGESTIONS/LLMmind_project.md` | written | 2026-10-13 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
-| `../.claude/TODO/LLMmind_project.md` | written | 2026-10-13 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
