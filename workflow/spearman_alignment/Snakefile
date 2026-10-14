@@ -17,7 +17,7 @@ rule all_spearman_alignment:
             for region_suffix in REGION_SUFFIXES
         ]
 
-rule compute_spearman_alignmentwith_empirical_p_value:
+rule compute_spearman_alignment_with_empirical_p_value:
     input:
         brain_embeddings = lambda wc: f"{mind_dir(wc)}/{wc.dataset}/isc_dataframe.parquet", 
         model_embeddings = "results/{stimuli_type}_models/{dataset}/embeddings/{model}_embeddings.parquet"
