@@ -7,6 +7,7 @@ Changes made on this day, in order:
 - `docs/AI_USAGE.md` no longer lists the TODO and SUGGESTIONS files (documentation)
 - Leftover outputs found and deleted; guide's leftover list extended (documentation)
 - Brain-model analyses on a language and a visual brain region (new_feature, documentation)
+- Summary tables moved to `results/tsv_summaries/` (new_feature, documentation)
 
 ---
 
@@ -143,3 +144,41 @@ the model's modality, next to the whole cortex. Whole-cortex results are unchang
     (`results/alignment_scores_language/dataset-caption_scene_model-clip_b-vision_brain_...`)
     fails with `ValueError: Results with suffix '_language' cannot use vision models`;
   - an explicitly constrained empty wildcard works in Snakemake 9.27 (scratch test).
+
+---
+
+## 17:45 — Summary tables moved to `results/tsv_summaries/`
+
+Kind: new_feature, documentation
+
+The seven summary TSVs (`all_model_brain_alignment_scores{,_language,_vision}.tsv`,
+`all_model_model_alignment_scores.tsv`, `all_spearman_alignment_scores{,_language,_vision}.tsv`)
+are now written to `results/tsv_summaries/`, named by the new constant
+`TSV_SUMMARIES_DIR = "results/tsv_summaries"` in `workflow/Snakefile`.
+
+- Outputs of `aggregate_all_p_value_outputs`, `aggregate_all_llm_llm_p_value_outputs` and
+  `aggregate_all_spearman_alignment_scores`, the summary inputs of
+  `plot_empirical_p_value_heatmap`, `plot_concept_alignment_scatterplot`,
+  `plot_brain_model_alignment_lineplot`, `plot_concept_alignment_enrichment_scatterplot` and
+  `plot_brain_model_alignment_enrichment_lineplot`, and the targets of `rule all`,
+  `all_llm_mind_alignment`, `all_llm_llm_alignment` and `all_spearman_alignment` use
+  `TSV_SUMMARIES_DIR`. No script changed (they take the paths as arguments); one comment in
+  `libraries/compute_statistics.py` was updated.
+- The existing seven files were moved with `mv` (content and modification times kept), so the
+  aggregations do not rerun. The five plot rules above rerun once on the next run (252 jobs),
+  through the `input` rerun trigger, because their recorded input path changed (developer's
+  choice, instead of skipping the trigger).
+- Documentation: README (outputs), `docs/guides/running_and_troubleshooting.md`,
+  `docs/reference/statistics.md`, `docs/reference/brain_regions.md`.
+
+### Context
+
+- Request: save all TSV summaries in a folder `tsv_summaries/` and move the existing ones there.
+- Files changed: `workflow/Snakefile`, `workflow/llm_mind_alignment/Snakefile`,
+  `workflow/llm_llm_alignment/Snakefile`, `workflow/spearman_alignment/Snakefile`,
+  `workflow/visualisation/Snakefile`, `workflow/libraries/compute_statistics.py` (comment),
+  `README.md`, `docs/guides/running_and_troubleshooting.md`, `docs/reference/statistics.md`,
+  `docs/reference/brain_regions.md`, `docs/AI_USAGE.md`; data: the seven TSVs moved.
+- Verified: no Snakemake lock and no job of the user on node5 before the move; `grep` finds no
+  `results/all_` left in the Snakefiles; `snakemake --use-conda -n` plans 252 plot jobs (the five
+  rules above, reason "set of input files has changed") and nothing else.

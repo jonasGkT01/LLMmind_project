@@ -14,7 +14,7 @@ rule all_llm_mind_alignment:
             for method in ["empirical", "hypergeometric"]
         ], 
         llm_brain_summary = [
-            f"results/all_model_brain_alignment_scores{region_suffix}.tsv"
+            f"{TSV_SUMMARIES_DIR}/all_model_brain_alignment_scores{region_suffix}.tsv"
             for region_suffix in REGION_SUFFIXES
         ]
 
@@ -121,7 +121,7 @@ rule aggregate_all_p_value_outputs:
             for pair in pairings_in(wc.region_suffix, PAIRINGS)
         ))
     output:
-        all_model_brain_alignment_scores_tsv = "results/all_model_brain_alignment_scores{region_suffix}.tsv"
+        all_model_brain_alignment_scores_tsv = TSV_SUMMARIES_DIR + "/all_model_brain_alignment_scores{region_suffix}.tsv"
     params:
         code = code_version(AGGREGATE_ALL_P_VALUE_OUTPUTS_SCRIPT),
         number_of_workers = config["number_of_workers"]

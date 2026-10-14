@@ -404,9 +404,9 @@ combined summary tables have a `similarity_type` column instead.
 - `results/spearman_alignment_scores/` — per-(dataset, model, similarity)
   Spearman alignment with its empirical p-value, one `_model_level` and one
   `_concept_level` TSV per configuration.
-- `results/all_model_brain_alignment_scores.tsv`,
-  `results/all_model_model_alignment_scores.tsv`,
-  `results/all_spearman_alignment_scores.tsv` — combined summary tables
+- `results/tsv_summaries/all_model_brain_alignment_scores.tsv`,
+  `results/tsv_summaries/all_model_model_alignment_scores.tsv`,
+  `results/tsv_summaries/all_spearman_alignment_scores.tsv` — combined summary tables
   across all configurations, in long format. In the model-model table the
   `model`/`stimuli_type` pair becomes `model_1 | stimuli_type_1 | model_2 |
   stimuli_type_2`, each pair once, with `model_1` earlier than `model_2` in the
@@ -431,7 +431,7 @@ combined summary tables have a `similarity_type` column instead.
   heatmaps) also exists for the language and the visual region, with
   `_language` or `_vision` appended to the directory, table or plot-folder name
   (for example `results/alignment_scores_language/`,
-  `results/all_model_brain_alignment_scores_vision.tsv`,
+  `results/tsv_summaries/all_model_brain_alignment_scores_vision.tsv`,
   `results/pictures/alignment_lineplots_language/`); the region ISC is in
   `results/language_mind/` and `results/vision_mind/` (see
   [`brain_regions.md`](docs/reference/brain_regions.md)).

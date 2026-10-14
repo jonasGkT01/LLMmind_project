@@ -60,7 +60,7 @@ alignment heatmap.
 
 **The model-level test is `model_level_empirical_p_value`.** The six statistics
 `{mean,median,min}_{empirical,hypergeom}_p_value_across_concepts` in
-`results/all_model_brain_alignment_scores.tsv` and `results/all_model_model_alignment_scores.tsv`
+`results/tsv_summaries/all_model_brain_alignment_scores.tsv` and `results/tsv_summaries/all_model_model_alignment_scores.tsv`
 are descriptive summaries of the per-concept p-values, **not tests**: a mean or median of
 p-values has no calibrated interpretation, and the minimum is the best concept's uncorrected
 p-value. They are kept on purpose (decision of 2026-09-30) but must not be reported as model-level
@@ -284,3 +284,8 @@ a bar.
 
 Section 5 now says that the brain-model and Spearman results of the language and visual regions,
 added on this day, form their own families, with the models of one modality only.
+
+### 2026-10-14 17:45 — summary tables moved to `results/tsv_summaries/`
+
+The summary tables (`all_*.tsv`) are now written to `results/tsv_summaries/` instead of
+`results/`; the paths on this page were updated.

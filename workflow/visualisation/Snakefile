@@ -106,8 +106,8 @@ rule plot_alignment_heatmap:
 
 rule plot_empirical_p_value_heatmap:
     input:
-        llm_brain_empirical_p_values = "results/all_model_brain_alignment_scores.tsv", 
-        llm_llm_empirical_p_values = "results/all_model_model_alignment_scores.tsv"
+        llm_brain_empirical_p_values = TSV_SUMMARIES_DIR + "/all_model_brain_alignment_scores.tsv", 
+        llm_llm_empirical_p_values = TSV_SUMMARIES_DIR + "/all_model_model_alignment_scores.tsv"
     output:
         heatmap = "results/pictures/alignment_p_value_heatmaps/dataset-{dataset}_{similarity_type}-alignment_score_{number_of_neighbours}NN_empirical_p_values.png"
     params:
@@ -141,7 +141,7 @@ rule plot_concept_alignment_scatterplot:
             and pair["similarity_type"] == wc.similarity_type
             and str(pair["number_of_neighbours"]) == str(wc.number_of_neighbours)
         ], 
-        model_level_statistics = "results/all_model_brain_alignment_scores{region_suffix}.tsv"
+        model_level_statistics = TSV_SUMMARIES_DIR + "/all_model_brain_alignment_scores{region_suffix}.tsv"
     output:
         plot = "results/pictures/concept_alignment_scatterplots{region_suffix}/dataset-{dataset}_{similarity_type}-concept_alignment_{number_of_neighbours}NN.png"
     params:
@@ -175,7 +175,7 @@ rule plot_brain_model_alignment_lineplot:
             and pair["similarity_type"] == wc.similarity_type
             and str(pair["number_of_neighbours"]) == str(wc.number_of_neighbours)
         ], 
-        model_level_statistics = "results/all_model_brain_alignment_scores{region_suffix}.tsv", 
+        model_level_statistics = TSV_SUMMARIES_DIR + "/all_model_brain_alignment_scores{region_suffix}.tsv", 
     output:
         plot = "results/pictures/alignment_lineplots{region_suffix}/dataset-{dataset}_{similarity_type}-brain_model_alignment_{number_of_neighbours}NN.png"
     params:
@@ -213,7 +213,7 @@ rule plot_concept_alignment_enrichment_scatterplot:
             and pair["similarity_type"] == wc.similarity_type
             and str(pair["number_of_neighbours"]) == str(wc.number_of_neighbours)
         ], 
-        model_level_statistics = "results/all_model_brain_alignment_scores{region_suffix}.tsv"
+        model_level_statistics = TSV_SUMMARIES_DIR + "/all_model_brain_alignment_scores{region_suffix}.tsv"
     output:
         plot = "results/pictures/concept_alignment_enrichment_scatterplots{region_suffix}/dataset-{dataset}_{similarity_type}-concept_alignment_enrichment_{number_of_neighbours}NN.png"
     params:
@@ -255,7 +255,7 @@ rule plot_brain_model_alignment_enrichment_lineplot:
             and pair["similarity_type"] == wc.similarity_type
             and str(pair["number_of_neighbours"]) == str(wc.number_of_neighbours)
         ], 
-        model_level_statistics = "results/all_model_brain_alignment_scores{region_suffix}.tsv", 
+        model_level_statistics = TSV_SUMMARIES_DIR + "/all_model_brain_alignment_scores{region_suffix}.tsv", 
     output:
         plot = "results/pictures/alignment_enrichment_lineplots{region_suffix}/dataset-{dataset}_{similarity_type}-brain_model_alignment_enrichment_{number_of_neighbours}NN.png"
     params:

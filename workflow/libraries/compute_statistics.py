@@ -1,5 +1,5 @@
 # edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
-# last AI edit: 2026-10-02, see docs/changelog/developers/ for details
+# last AI edit: 2026-10-14, see docs/changelog/developers/ for details
 import numpy as np
 import pandas as pd
 
@@ -30,7 +30,7 @@ def read_model_level_empirical_p_values(
     similarity_type, 
     number_of_neighbours, 
 ):
-    # the per-model 'model_level_empirical_p_value' rows of results/all_model_brain_alignment_scores.tsv for one
+    # the per-model 'model_level_empirical_p_value' rows of results/tsv_summaries/all_model_brain_alignment_scores.tsv for one
     # (dataset, similarity type, k), as {model_key(model, stimuli_type): p-value}
     statistics_df = pd.read_csv(path, sep = "\t",)
 

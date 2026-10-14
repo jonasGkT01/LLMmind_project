@@ -28,7 +28,7 @@ snakemake --use-conda --cores <N> -n
 snakemake --use-conda --cores <N> -n --quiet rules
 
 # build a specific target only, e.g. the brain-model summary table
-snakemake --use-conda --cores <N> results/all_model_brain_alignment_scores.tsv
+snakemake --use-conda --cores <N> results/tsv_summaries/all_model_brain_alignment_scores.tsv
 
 # preview what a config change would rebuild, without editing config.yaml;
 # the rerun triggers leave out conda-env changes, so only the setting's own effect is listed
@@ -147,8 +147,8 @@ regions. Each key adds a full set of brain-model results with the suffix `_{key}
 `results/alignment_scores_language/`), computed from `results/{key}_mind/`. Changing a list reruns
 only that region's chain, from `extract_region_isc_dataframe` on (its `region_parcels` param
 changes); the whole-cortex results are not affected. To build one region only, request its summary
-tables, for example `results/all_model_brain_alignment_scores_language.tsv` and
-`results/all_spearman_alignment_scores_language.tsv`. The regions and their parcels are described
+tables, for example `results/tsv_summaries/all_model_brain_alignment_scores_language.tsv` and
+`results/tsv_summaries/all_spearman_alignment_scores_language.tsv`. The regions and their parcels are described
 in [`brain_regions.md`](../reference/brain_regions.md).
 
 **Adding a model.** Add its block under `models:` in `config/config.yaml` and rerun the pipeline.
@@ -406,3 +406,8 @@ against the code, and deleted; a dry run afterwards planned no job.
 
 Section 3 now describes `atlas: regions`, added on this day: what each key produces, what a change
 reruns, and how to build one region only.
+
+### 2026-10-14 17:45 — summary tables moved to `results/tsv_summaries/`
+
+The summary tables (`all_*.tsv`) are now written to `results/tsv_summaries/` instead of
+`results/`; the paths on this page were updated.

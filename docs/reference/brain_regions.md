@@ -95,8 +95,8 @@ are the same as for the whole cortex.
 | `results/mind/{dataset}/` | `results/language_mind/{dataset}/` | `results/vision_mind/{dataset}/` |
 | `results/alignment_scores/` | `results/alignment_scores_language/` | `results/alignment_scores_vision/` |
 | `results/spearman_alignment_scores/` | `results/spearman_alignment_scores_language/` | `results/spearman_alignment_scores_vision/` |
-| `results/all_model_brain_alignment_scores.tsv` | `..._language.tsv` | `..._vision.tsv` |
-| `results/all_spearman_alignment_scores.tsv` | `..._language.tsv` | `..._vision.tsv` |
+| `results/tsv_summaries/all_model_brain_alignment_scores.tsv` | `..._language.tsv` | `..._vision.tsv` |
+| `results/tsv_summaries/all_spearman_alignment_scores.tsv` | `..._language.tsv` | `..._vision.tsv` |
 | `results/pictures/<plot folder>/` | `results/pictures/<plot folder>_language/` | `results/pictures/<plot folder>_vision/` |
 
 - A `_language` result holds only the language models and the datasets with language stimuli; a
@@ -139,3 +139,8 @@ what changed and why. The sections above always describe the current code.
 ### 2026-10-14 15:30 — page created
 
 The region analysis was added to the pipeline, and this page written from its code.
+
+### 2026-10-14 17:45 — summary tables moved to `results/tsv_summaries/`
+
+The summary tables (`all_*.tsv`) are now written to `results/tsv_summaries/` instead of
+`results/`; the paths on this page were updated.

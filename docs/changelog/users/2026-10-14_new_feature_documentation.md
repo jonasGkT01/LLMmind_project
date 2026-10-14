@@ -7,6 +7,7 @@ Changes made on this day, in order:
 - The AI usage page lists only files of this project (documentation)
 - Old files removed from the results (documentation)
 - Results for a language and a visual brain region (new_feature, documentation)
+- Summary tables now in their own folder (new_feature, documentation)
 
 ---
 
@@ -52,3 +53,15 @@ change and are not recomputed.
 The next run of the pipeline computes the region results (about as many brain-model jobs as the
 whole cortex has, CPU only). Which parcels are used and how the region data are taken from the
 whole-cortex data is described in [`brain_regions.md`](../../reference/brain_regions.md).
+
+---
+
+## 17:45 — Summary tables now in their own folder
+
+Kind: new_feature, documentation
+
+The summary tables (`all_model_brain_alignment_scores*.tsv`, `all_model_model_alignment_scores.tsv`
+and `all_spearman_alignment_scores*.tsv`, including the `_language` and `_vision` versions) are now
+in `results/tsv_summaries/` instead of directly in `results/`. The existing tables were moved
+there unchanged. On the next run, the plots that read these tables are redrawn once; their content
+does not change.

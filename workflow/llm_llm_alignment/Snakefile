@@ -1,5 +1,5 @@
 # edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
-# last AI edit: 2026-10-06, see docs/changelog/developers/ for details
+# last AI edit: 2026-10-14, see docs/changelog/developers/ for details
 rule all_llm_llm_alignment:
     input:
         llm_llm_alignment_scores = [
@@ -11,7 +11,7 @@ rule all_llm_llm_alignment:
             for pair in LLM_LLM_PAIRINGS
             for method in ["empirical", "hypergeometric"]
         ], 
-        llm_llm_summary = "results/all_model_model_alignment_scores.tsv"
+        llm_llm_summary = TSV_SUMMARIES_DIR + "/all_model_model_alignment_scores.tsv"
 
 rule compute_llm_llm_alignment_score:
     input:
@@ -116,7 +116,7 @@ rule aggregate_all_llm_llm_p_value_outputs:
             for pair in LLM_LLM_PAIRINGS
         ))
     output:
-        all_model_model_alignment_scores_tsv = "results/all_model_model_alignment_scores.tsv"
+        all_model_model_alignment_scores_tsv = TSV_SUMMARIES_DIR + "/all_model_model_alignment_scores.tsv"
     params:
         model_order = MODEL_KEYS, 
         code = code_version(AGGREGATE_ALL_LLM_LLM_P_VALUE_OUTPUTS_SCRIPT),

@@ -36,6 +36,9 @@ NUMBER_OF_RELABELLINGS = config["number_of_relabellings"]
 RANDOM_SEED = config["random_seed"]
 MINIMUM_SUBJECTS_PER_STIMULUS = config["minimum_subjects_per_stimulus"]
 
+# folder of the summary tables (all_*.tsv) that combine every configuration
+TSV_SUMMARIES_DIR = "results/tsv_summaries"
+
 def dataset_numbers_of_neighbours(dataset):
     numbers_of_neighbours = config[dataset]["number_of_neighbours"]
 
@@ -236,7 +239,7 @@ rule all:
             for method in ["empirical", "hypergeometric"]
         ], 
         llm_brain_summary = [
-            f"results/all_model_brain_alignment_scores{region_suffix}.tsv"
+            f"{TSV_SUMMARIES_DIR}/all_model_brain_alignment_scores{region_suffix}.tsv"
             for region_suffix in REGION_SUFFIXES
         ], 
         llm_llm_alignment_scores = [
@@ -252,7 +255,7 @@ rule all:
             for pair in LLM_LLM_PAIRINGS
             for method in ["empirical", "hypergeometric"]
         ], 
-        llm_llm_summary = "results/all_model_model_alignment_scores.tsv", 
+        llm_llm_summary = TSV_SUMMARIES_DIR + "/all_model_model_alignment_scores.tsv", 
         p_value_heatmaps = [
             f"results/pictures/alignment_p_value_heatmaps/dataset-{pair['dataset']}_{pair['similarity_type']}-alignment_score_{pair['number_of_neighbours']}NN_empirical_p_values.png"
             for pair in HEATMAP_PAIRINGS
@@ -324,6 +327,6 @@ rule all:
             if in_region(region_suffix, config[dataset]["stimuli_dir"])
         ], 
         spearman_summary = [
-            f"results/all_spearman_alignment_scores{region_suffix}.tsv"
+            f"{TSV_SUMMARIES_DIR}/all_spearman_alignment_scores{region_suffix}.tsv"
             for region_suffix in REGION_SUFFIXES
         ]

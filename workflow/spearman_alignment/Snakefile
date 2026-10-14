@@ -13,7 +13,7 @@ rule all_spearman_alignment:
             for pair in pairings_in(region_suffix, SPEARMAN_PAIRINGS)
         ], 
         spearman_summary = [
-            f"results/all_spearman_alignment_scores{region_suffix}.tsv"
+            f"{TSV_SUMMARIES_DIR}/all_spearman_alignment_scores{region_suffix}.tsv"
             for region_suffix in REGION_SUFFIXES
         ]
 
@@ -53,7 +53,7 @@ rule aggregate_all_spearman_alignment_scores:
             for pair in pairings_in(wc.region_suffix, SPEARMAN_PAIRINGS)
         ]
     output:
-        all_spearman_alignment_scores_tsv = "results/all_spearman_alignment_scores{region_suffix}.tsv"
+        all_spearman_alignment_scores_tsv = TSV_SUMMARIES_DIR + "/all_spearman_alignment_scores{region_suffix}.tsv"
     params:
         code = code_version(AGGREGATE_ALL_SPEARMAN_OUTPUTS_SCRIPT)
     conda:

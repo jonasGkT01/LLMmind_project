@@ -118,7 +118,7 @@ git history and may include later human edits.
 | `workflow/libraries/compute_nearest_neighbours.py` | edited | 2026-10-09 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
 | `workflow/libraries/compute_relabelled_alignment.py` | edited | 2026-10-02 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
 | `workflow/libraries/compute_similarity.py` | edited | 2026-10-08 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
-| `workflow/libraries/compute_statistics.py` | edited | 2026-10-02 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
+| `workflow/libraries/compute_statistics.py` | edited | 2026-10-14 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
 | `workflow/libraries/estimate_batch_size.py` | edited | 2026-10-02 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
 | `workflow/libraries/fmri_processing.py` | edited | 2026-10-02 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
 | `workflow/libraries/manage_model_metadata.py` | edited | 2026-10-02 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
@@ -127,7 +127,7 @@ git history and may include later human edits.
 | `workflow/libraries/spearman_scores.py` | written | 2026-10-13 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
 | `workflow/libraries/validate_data.py` | edited | 2026-10-02 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
 | `workflow/libraries/visualisation_utils.py` | edited | 2026-10-13 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
-| `workflow/llm_llm_alignment/Snakefile` | edited | 2026-10-06 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
+| `workflow/llm_llm_alignment/Snakefile` | edited | 2026-10-14 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
 | `workflow/llm_llm_alignment/envs/llm_llm_alignment_environment.yaml` | edited | 2026-10-01 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
 | `workflow/llm_llm_alignment/scripts/aggregate_all_llm_llm_p_value_outputs.py` | edited | 2026-10-02 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
 | `workflow/llm_llm_alignment/scripts/compute_llm_llm_alignment_score.py` | edited | 2026-10-08 | Claude Opus 5.5 (`claude-opus-5-5`) | not yet reviewed |
