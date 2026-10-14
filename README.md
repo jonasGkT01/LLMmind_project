@@ -43,6 +43,9 @@ the pipeline:
   — how each model turns a stimulus into one vector: chunking, pooling
   (including the BOS token) and the CLS token of vision models (a source for
   the methods section)
+- [`docs/reference/brain_regions.md`](docs/reference/brain_regions.md)
+  — the language and visual brain regions: which parcels, how their ISC is
+  taken from the whole-cortex ISC, and where their results go
 - [`docs/reference/statistics.md`](docs/reference/statistics.md)
   — alignment scores, the relabelling and Spearman nulls, the empirical and
   hypergeometric tests, enrichment, the Benjamini-Hochberg families, and what
@@ -117,7 +120,9 @@ files, so the brain and model sides always cover the same stimuli.
 ### `isc_nearest_neighbours/`
 
 Takes the per-dataset ISC vectors, computes stimulus-stimulus similarity and
-builds the brain-side nearest-neighbour graphs.
+builds the brain-side nearest-neighbour graphs, for the whole cortex and for
+the region of each stimulus type, whose ISC it takes from the whole-cortex one
+(see [`brain_regions.md`](docs/reference/brain_regions.md)).
 
 ### `llm_nearest_neighbours/`
 
@@ -421,3 +426,12 @@ combined summary tables have a `similarity_type` column instead.
   What each figure shows and the conventions shared by all plots (model
   order, colours, asterisks, null intervals, axes) are in section 7 of
   [`statistics.md`](docs/reference/statistics.md).
+- Region results: every brain-model output above (alignment scores, Spearman
+  scores, the brain-model and Spearman summary tables, the plots except the
+  heatmaps) also exists for the language and the visual region, with
+  `_language` or `_vision` appended to the directory, table or plot-folder name
+  (for example `results/alignment_scores_language/`,
+  `results/all_model_brain_alignment_scores_vision.tsv`,
+  `results/pictures/alignment_lineplots_language/`); the region ISC is in
+  `results/language_mind/` and `results/vision_mind/` (see
+  [`brain_regions.md`](docs/reference/brain_regions.md)).

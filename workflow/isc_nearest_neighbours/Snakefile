@@ -1,5 +1,5 @@
 # edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
-# last AI edit: 2026-10-08, see docs/changelog/developers/ for details
+# last AI edit: 2026-10-14, see docs/changelog/developers/ for details
 import pandas as pd
 from pathlib import Path
 
@@ -62,17 +62,40 @@ rule create_isc_dataframe:
                 --isc_dataframe {output.isc_dataframe:q}
         """
 
+rule extract_region_isc_dataframe:
+    # keeps, from every whole-cortex ISC vector, only the parcels of the region of one stimulus type
+    # (config atlas regions); the parcels are chosen by the stimulus type in the output path itself
+    input:
+        isc_dataframe = "results/mind/{dataset}/isc_dataframe.parquet"
+    output:
+        region_isc_dataframe = "results/{stimuli_type}_mind/{dataset}/isc_dataframe.parquet"
+    wildcard_constraints:
+        stimuli_type = "|".join(config["atlas"]["regions"])
+    params:
+        region_parcels = lambda wc: config["atlas"]["regions"][wc.stimuli_type], 
+        n_rois = config["atlas"]["n_rois"]
+    conda:
+        "envs/isc_nearest_neighbours_environment.yaml"
+    shell:
+        r"""
+            python3 workflow/isc_nearest_neighbours/scripts/extract_region_isc_dataframe.py \
+                --isc_dataframe {input.isc_dataframe:q} \
+                --region_parcels {params.region_parcels} \
+                --n_rois {params.n_rois} \
+                --region_isc_dataframe {output.region_isc_dataframe:q}
+        """
+
 rule compute_isc_nearest_neighbours:
     # computes similarity blockwise straight from the ISC dataframe and keeps only the dataset's largest
     # configured number_of_neighbours per concept — the dense N x N similarity matrix is never written
     # to disk. Output is unversioned by k: every k-specific consumer rule slices the k it needs from this
     # one file via slice_top_k_neighbours
     input:
-        isc_dataframe = "results/mind/{dataset}/isc_dataframe.parquet"
+        isc_dataframe = "results/{mind}/{dataset}/isc_dataframe.parquet"
     output:
-        isc_cosine_nearest_neighbours = "results/mind/{dataset}/isc_cosine_nearest_neighbours.parquet", 
-        isc_pearson_nearest_neighbours = "results/mind/{dataset}/isc_pearson_nearest_neighbours.parquet", 
-        isc_spearman_nearest_neighbours = "results/mind/{dataset}/isc_spearman_nearest_neighbours.parquet"
+        isc_cosine_nearest_neighbours = "results/{mind}/{dataset}/isc_cosine_nearest_neighbours.parquet", 
+        isc_pearson_nearest_neighbours = "results/{mind}/{dataset}/isc_pearson_nearest_neighbours.parquet", 
+        isc_spearman_nearest_neighbours = "results/{mind}/{dataset}/isc_spearman_nearest_neighbours.parquet"
     params:
         number_of_neighbours = lambda wc: max_number_of_neighbours(wc.dataset)
     conda:

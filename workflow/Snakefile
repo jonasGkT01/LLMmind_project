@@ -1,5 +1,5 @@
 # edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
-# last AI edit: 2026-10-09, see docs/changelog/developers/ for details
+# last AI edit: 2026-10-14, see docs/changelog/developers/ for details
 configfile: "config/config.yaml"
 
 from itertools import combinations
@@ -178,6 +178,36 @@ SPEARMAN_PAIRINGS = [
     for similarity_type in SIMILARITY_TYPES
 ]
 
+# brain-model results are computed on the whole cortex (empty suffix, ISC in results/mind/) and on
+# the region of each stimulus type (suffix _{stimuli_type}, ISC in results/{stimuli_type}_mind/);
+# the suffix is appended to the result directories and summary TSVs
+REGION_SUFFIXES = [""] + [f"_{stimuli_type}" for stimuli_type in config["atlas"]["regions"]]
+
+wildcard_constraints:
+    region_suffix = "|".join(REGION_SUFFIXES),
+    mind = "|".join(["mind"] + [f"{stimuli_type}_mind" for stimuli_type in config["atlas"]["regions"]])
+
+def in_region(region_suffix, stimuli_types):
+    # whether results with this suffix cover any of these stimulus types
+    return region_suffix == "" or region_suffix[1:] in stimuli_types
+
+def pairings_in(region_suffix, pairs):
+    return [pair for pair in pairs if in_region(region_suffix, [pair["stimuli_type"]])]
+
+def mind_dir(wildcards):
+    # the brain directory of a job: a region job may only read the region of its own stimulus
+    # type, so a model can never be compared with the region of the other modality
+    if wildcards.region_suffix == "":
+        return "results/mind"
+
+    if wildcards.region_suffix != f"_{wildcards.stimuli_type}":
+        raise ValueError(
+            f"Results with suffix {wildcards.region_suffix!r} cannot use "
+            f"{wildcards.stimuli_type} models"
+        )
+
+    return f"results/{wildcards.stimuli_type}_mind"
+
 # include dataset processing files
 include: "dataset_processing/caption_scene_dataset/Snakefile"
 include: "dataset_processing/narratives_dataset/Snakefile"
@@ -195,15 +225,20 @@ include: "visualisation/Snakefile"
 rule all:
     input:
         llm_brain_alignment_scores = [
-            f"results/alignment_scores/dataset-{pair['dataset']}_model-{pair['model']}-{pair['stimuli_type']}_brain_{pair['similarity_type']}-alignment_score_{pair['number_of_neighbours']}NN.parquet"
-            for pair in PAIRINGS
+            f"results/alignment_scores{region_suffix}/dataset-{pair['dataset']}_model-{pair['model']}-{pair['stimuli_type']}_brain_{pair['similarity_type']}-alignment_score_{pair['number_of_neighbours']}NN.parquet"
+            for region_suffix in REGION_SUFFIXES
+            for pair in pairings_in(region_suffix, PAIRINGS)
         ], 
         llm_brain_p_values = [
-            f"results/alignment_scores/dataset-{pair['dataset']}_model-{pair['model']}-{pair['stimuli_type']}_brain_{method}_{pair['similarity_type']}-alignment_score_{pair['number_of_neighbours']}NN.p_value.tsv"
-            for pair in PAIRINGS
+            f"results/alignment_scores{region_suffix}/dataset-{pair['dataset']}_model-{pair['model']}-{pair['stimuli_type']}_brain_{method}_{pair['similarity_type']}-alignment_score_{pair['number_of_neighbours']}NN.p_value.tsv"
+            for region_suffix in REGION_SUFFIXES
+            for pair in pairings_in(region_suffix, PAIRINGS)
             for method in ["empirical", "hypergeometric"]
         ], 
-        llm_brain_summary = "results/all_model_brain_alignment_scores.tsv", 
+        llm_brain_summary = [
+            f"results/all_model_brain_alignment_scores{region_suffix}.tsv"
+            for region_suffix in REGION_SUFFIXES
+        ], 
         llm_llm_alignment_scores = [
             f"results/alignment_scores/dataset-{pair['dataset']}_model-{pair['model_1']}-{pair['stimuli_type_1']}_model-{pair['model_2']}-{pair['stimuli_type_2']}_{pair['similarity_type']}-alignment_score_{pair['number_of_neighbours']}NN.parquet"
             for pair in LLM_LLM_PAIRINGS
@@ -223,49 +258,72 @@ rule all:
             for pair in HEATMAP_PAIRINGS
         ], 
         concept_alignment_scatterplots = [
-            f"results/pictures/concept_alignment_scatterplots/dataset-{pair['dataset']}_{pair['similarity_type']}-concept_alignment_{pair['number_of_neighbours']}NN.png"
+            f"results/pictures/concept_alignment_scatterplots{region_suffix}/dataset-{pair['dataset']}_{pair['similarity_type']}-concept_alignment_{pair['number_of_neighbours']}NN.png"
+            for region_suffix in REGION_SUFFIXES
             for pair in HEATMAP_PAIRINGS
+            if in_region(region_suffix, config[pair["dataset"]]["stimuli_dir"])
         ], 
         alignment_lineplots = [
-            f"results/pictures/alignment_lineplots/dataset-{pair['dataset']}_{pair['similarity_type']}-brain_model_alignment_{pair['number_of_neighbours']}NN.png"
+            f"results/pictures/alignment_lineplots{region_suffix}/dataset-{pair['dataset']}_{pair['similarity_type']}-brain_model_alignment_{pair['number_of_neighbours']}NN.png"
+            for region_suffix in REGION_SUFFIXES
             for pair in HEATMAP_PAIRINGS
+            if in_region(region_suffix, config[pair["dataset"]]["stimuli_dir"])
         ], 
         concept_alignment_enrichment_scatterplots = [
-            f"results/pictures/concept_alignment_enrichment_scatterplots/dataset-{pair['dataset']}_{pair['similarity_type']}-concept_alignment_enrichment_{pair['number_of_neighbours']}NN.png"
+            f"results/pictures/concept_alignment_enrichment_scatterplots{region_suffix}/dataset-{pair['dataset']}_{pair['similarity_type']}-concept_alignment_enrichment_{pair['number_of_neighbours']}NN.png"
+            for region_suffix in REGION_SUFFIXES
             for pair in HEATMAP_PAIRINGS
+            if in_region(region_suffix, config[pair["dataset"]]["stimuli_dir"])
         ], 
         alignment_enrichment_lineplots = [
-            f"results/pictures/alignment_enrichment_lineplots/dataset-{pair['dataset']}_{pair['similarity_type']}-brain_model_alignment_enrichment_{pair['number_of_neighbours']}NN.png"
+            f"results/pictures/alignment_enrichment_lineplots{region_suffix}/dataset-{pair['dataset']}_{pair['similarity_type']}-brain_model_alignment_enrichment_{pair['number_of_neighbours']}NN.png"
+            for region_suffix in REGION_SUFFIXES
             for pair in HEATMAP_PAIRINGS
+            if in_region(region_suffix, config[pair["dataset"]]["stimuli_dir"])
         ], 
         spearman_model_level = [
-            f"results/spearman_alignment_scores/dataset-{pair['dataset']}_model-{pair['model']}-{pair['stimuli_type']}_brain_empirical_{pair['similarity_type']}-spearman_alignment_model_level.p_value.tsv"
-            for pair in SPEARMAN_PAIRINGS
+            f"results/spearman_alignment_scores{region_suffix}/dataset-{pair['dataset']}_model-{pair['model']}-{pair['stimuli_type']}_brain_empirical_{pair['similarity_type']}-spearman_alignment_model_level.p_value.tsv"
+            for region_suffix in REGION_SUFFIXES
+            for pair in pairings_in(region_suffix, SPEARMAN_PAIRINGS)
         ], 
         spearman_concept_level = [
-            f"results/spearman_alignment_scores/dataset-{pair['dataset']}_model-{pair['model']}-{pair['stimuli_type']}_brain_empirical_{pair['similarity_type']}-spearman_alignment_concept_level.p_value.tsv"
-            for pair in SPEARMAN_PAIRINGS
+            f"results/spearman_alignment_scores{region_suffix}/dataset-{pair['dataset']}_model-{pair['model']}-{pair['stimuli_type']}_brain_empirical_{pair['similarity_type']}-spearman_alignment_concept_level.p_value.tsv"
+            for region_suffix in REGION_SUFFIXES
+            for pair in pairings_in(region_suffix, SPEARMAN_PAIRINGS)
         ], 
         spearman_lineplots = [
-            f"results/pictures/spearman_alignment_lineplots/dataset-{dataset}_{similarity_type}-brain_model_spearman_alignment.png"
+            f"results/pictures/spearman_alignment_lineplots{region_suffix}/dataset-{dataset}_{similarity_type}-brain_model_spearman_alignment.png"
+            for region_suffix in REGION_SUFFIXES
             for dataset in DATASETS
+            if in_region(region_suffix, config[dataset]["stimuli_dir"])
             for similarity_type in SIMILARITY_TYPES
         ], 
         concept_spearman_scatterplots = [
-            f"results/pictures/concept_spearman_alignment_scatterplots/dataset-{dataset}_{similarity_type}-concept_spearman_alignment.png"
+            f"results/pictures/concept_spearman_alignment_scatterplots{region_suffix}/dataset-{dataset}_{similarity_type}-concept_spearman_alignment.png"
+            for region_suffix in REGION_SUFFIXES
             for dataset in DATASETS
+            if in_region(region_suffix, config[dataset]["stimuli_dir"])
             for similarity_type in SIMILARITY_TYPES
         ], 
         similarity_comparison_alignment_lineplots = [
-            f"results/pictures/similarity_comparison_lineplots/dataset-{pair['dataset']}-brain_model_alignment_{pair['number_of_neighbours']}NN.png"
+            f"results/pictures/similarity_comparison_lineplots{region_suffix}/dataset-{pair['dataset']}-brain_model_alignment_{pair['number_of_neighbours']}NN.png"
+            for region_suffix in REGION_SUFFIXES
             for pair in NEIGHBOUR_PAIRINGS
+            if in_region(region_suffix, config[pair["dataset"]]["stimuli_dir"])
         ], 
         similarity_comparison_enrichment_lineplots = [
-            f"results/pictures/similarity_comparison_lineplots/dataset-{pair['dataset']}-brain_model_alignment_enrichment_{pair['number_of_neighbours']}NN.png"
+            f"results/pictures/similarity_comparison_lineplots{region_suffix}/dataset-{pair['dataset']}-brain_model_alignment_enrichment_{pair['number_of_neighbours']}NN.png"
+            for region_suffix in REGION_SUFFIXES
             for pair in NEIGHBOUR_PAIRINGS
+            if in_region(region_suffix, config[pair["dataset"]]["stimuli_dir"])
         ], 
         similarity_comparison_spearman_lineplots = [
-            f"results/pictures/similarity_comparison_lineplots/dataset-{dataset}-brain_model_spearman_alignment.png"
+            f"results/pictures/similarity_comparison_lineplots{region_suffix}/dataset-{dataset}-brain_model_spearman_alignment.png"
+            for region_suffix in REGION_SUFFIXES
             for dataset in DATASETS
+            if in_region(region_suffix, config[dataset]["stimuli_dir"])
         ], 
-        spearman_summary = "results/all_spearman_alignment_scores.tsv"
+        spearman_summary = [
+            f"results/all_spearman_alignment_scores{region_suffix}.tsv"
+            for region_suffix in REGION_SUFFIXES
+        ]

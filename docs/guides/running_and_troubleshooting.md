@@ -142,6 +142,15 @@ recorded per stimulus in the `chunk_max_length` column of each embeddings file. 
 every language model's `get_embeddings` job and everything downstream. How the chunks are embedded
 is described in [`model_embeddings.md`](../reference/model_embeddings.md).
 
+**`atlas: regions`** lists, per stimulus type, the Schaefer parcels of the language and visual
+regions. Each key adds a full set of brain-model results with the suffix `_{key}` (for example
+`results/alignment_scores_language/`), computed from `results/{key}_mind/`. Changing a list reruns
+only that region's chain, from `extract_region_isc_dataframe` on (its `region_parcels` param
+changes); the whole-cortex results are not affected. To build one region only, request its summary
+tables, for example `results/all_model_brain_alignment_scores_language.tsv` and
+`results/all_spearman_alignment_scores_language.tsv`. The regions and their parcels are described
+in [`brain_regions.md`](../reference/brain_regions.md).
+
 **Adding a model.** Add its block under `models:` in `config/config.yaml` and rerun the pipeline.
 Snakemake runs only the jobs that involve the new model (its embeddings, its alignment with the
 brain and with every other model), then rebuilds the summary tables and plots. Before adding one,
@@ -292,7 +301,18 @@ code no longer produces or reads. They are safe to delete:
   live in `results/pictures/`. Move them there to keep the plots without redrawing them, or delete
   them;
 - `results/spearman_alignment/`: the Spearman tables now sit in
-  `results/spearman_alignment_scores/` and the plots in `results/pictures/`.
+  `results/spearman_alignment_scores/` and the plots in `results/pictures/`;
+- NSD parcel files without a repetition in their name
+  (`results/mind/nsd_data/parcels/task-*/sub-<NN>_task-*_parcel_ts.npy`): the current files are
+  named `sub-<NN>_rep-<NN>_task-*_parcel_ts.npy`;
+- `isc_reliability.tsv` in each `results/mind/<dataset>/` folder and
+  `results/mind/all_isc_reliability.tsv` (the ISC reliability is no longer computed), and
+  `results/mind/caption_scene/manifests/isc_manifest.tsv` (written only for that analysis);
+- `results/mind/narratives/qc/task-*_length_check.json` (the length checks are no longer
+  written as files);
+- in `.snakemake/metadata/` and `.snakemake/incomplete/`, the records of files that no longer
+  exist (each file name is the base64-encoded path of an output). Snakemake reads a record only
+  when its file exists, so removing them changes nothing.
 
 If `plot_spearman_alignment` stops with a missing
 `empirical_null_standard_deviation_spearman_coefficient` column, the model-level Spearman TSVs
@@ -373,3 +393,16 @@ similarity-comparison line plots.
   every metric's files. Both rules always write all three metrics' files, independently of
   `similarity_types`, so changing the list only adds or drops the downstream jobs of that metric.
   The job count quoted for adding `spearman` described the older design and was removed.
+
+### 2026-10-14 15:15 — more leftover outputs listed
+
+"Leftover outputs from older versions" now also lists the NSD parcel files without a repetition
+in their name, the ISC reliability tables and the Caption Scene `isc_manifest.tsv`, the Narratives
+length-check JSON files, and stale Snakemake records. All of them were found in this copy of the
+project with `snakemake --list-untracked` and by decoding the `.snakemake/` records, checked
+against the code, and deleted; a dry run afterwards planned no job.
+
+### 2026-10-14 15:35 — region setting
+
+Section 3 now describes `atlas: regions`, added on this day: what each key produces, what a change
+reruns, and how to build one region only.

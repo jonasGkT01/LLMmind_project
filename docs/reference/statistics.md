@@ -97,6 +97,10 @@ There is no correction across *k* values, datasets or similarity types: the *k* 
 sensitivity analysis, and each configuration is reported on its own. The summary TSVs contain the
 uncorrected p-values only. The per-concept p-values are not corrected and not shown as asterisks.
 
+The region analyses (language and visual region, see [`brain_regions.md`](brain_regions.md)) form
+families of their own: a region's brain-model and Spearman families hold only the models of its
+modality.
+
 ## 6. Spearman alignment
 
 `spearman_alignment/scripts/compute_spearman_alignment_with_empirical_p_value.py` compares the
@@ -275,3 +279,8 @@ other plots did not change.
 At the developer's request, the model-level Spearman line plot again draws the null SD around the
 observed ρ, as before 17:50. The grey dash at each model's computed null mean stays, now without
 a bar.
+
+### 2026-10-14 15:30 — families of the region analyses
+
+Section 5 now says that the brain-model and Spearman results of the language and visual regions,
+added on this day, form their own families, with the models of one modality only.

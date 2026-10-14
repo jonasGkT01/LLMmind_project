@@ -1,5 +1,5 @@
 # edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
-# last AI edit: 2026-10-12, see docs/changelog/developers/ for details
+# last AI edit: 2026-10-14, see docs/changelog/developers/ for details
 
 # worker processes or threads used inside the jobs that parallelise internally (NSD parcel extraction,
 # Caption Scene T1w registration, p-value aggregation). Snakemake counts each job as one core, so
@@ -430,3 +430,58 @@ atlas:
   atlas_dir: "resources/atlases"
   n_rois: 200
   yeo_networks: 7
+
+  # parcels of the modality-specific brain regions, as 1-based Schaefer label IDs (7-network
+  # order, 1-100 left, 101-200 right), keyed by stimulus type; the ISC of each region is written
+  # to results/{stimuli_type}_mind/ (see docs/reference/brain_regions.md)
+  regions:
+    # the 29 parcels of the 7-network visual network
+    vision:
+      - 1    # 7Networks_LH_Vis_1
+      - 2    # 7Networks_LH_Vis_2
+      - 3    # 7Networks_LH_Vis_3
+      - 4    # 7Networks_LH_Vis_4
+      - 5    # 7Networks_LH_Vis_5
+      - 6    # 7Networks_LH_Vis_6
+      - 7    # 7Networks_LH_Vis_7
+      - 8    # 7Networks_LH_Vis_8
+      - 9    # 7Networks_LH_Vis_9
+      - 10   # 7Networks_LH_Vis_10
+      - 11   # 7Networks_LH_Vis_11
+      - 12   # 7Networks_LH_Vis_12
+      - 13   # 7Networks_LH_Vis_13
+      - 14   # 7Networks_LH_Vis_14
+      - 101  # 7Networks_RH_Vis_1
+      - 102  # 7Networks_RH_Vis_2
+      - 103  # 7Networks_RH_Vis_3
+      - 104  # 7Networks_RH_Vis_4
+      - 105  # 7Networks_RH_Vis_5
+      - 106  # 7Networks_RH_Vis_6
+      - 107  # 7Networks_RH_Vis_7
+      - 108  # 7Networks_RH_Vis_8
+      - 109  # 7Networks_RH_Vis_9
+      - 110  # 7Networks_RH_Vis_10
+      - 111  # 7Networks_RH_Vis_11
+      - 112  # 7Networks_RH_Vis_12
+      - 113  # 7Networks_RH_Vis_13
+      - 114  # 7Networks_RH_Vis_14
+      - 115  # 7Networks_RH_Vis_15
+    # the 17 parcels of the Kong 2022 Language and Aud networks (same parcels, other labels)
+    language:
+      - 15   # 7Networks_LH_SomMot_1                  Kong 17networks_LH_Aud_ST_3
+      - 16   # 7Networks_LH_SomMot_2                  Kong 17networks_LH_Aud_ST_2
+      - 44   # 7Networks_LH_SalVentAttn_ParOper_1     Kong 17networks_LH_Aud_ST_1
+      - 70   # 7Networks_LH_Cont_PFCl_5               Kong 17networks_LH_Language_PFCl_1
+      - 77   # 7Networks_LH_Default_Temp_4            Kong 17networks_LH_Language_Temp_1
+      - 78   # 7Networks_LH_Default_Temp_5            Kong 17networks_LH_Aud_ST_4
+      - 85   # 7Networks_LH_Default_PFC_3             Kong 17networks_LH_Language_IFG_2
+      - 87   # 7Networks_LH_Default_PFC_5             Kong 17networks_LH_Language_IFG_1
+      - 116  # 7Networks_RH_SomMot_1                  Kong 17networks_RH_Aud_ST_1
+      - 117  # 7Networks_RH_SomMot_2                  Kong 17networks_RH_Aud_ST_3
+      - 119  # 7Networks_RH_SomMot_4                  Kong 17networks_RH_Aud_ParOper_1
+      - 149  # 7Networks_RH_SalVentAttn_TempOccPar_2  Kong 17networks_RH_Aud_ST_2
+      - 153  # 7Networks_RH_SalVentAttn_FrOperIns_2   Kong 17networks_RH_Aud_Ins_1
+      - 163  # 7Networks_RH_Limbic_TempPole_2         Kong 17networks_RH_Language_Temp_2
+      - 181  # 7Networks_RH_Cont_PFCmp_2              Kong 17networks_RH_Language_PFCmp_1
+      - 189  # 7Networks_RH_Default_Temp_5            Kong 17networks_RH_Language_Temp_1
+      - 190  # 7Networks_RH_Default_PFCv_1            Kong 17networks_RH_Language_IFG_1
