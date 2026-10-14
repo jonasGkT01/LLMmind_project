@@ -8,6 +8,8 @@ Changes made on this day, in order:
 - Old files removed from the results (documentation)
 - Results for a language and a visual brain region (new_feature, documentation)
 - Summary tables now in their own folder (new_feature, documentation)
+- Two unused files removed (removal, documentation)
+- Readable scale on enrichment plots with a narrow range (bugfix, documentation)
 
 ---
 
@@ -65,3 +67,32 @@ and `all_spearman_alignment_scores*.tsv`, including the `_language` and `_vision
 in `results/tsv_summaries/` instead of directly in `results/`. The existing tables were moved
 there unchanged. On the next run, the plots that read these tables are redrawn once; their content
 does not change.
+
+---
+
+## 18:20 — Two unused files removed
+
+Kind: removal, documentation
+
+- The helper `workflow/libraries/estimate_batch_size.py`, meant to suggest batch sizes for the
+  embedding step, was never used and has been deleted.
+- The Nature Stories preprocessing no longer writes
+  `results/mind/nature_stories/qc/valid_voxel_counts.tsv` (number of valid voxels per subject);
+  nothing used it. The same table is still printed while the step runs. The existing file was
+  deleted; other copies of the project can delete it too.
+
+Nothing has to be rerun and no result changes.
+
+---
+
+## 18:50 — Readable scale on enrichment plots with a narrow range
+
+Kind: bugfix, documentation
+
+Some enrichment plots, mainly the similarity-comparison line plots
+(`results/pictures/similarity_comparison_lineplots*/...alignment_enrichment_*NN.png`), showed
+only the value 1 on the y-axis, so the size of the differences could not be read. When the y-range
+is narrow, the axis now shows several evenly spaced values (for example 0.97, 0.98, …, 1.05), each
+with its horizontal gridline. Plots that start at 0 look as before. No result changes. Existing
+plots are not redrawn automatically: add
+`--forcerun plot_similarity_comparison_enrichment_lineplot` to the next Snakemake command.

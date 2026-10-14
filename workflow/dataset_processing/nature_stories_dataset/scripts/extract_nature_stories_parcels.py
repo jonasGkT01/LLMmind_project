@@ -1,5 +1,5 @@
 # edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
-# last AI edit: 2026-10-02, see docs/changelog/developers/ for details
+# last AI edit: 2026-10-14, see docs/changelog/developers/ for details
 import argparse
 from pathlib import Path
 
@@ -557,14 +557,6 @@ def main():
     common_support_output.parent.mkdir(parents = True, exist_ok = True,)
 
     np.save(common_support_output, common_support,)
-
-    voxel_qc_output = common_support_output.parent/"valid_voxel_counts.tsv"
-
-    voxel_qc.to_csv(
-        voxel_qc_output, 
-        sep = "\t", 
-        index = False, 
-    )
 
     print("Native-voxel QC:")
     print(voxel_qc.to_string(index = False))

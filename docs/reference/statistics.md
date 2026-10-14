@@ -205,7 +205,10 @@ Layout, shared by all plots (constants and helpers in `libraries/visualisation_u
   (`enrichment_ylim()` in `libraries/compute_alignment_enrichment.py`) so that every concept,
   model-level value and its error bar fits. Their y-axis is linear from 0 to 1 and log10 above 1
   (matplotlib `symlog`, `set_enrichment_y_scale()`), with [0, 1] as tall as one decade, so a few
-  very high concepts don't squash the rest. Because the range must fit the highest concepts, the
+  very high concepts don't squash the rest. Its ticks, and so its gridlines, are 0, 0.25, 0.5,
+  0.75, then 1, 2, 5, 10, … above 1; when fewer than four of them fall in the y-range (a narrow
+  data-fitted range, see below), evenly spaced round ticks are used instead, so the scale stays
+  readable. Because the range must fit the highest concepts, the
   model-level null-SD error bars (about 0.05) are often shorter than the markers; the shared range
   is kept on purpose, so the two plots stay comparable.
 - **Data-fitted y-axes.** The similarity-comparison line plots have no concept-level counterpart,
@@ -289,3 +292,11 @@ added on this day, form their own families, with the models of one modality only
 
 The summary tables (`all_*.tsv`) are now written to `results/tsv_summaries/` instead of
 `results/`; the paths on this page were updated.
+
+### 2026-10-14 18:50 — more ticks on narrow enrichment axes
+
+The enrichment y-axis used only the fixed ticks 0, 0.25, 0.5, 0.75, 1, 2, 5, …. On the
+similarity-comparison enrichment plots, whose range is fitted to the data and can be as narrow as
+0.97–1.05, this left only the tick at 1, hidden under the reference line, so the scale could not
+be read. When fewer than four fixed ticks fall in the range, evenly spaced round ticks are now
+used.

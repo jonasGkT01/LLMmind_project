@@ -8,6 +8,8 @@ Changes made on this day, in order:
 - Leftover outputs found and deleted; guide's leftover list extended (documentation)
 - Brain-model analyses on a language and a visual brain region (new_feature, documentation)
 - Summary tables moved to `results/tsv_summaries/` (new_feature, documentation)
+- Unused `estimate_batch_size.py` and `valid_voxel_counts.tsv` removed (removal, documentation)
+- More ticks and gridlines on narrow enrichment y-axes (bugfix, documentation)
 
 ---
 
@@ -182,3 +184,72 @@ are now written to `results/tsv_summaries/`, named by the new constant
 - Verified: no Snakemake lock and no job of the user on node5 before the move; `grep` finds no
   `results/all_` left in the Snakefiles; `snakemake --use-conda -n` plans 252 plot jobs (the five
   rules above, reason "set of input files has changed") and nothing else.
+
+---
+
+## 18:20 — Unused `estimate_batch_size.py` and `valid_voxel_counts.tsv` removed
+
+Kind: removal, documentation
+
+- `workflow/libraries/estimate_batch_size.py` (`suggest_batch_size()`) deleted. It was added on
+  2026-09-22 for a batched embedding loop that was never built: no script or Snakefile imports
+  it and no config key or rule uses a `batch_size`.
+- `extract_nature_stories_parcels.py` (`main`): the block writing `voxel_qc` to
+  `valid_voxel_counts.tsv` next to `common_fsaverage_support.npy` was removed. The file was not a
+  declared output of `extract_nature_stories_parcels` and nothing read it. The table is still
+  printed (`Native-voxel QC:`); `compute_common_support()` is unchanged. The existing
+  `results/mind/nature_stories/qc/valid_voxel_counts.tsv` was deleted.
+- No job reruns: the rule calls the script from `shell:` and has no `code_version()` param, and
+  no output changed.
+- Documentation: `docs/guides/running_and_troubleshooting.md` lists `valid_voxel_counts.tsv`
+  under "Leftover outputs from older versions"; `docs/AI_USAGE.md` row of
+  `estimate_batch_size.py` removed.
+
+### Context
+
+- Request: TODO P1/S1 and P2/S2; the developer confirmed that neither file is still useful and
+  asked to remove both.
+- Files changed: `workflow/dataset_processing/nature_stories_dataset/scripts/extract_nature_stories_parcels.py`,
+  `docs/guides/running_and_troubleshooting.md`, `docs/AI_USAGE.md`; deleted
+  `workflow/libraries/estimate_batch_size.py` and
+  `results/mind/nature_stories/qc/valid_voxel_counts.tsv`.
+- Verified: `grep` finds no reference to `estimate_batch_size`, `suggest_batch_size`,
+  `valid_voxel_counts` or `voxel_qc_output` left in `workflow/`; the edited script passes
+  `python -m py_compile`.
+
+---
+
+## 18:50 — More ticks and gridlines on narrow enrichment y-axes
+
+Kind: bugfix, documentation
+
+- `libraries/compute_alignment_enrichment.py`: `set_enrichment_y_scale()` now sets the new
+  `EnrichmentLocator` (a `matplotlib.ticker.Locator`) as the major locator instead of
+  `FixedLocator(ENRICHMENT_Y_TICKS)`. At draw time it returns the `ENRICHMENT_Y_TICKS` inside the
+  view interval when there are at least `ENRICHMENT_MIN_FIXED_TICKS = 4` of them, and otherwise
+  `MaxNLocator(steps = [1, 2, 2.5, 5, 10]).tick_values(bottom, top)`. The steps exclude
+  matplotlib's default 1.5 (and 3, 4, 6, 8), whose multiples can skip 1: a first test drew
+  0.975, 0.99, 1.005, … with no label at the null value. Import `FixedLocator` replaced by `Locator`,
+  `MaxNLocator`.
+- Why: the gridlines (`style_model_axes()`, `ax.grid(axis = "y")`) sit on the major ticks. The
+  model-level similarity-comparison enrichment plots fit their y-range to the data
+  (`data_fitted_ylim()`), e.g. 0.97–1.05 on Caption Scene 125NN, where only the tick at 1 was in
+  view and its gridline lay under the null line, so the scale could not be read.
+- Plots whose range starts at 0 (concept- and model-level enrichment plots) contain at least
+  0, 0.25, 0.5, 0.75 and 1, so their ticks are unchanged.
+- Rerun: plot rules have no `code_version()` param, so nothing reruns by itself. Only
+  `plot_similarity_comparison_enrichment_lineplot` draws differently; redraw it with
+  `--forcerun plot_similarity_comparison_enrichment_lineplot`. Nothing upstream.
+- Documentation: `docs/reference/statistics.md` (shared y-axes).
+
+### Context
+
+- Request: the developer found plots with only the reference line and at most one other
+  horizontal line, unreadable in scale, and approved the proposed locator.
+- Files changed: `workflow/libraries/compute_alignment_enrichment.py`,
+  `docs/reference/statistics.md`, `docs/AI_USAGE.md`.
+- Verified: tick labels drawn on test axes (0.962–1.07 → 0.98, 1, …, 1.06; 0.8–1.3 → 0.05
+  steps; 0–1.6, 0.5–3, 1–30 and 0–300 → the fixed ticks as before); the Caption Scene 125NN
+  language similarity-comparison enrichment plot redrawn into a scratch folder and inspected
+  (five labelled gridlines instead of one). Steps below 1 are drawn about 2.3 times taller than
+  above 1, which comes from the symlog scale and was already the case.

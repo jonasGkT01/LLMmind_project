@@ -310,6 +310,8 @@ code no longer produces or reads. They are safe to delete:
   `results/mind/caption_scene/manifests/isc_manifest.tsv` (written only for that analysis);
 - `results/mind/narratives/qc/task-*_length_check.json` (the length checks are no longer
   written as files);
+- `results/mind/nature_stories/qc/valid_voxel_counts.tsv` (the per-subject voxel counts are
+  only printed now);
 - in `.snakemake/metadata/` and `.snakemake/incomplete/`, the records of files that no longer
   exist (each file name is the base64-encoded path of an output). Snakemake reads a record only
   when its file exists, so removing them changes nothing.
@@ -411,3 +413,8 @@ reruns, and how to build one region only.
 
 The summary tables (`all_*.tsv`) are now written to `results/tsv_summaries/` instead of
 `results/`; the paths on this page were updated.
+
+### 2026-10-14 18:20 — Nature Stories voxel-count table added to the leftovers
+
+`results/mind/nature_stories/qc/valid_voxel_counts.tsv` is no longer written, because nothing
+used it, and is now listed under "Leftover outputs from older versions".

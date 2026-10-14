@@ -1,8 +1,8 @@
 # edited with AI assistance: Claude Code, Claude Opus 5.5 (claude-opus-5-5)
-# last AI edit: 2026-10-07, see docs/changelog/developers/ for details
+# last AI edit: 2026-10-14, see docs/changelog/developers/ for details
 from pathlib import Path
 
-from matplotlib.ticker import FixedLocator, FuncFormatter
+from matplotlib.ticker import FuncFormatter, Locator, MaxNLocator
 import numpy as np
 import pandas as pd
 
@@ -195,6 +195,8 @@ ENRICHMENT_Y_TICKS = [0.0, 0.25, 0.5, 0.75] + [
     for exponent in range(6)
     for step in (1, 2, 5)
 ]
+# fewest of those ticks a y-range must contain; narrower ranges get evenly spaced round ticks
+ENRICHMENT_MIN_FIXED_TICKS = 4
 
 def enrichment_axis_position(value):
     return value if value <= 1.0 else 1.0 + np.log10(value)
@@ -202,9 +204,23 @@ def enrichment_axis_position(value):
 def enrichment_axis_value(position):
     return position if position <= 1.0 else 10.0**(position - 1.0)
 
+class EnrichmentLocator(Locator):
+    # ENRICHMENT_Y_TICKS when enough of them fall in the y-range, otherwise evenly spaced round
+    # ticks, so narrow ranges (e.g. 0.97-1.05) still get labels and gridlines. Steps below 1 are
+    # drawn about 2.3 times taller than steps above it (linear vs log10 part of the axis)
+    def __call__(self):
+        bottom, top = sorted(self.axis.get_view_interval())
+        fixed_ticks = [tick for tick in ENRICHMENT_Y_TICKS if bottom <= tick <= top]
+
+        if len(fixed_ticks) >= ENRICHMENT_MIN_FIXED_TICKS:
+            return fixed_ticks
+
+        # steps whose multiples always include 1, so the null value keeps its label
+        return MaxNLocator(steps = [1, 2, 2.5, 5, 10]).tick_values(bottom, top)
+
 def set_enrichment_y_scale(ax):
     ax.set_yscale("symlog", **ENRICHMENT_Y_SCALE)
-    ax.yaxis.set_major_locator(FixedLocator(ENRICHMENT_Y_TICKS))
+    ax.yaxis.set_major_locator(EnrichmentLocator())
     ax.yaxis.set_major_formatter(FuncFormatter(lambda value, _: f"{value:g}"))
 
 # fraction of the axis height left free above the highest point
