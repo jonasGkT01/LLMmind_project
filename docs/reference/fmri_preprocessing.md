@@ -64,6 +64,8 @@ Stories ignores `minimum_subjects_per_stimulus`: it requires every subject for e
   which is kept permanently; no cropped BOLD volume is written to disk.
 - NSD: from the design files, `start_vol = onset volume + onset_shift_volumes` (= 0) and
   `n_vols = ceil(4 s / 1.333 s)` = **3 volumes**. They are recorded in `nsd_occurrence_manifest.tsv`.
+- In both datasets the windows start at the stimulus onset and ignore the delay of the BOLD
+  response, a limitation of the study (see "Limitation: the hemodynamic delay" below).
 - Narratives and Nature Stories: whole stories. Nature Stories' concatenated `zRresp` is split
   back into stories with `new_run_onsets.json`, and the test story comes from `zPresp`.
 
@@ -187,6 +189,34 @@ The methods section should state the same.
   methodological question. The windows are kept as they are: single-trial GLM betas (NSD) and
   longer event windows were considered and not adopted (decision of 2026-10-02).
 
+### Limitation: the hemodynamic delay
+
+The BOLD response to a stimulus is delayed and spread out in time: it starts to rise about 2 s
+after the onset, peaks after about 5–6 s and lasts longer than that. The delay varies between
+brain regions, subjects and stimuli, and cannot be known exactly for each event. The workflow
+therefore takes the event windows of step 2 exactly as the stimulus timing gives them
+(`onset_shift_volumes` and `onset_shift_s` are 0): it does not shift them or model the response.
+This is reported as a limitation of the study, not corrected (decision of 2026-10-15). Its
+consequences differ between datasets:
+
+- **NSD.** Trials follow each other every 4 s (3 volumes), and the window covers 0–4 s after the
+  onset, so it mostly holds the response to the one or two trials before. In 81% of the retained
+  presentations the trial before is an image shown to that subject only (9.5%: another shared
+  image; 9.4%: a blank trial). The shared images are mostly shown at the same point of the
+  experiment to every subject (919 of 1000 first presentations at the same session, run and
+  volume), but the trial before is the same in all subjects for only 178 of them. Part of each NSD
+  ISC therefore reflects responses to other images, which differ between subjects. This probably
+  contributes to NSD's weak results.
+- **Caption Scene.** The 12 s window (caption 0–3 s, blank, image 6–9 s, fixation) can begin
+  with the end of the previous trial's response and ends before the response to the image has
+  fully developed.
+- **Narratives and Nature Stories.** Whole stories of several minutes: the delay affects only
+  their first and last seconds.
+
+The NSD numbers were computed on 2026-10-15 from `nsd_occurrence_manifest.tsv` and the NSD design
+files (the trial 3 volumes before each retained onset). The methods section should state this
+limitation.
+
 ## Changes
 
 Changes to the processing described above, oldest first. The sections above always describe the
@@ -270,3 +300,11 @@ guide already said. The processing did not change.
 Step 1 named only the `Blank` and `Unmatch` flags. `make_caption_scene_manifest.py` also drops
 events without an image and skips runs whose BOLD file cannot be loaded; both are now listed.
 The processing did not change.
+
+### 2026-10-15 15:26 — hemodynamic delay recorded as a limitation
+
+New section "Limitation: the hemodynamic delay", and a pointer to it in step 2. The NSD and Caption
+Scene windows start at the stimulus onset; for NSD, whose trials come every 4 s, the window
+mostly holds the response to earlier trials. The developer decided to report this as a
+limitation rather than correct it, since the delay of each response cannot be known exactly. The
+processing did not change.
