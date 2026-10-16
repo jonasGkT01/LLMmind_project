@@ -130,6 +130,17 @@ table and plot is built only from the files with its own suffix.
 - **Region choice.** The visual region is the 7-network `Vis` network, which covers early and
   extrastriate visual cortex; ventral temporal parcels outside it are not included. The language
   region is defined from the Kong 2022 group-level networks, not from a functional localiser.
+- **Group atlas and individual language cortex.** The location of language cortex varies across
+  individuals much more than that of visual cortex: language regions defined in each subject
+  with a localiser are more selective than group-analysis regions on the same data (Fedorenko,
+  Hsieh, Nieto-Castañón, Whitfield-Gabrieli & Kanwisher 2010, *J Neurophysiol* 104:1177–1194,
+  doi:10.1152/jn.00032.2010). The datasets have no language localiser, so the region cannot be
+  defined per subject, and its parcels miss part of each subject's language cortex. This
+  misalignment also lowers the leave-one-out ISC in those parcels. Two consequences: a lack of
+  alignment in the language region does not show that there is none, while a positive result
+  remains informative; and a comparison of the visual and language regions mixes modality with
+  how well the atlas fits each region. The coarse 200-parcel resolution absorbs part of the
+  variability, since each parcel averages over a large patch of cortex.
 
 ## Changes
 
@@ -144,3 +155,9 @@ The region analysis was added to the pipeline, and this page written from its co
 
 The summary tables (`all_*.tsv`) are now written to `results/tsv_summaries/` instead of
 `results/`; the paths on this page were updated.
+
+### 2026-10-16 12:57 — limitation of the group-level language region documented
+
+Section 5 has a new point: a group atlas fits individual language cortex poorly (Fedorenko et
+al. 2010), so a null result in the language region is ambiguous and the visual-vs-language
+comparison is confounded by atlas fit. Raised by a collaborator; no code or result changed.
